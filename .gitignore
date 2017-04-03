@@ -1,0 +1,15 @@
+*.xml
+*.pyc
+*.csv
+*.tsv
+*.webloc
+*.docx
+credentials_file.py
+local_parameters.py
+json/
+csv/
+docs/
+sample-reports/
+batch-data/
+scratch/
+old-scripts/
