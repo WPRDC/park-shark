@@ -689,6 +689,9 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
     return list_of_dicts, augmented
 
 def main():
+    output_to_csv = True
+    push_to_CKAN = False
+
     zone_kind = 'new' # 'old' maps to enforcement zones
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
     # zones.
@@ -808,8 +811,9 @@ def main():
         list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
 
         augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
-        write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
-        write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
+        if output_to_csv:
+            write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
+            write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
 
         special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
 
@@ -817,7 +821,8 @@ def main():
         # Between the passed use_special_zones boolean and other parameters, more 
         # information is being passed than necessary to distinguish between 
         # special zones and regular zones.
-        write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
+        if output_to_csv:
+            write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
 
 
         del inferred_occupancy[slot_start]
