@@ -17,7 +17,7 @@ import pytz
 
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
-from remote_parameters import server, resource_id
+from remote_parameters import server, resource_id, ad_hoc_resource_id
 
 
 from prime_ckan.push_to_CKAN_resource import push_data_to_ckan  # This function should eventually be
@@ -487,7 +487,7 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='o
     for zone in stats_by.keys():
         counted = Counter(stats_by[zone]['Durations'])
         stats_by[zone]['Durations'] = json.dumps(counted, sort_keys=True)
-        stats_by[zone]['Payments'] = round_to_cent(stats_by[zone]['Payments'])
+        stats_by[zone]['Payments'] = float(round_to_cent(stats_by[zone]['Payments']))
 
     return stats_by
 
@@ -699,12 +699,15 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
 
 def main():
     output_to_csv = False
-    push_to_CKAN = False
+    push_to_CKAN = True
 
     turbo_mode = True # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
     #turbo_mode = False
     skip_processing = False
+
+    threshold_for_uploading = 1000 # The minimum length of the list of 
+    # dicts that triggers uploading to CKAN.
 
     zone_kind = 'new' # 'old' maps to enforcement zones
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
@@ -741,7 +744,7 @@ def main():
     #slot_start = pgh.localize(datetime(2016,1,1,0,0))
     #slot_start = pgh.localize(datetime(2016,1,2,6,50))
     #slot_start = pgh.localize(datetime(2016,2,11,0,0))
-    slot_start = pgh.localize(datetime(2016,2,25,0,0))
+    slot_start = pgh.localize(datetime(2017,1,1,0,0))
     #slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
 
 
@@ -750,7 +753,7 @@ def main():
     halting_time = slot_start + timedelta(hours=2)
 
     halting_time = roundTime(datetime.now(pgh), 24*60*60)
-    halting_time = pgh.localize(datetime(2016,3,2,0,0))
+    halting_time = pgh.localize(datetime(2017,4,17,0,0))
     #halting_time = pgh.localize(datetime(2016,4,1,0,0))
     #halting_time = pgh.localize(datetime(2016,9,20,0,0))
     #halting_time = pgh.localize(datetime(2012,9,1,0,0))
@@ -774,6 +777,8 @@ def main():
     ps_dict = defaultdict(list)
     current_day = slot_start.date()
 
+    cumulated_dicts = []
+    cumulated_ad_hoc_dicts = []
     while slot_start < datetime.now(pytz.utc) and slot_start < halting_time:
         # * Get all parking events that start between slot_start and slot_end
         purchases = get_parking_events(slot_start,slot_end,True)
@@ -781,6 +786,7 @@ def main():
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
         if skip_processing:
+            print("Sleeping...")
             time.sleep(3)
         else:
             reframed_ps = []
@@ -834,17 +840,24 @@ def main():
                 write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
                 if not turbo_mode:
                     write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
-            if push_to_CKAN:
+
+            cumulated_dicts += list_of_dicts
+            if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
+                print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                 # server and resource_id parameters are imported from remote_parameters.py
-                filtered_list_of_dicts = only_these_fields(list_of_dicts,keys)
-                #filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
-                if len(filtered_list_of_dicts) > 0:
+                filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
+                filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+                if False and len(filtered_list_of_dicts) > 0:
                     print("Types of fields:")
                     for f in filtered_list_of_dicts[0]:
                         print("{}: {}".format(f,type(filtered_list_of_dicts[0][f])))
-                print(push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None))
+                success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                print("success = {}".format(success))
+                if success:
+                    cumulated_dicts = []
 
-            special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+            special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+            # [ ] I just added 'UTC Start' to special_keys on April 25, 2017.
 
             special_list_of_dicts, _ = package_for_output(special_stats_rows,special_zones,None,{},pgh,slot_start,slot_end,'special zone') 
             # Between the passed use_special_zones boolean and other parameters, more 
@@ -852,12 +865,32 @@ def main():
             # special zones and regular zones.
             if output_to_csv:
                 write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
+            cumulated_ad_hoc_dicts += special_list_of_dicts
+            if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
+                filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
+                filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+                success = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                if success:
+                    cumulated_ad_hoc_dicts = []
 
             del inferred_occupancy[slot_start]
 
         slot_start += timechunk
         slot_end = slot_start + timechunk
 
+
+    if push_to_CKAN: # Upload the last batch.
+        # server and resource_id parameters are imported from remote_parameters.py
+        filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
+        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+        success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+        if success:
+            cumulated_dicts = []
+        filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
+        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+        success = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+        if success:
+            cumulated_ad_hoc_dicts = []
 
 if __name__ == '__main__':
   main()
