@@ -699,11 +699,13 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
 
 def main():
     output_to_csv = False
-    push_to_CKAN = False
+    push_to_CKAN = True
 
     turbo_mode = True # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
-    
+    turbo_mode = False
+    skip_processing = False
+
     zone_kind = 'new' # 'old' maps to enforcement zones
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
     # zones.
@@ -739,7 +741,7 @@ def main():
     #slot_start = pgh.localize(datetime(2016,1,1,0,0))
     #slot_start = pgh.localize(datetime(2016,1,2,6,50))
     #slot_start = pgh.localize(datetime(2016,2,11,0,0))
-    slot_start = pgh.localize(datetime(2015,11,15,0,0))
+    slot_start = pgh.localize(datetime(2016,2,25,0,0))
     #slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
 
 
@@ -748,7 +750,7 @@ def main():
     halting_time = slot_start + timedelta(hours=2)
 
     halting_time = roundTime(datetime.now(pgh), 24*60*60)
-    halting_time = pgh.localize(datetime(2016,1,2,0,0))
+    halting_time = pgh.localize(datetime(2016,3,2,0,0))
     #halting_time = pgh.localize(datetime(2016,4,1,0,0))
     #halting_time = pgh.localize(datetime(2016,9,20,0,0))
     #halting_time = pgh.localize(datetime(2012,9,1,0,0))
@@ -778,7 +780,7 @@ def main():
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
-        if turbo_mode:
+        if skip_processing:
             time.sleep(3)
         else:
             reframed_ps = []
