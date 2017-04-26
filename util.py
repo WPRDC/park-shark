@@ -9,7 +9,7 @@ import numpy as np
 import requests
 import xmltodict
 import time
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from dateutil.easter import *
 from dateutil.relativedelta import relativedelta
 
@@ -631,6 +631,13 @@ def cast_fields(original_dicts):
     for d_original in original_dicts:
         d = dict(d_original) # Clone the dict to prevent changing the original
         d['Durations'] = loads(d['Durations'])
+        d['Payments'] = float(d['Payments'])
+        # Timestamps have to be converted BACK to datetimes because of 
+        # intialize_zone_stats
+        #d['Start'] = datetime.strptime(d['Start'],"%Y-%m-%d %H:%M:%S")
+        #d['End'] = datetime.strptime(d['End'],"%Y-%m-%d %H:%M:%S")
+        #d['UTC Start'] = datetime.strptime(d['UTC Start'],"%Y-%m-%d %H:%M:%S")
+        dicts.append(d)
     return dicts
 
 def only_these_fields(dicts,fields):
