@@ -301,16 +301,19 @@ def add_to_dict(p,p_dict,terminals,t_guids):
     p_dict[p_hash(p,t)].append(p)
     return p_dict
 
-def reframe(p,terminals,t_guids,p_history):
+def reframe(p,terminals,t_guids,p_history,turbo_mode):
     # Take a dictionary and generate a new dictionary from it that samples
     # the appropriate keys and renames and transforms as desired.
     row = {}
     #row['GUID'] = p['@PurchaseGuid'] # To enable this field,
     # get_batch_parking_for_day needs to be tweaked and
     # JSON caches need to be regenerated.
-    row['TerminalGUID'] = p['@TerminalGuid'] # This is useful
+    try:
+        row['TerminalGUID'] = p['@TerminalGuid'] # This is useful
     # for connecting purchases with terminals when the ID changes
     # but the GUID does not change.
+    except:
+        print("p['@TerminalGuid'] = {}".format(p))
     row['TerminalID'] = p['@TerminalID']
     if p['@TerminalGuid'] in t_guids:
         t = terminals[t_guids.index(p['@TerminalGuid'])]
@@ -326,7 +329,8 @@ def reframe(p,terminals,t_guids,p_history):
 # THIS ASSUMES THAT DURATIONS WILL ALWAYS BE IN MINUTES.
 # IT WOULD BE NICE FOR THEM TO BE SO TO SIMPLIFY THE COUNTS
 # DATA STRUCTURE
-    if not is_original(p,t,p_history): # This is an initial test, but
+
+    if not turbo_mode and not is_original(p,t,p_history): # This is an initial test, but
     # some of the hits that it can return may still be rejected
     # by the find_predecessors function.
 
@@ -697,6 +701,9 @@ def main():
     output_to_csv = False
     push_to_CKAN = False
 
+    turbo_mode = True # When turbo_mode is true, skip time-consuming stuff,
+    # like correct calculation of durations.
+    
     zone_kind = 'new' # 'old' maps to enforcement zones
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
     # zones.
@@ -715,6 +722,8 @@ def main():
 
     timechunk = timedelta(minutes=10) #10 minutes
   #  timechunk = timedelta(seconds=1)
+    if turbo_mode:
+        timechunk = timedelta(hours=24)
 
     #slot_start = roundTime(datetime.now() - timedelta(hours=24), 60*60)
     # Start 24 hours ago (rounded to the nearest hour).
@@ -730,7 +739,7 @@ def main():
     #slot_start = pgh.localize(datetime(2016,1,1,0,0))
     #slot_start = pgh.localize(datetime(2016,1,2,6,50))
     #slot_start = pgh.localize(datetime(2016,2,11,0,0))
-    slot_start = pgh.localize(datetime(2015,10,22,0,0))
+    slot_start = pgh.localize(datetime(2015,11,15,0,0))
     #slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
 
 
@@ -769,76 +778,81 @@ def main():
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
-        reframed_ps = []
-
-        for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-            reframed_ps.append(reframe(p,terminals,t_guids,ps_dict))
-
-            if slot_start.date() == current_day: # Keep a running history of all
-                ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
-            else:
-                current_day = slot_start.date()
-                ps_dict = defaultdict(list) # And restart that history when a new day is encountered.
-        # Temporary for loop to check for unconsidered virtual zone codes.
-        #for rp in reframed_ps:
-        #    if rp['TerminalID'][:3] == "PBP":
-        #        code = rp['TerminalID'][3:]
-        #        if code not in virtual_zone_checked:
-        #            print("\nVerifying group code {} for a purchase at terminal {}".format(code,rp['TerminalGUID']))
-        #            code_group = group_by_code(code)
-        #            print("Found group {}".format(code_group))
-        #            virtual_zone_checked.append(code)
-
-
-        # * Condense to key statistics (including duration counts).
-        stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
-        # stats_rows is actually a dictionary, keyed by zone.
-
-        special_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'special zone', parent_zones, tz=pgh)
-
-        inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
-        # We may eventually need to compute special_inferred_occupancy.
-
-        if len(stats_rows) == 0:
-            print
+        if turbo_mode:
+            time.sleep(3)
         else:
-            print("({})".format(find_biggest_value(stats_rows,'Transactions')))
-        #pprint.pprint(stats_rows)
-        # Return list of OrderedDicts where each OrderedDict
-        # represents a row for a parking zone (or lot) and time slot.
+            reframed_ps = []
 
-        # [Eventually... * Push to database and/or CKAN.]
+            for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
+                reframed_ps.append(reframe(p,terminals,t_guids,ps_dict,turbo_mode))
 
-#        keys = (list_of_dicts.values()[0]).keys()
-        keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-
-        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
-
-        augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
-        if output_to_csv:
-            write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
-            write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
-        if push_to_CKAN:
-            # server and resource_id parameters are imported from remote_parameters.py
-            filtered_list_of_dicts = only_these_fields(list_of_dicts,keys)
-            #filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
-            if len(filtered_list_of_dicts) > 0:
-                print("Types of fields:")
-                for f in filtered_list_of_dicts[0]:
-                    print("{}: {}".format(f,type(filtered_list_of_dicts[0][f])))
-            print(push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None))
-
-        special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-
-        special_list_of_dicts, _ = package_for_output(special_stats_rows,special_zones,None,{},pgh,slot_start,slot_end,'special zone') 
-        # Between the passed use_special_zones boolean and other parameters, more 
-        # information is being passed than necessary to distinguish between 
-        # special zones and regular zones.
-        if output_to_csv:
-            write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
+                if slot_start.date() == current_day: # Keep a running history of all
+                    ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
+                else:
+                    current_day = slot_start.date()
+                    ps_dict = defaultdict(list) # And restart that history when a new day is encountered.
+            # Temporary for loop to check for unconsidered virtual zone codes.
+            #for rp in reframed_ps:
+            #    if rp['TerminalID'][:3] == "PBP":
+            #        code = rp['TerminalID'][3:]
+            #        if code not in virtual_zone_checked:
+            #            print("\nVerifying group code {} for a purchase at terminal {}".format(code,rp['TerminalGUID']))
+            #            code_group = group_by_code(code)
+            #            print("Found group {}".format(code_group))
+            #            virtual_zone_checked.append(code)
 
 
-        del inferred_occupancy[slot_start]
+            # * Condense to key statistics (including duration counts).
+            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
+            # stats_rows is actually a dictionary, keyed by zone.
+
+            special_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'special zone', parent_zones, tz=pgh)
+
+            if not turbo_mode:
+                inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
+            # We may eventually need to compute special_inferred_occupancy.
+
+            if len(stats_rows) == 0:
+                print
+            else:
+                print("({})".format(find_biggest_value(stats_rows,'Transactions')))
+            #pprint.pprint(stats_rows)
+            # Return list of OrderedDicts where each OrderedDict
+            # represents a row for a parking zone (or lot) and time slot.
+
+            # [Eventually... * Push to database and/or CKAN.]
+
+    #        keys = (list_of_dicts.values()[0]).keys()
+            keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+
+            list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
+
+            augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
+            if output_to_csv:
+                write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
+                if not turbo_mode:
+                    write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
+            if push_to_CKAN:
+                # server and resource_id parameters are imported from remote_parameters.py
+                filtered_list_of_dicts = only_these_fields(list_of_dicts,keys)
+                #filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+                if len(filtered_list_of_dicts) > 0:
+                    print("Types of fields:")
+                    for f in filtered_list_of_dicts[0]:
+                        print("{}: {}".format(f,type(filtered_list_of_dicts[0][f])))
+                print(push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None))
+
+            special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+
+            special_list_of_dicts, _ = package_for_output(special_stats_rows,special_zones,None,{},pgh,slot_start,slot_end,'special zone') 
+            # Between the passed use_special_zones boolean and other parameters, more 
+            # information is being passed than necessary to distinguish between 
+            # special zones and regular zones.
+            if output_to_csv:
+                write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
+
+            del inferred_occupancy[slot_start]
+
         slot_start += timechunk
         slot_end = slot_start + timechunk
 
