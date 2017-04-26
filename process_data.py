@@ -4,7 +4,7 @@ import re
 
 import json
 from collections import OrderedDict, Counter, defaultdict
-from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, lot_code, is_virtual, centroid_np, get_terminals, is_timezoneless, write_or_append_to_csv, pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, pure_zones_list, numbered_reporting_zones_list, special_groups, add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor
+from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, lot_code, is_virtual, centroid_np, get_terminals, is_timezoneless, write_or_append_to_csv, pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, pure_zones_list, numbered_reporting_zones_list, special_groups, add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, only_these_fields, cast_fields
 from fetch_terminals import pull_terminals_return_special_zones_and_parent_zones
 import requests
 import zipfile, StringIO
@@ -17,6 +17,11 @@ import pytz
 
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
+from remote_parameters import server, resource_id
+
+
+from prime_ckan.push_to_CKAN_resource import push_data_to_ckan  # This function should eventually be
+# pulled from utility_belt.
 
 last_date_cache = None
 all_day_ps_cache = []
@@ -689,7 +694,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
     return list_of_dicts, augmented
 
 def main():
-    output_to_csv = True
+    output_to_csv = False
     push_to_CKAN = False
 
     zone_kind = 'new' # 'old' maps to enforcement zones
@@ -722,10 +727,10 @@ def main():
     slot_start = pgh.localize(datetime(2016,10,1,0,0))
     #slot_start += timedelta(hours=4) + timedelta(minutes = 30)
     slot_start = roundTime(datetime.now(pytz.utc) - timedelta(hours=24*5), 60*60)# -timedelta(minutes = 40)
-    slot_start = pgh.localize(datetime(2016,1,1,0,0))
+    #slot_start = pgh.localize(datetime(2016,1,1,0,0))
     #slot_start = pgh.localize(datetime(2016,1,2,6,50))
     #slot_start = pgh.localize(datetime(2016,2,11,0,0))
-    #slot_start = pgh.localize(datetime(2016,9,19,0,0))
+    slot_start = pgh.localize(datetime(2015,10,22,0,0))
     #slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
 
 
@@ -734,7 +739,7 @@ def main():
     halting_time = slot_start + timedelta(hours=2)
 
     halting_time = roundTime(datetime.now(pgh), 24*60*60)
-    halting_time = pgh.localize(datetime(2016,1,7,0,0))
+    halting_time = pgh.localize(datetime(2016,1,2,0,0))
     #halting_time = pgh.localize(datetime(2016,4,1,0,0))
     #halting_time = pgh.localize(datetime(2016,9,20,0,0))
     #halting_time = pgh.localize(datetime(2012,9,1,0,0))
@@ -803,7 +808,6 @@ def main():
         # represents a row for a parking zone (or lot) and time slot.
 
         # [Eventually... * Push to database and/or CKAN.]
-        # * For now, just dump to a CSV file.
 
 #        keys = (list_of_dicts.values()[0]).keys()
         keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
@@ -814,6 +818,15 @@ def main():
         if output_to_csv:
             write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
             write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
+        if push_to_CKAN:
+            # server and resource_id parameters are imported from remote_parameters.py
+            filtered_list_of_dicts = only_these_fields(list_of_dicts,keys)
+            #filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+            if len(filtered_list_of_dicts) > 0:
+                print("Types of fields:")
+                for f in filtered_list_of_dicts[0]:
+                    print("{}: {}".format(f,type(filtered_list_of_dicts[0][f])))
+            print(push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None))
 
         special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
 

@@ -626,6 +626,23 @@ def get_terminals(use_cache = False):
     terminals = doc['Terminals']['Terminal']
     return terminals
 
+def cast_fields(original_dicts):
+    dicts = []
+    for d_original in original_dicts:
+        d = dict(d_original) # Clone the dict to prevent changing the original
+        d['Durations'] = loads(d['Durations'])
+    return dicts
+
+def only_these_fields(dicts,fields):
+    filtered_list = []
+    for d_original in dicts:
+        d = dict(d_original) # Clone the dict to prevent changing the original
+        for field in d_original.keys():
+            if field not in fields:
+                del d[field]
+        filtered_list.append(d)
+    return filtered_list
+
 def remove_field(dicts,field,superfield = None):
     # Remove the given field from every dict in dicts (a list of dicts).
     for d in dicts:
