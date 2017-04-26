@@ -699,11 +699,11 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
 
 def main():
     output_to_csv = False
-    push_to_CKAN = True
+    push_to_CKAN = False
 
     turbo_mode = True # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
-    turbo_mode = False
+    #turbo_mode = False
     skip_processing = False
 
     zone_kind = 'new' # 'old' maps to enforcement zones
@@ -724,7 +724,7 @@ def main():
 
     timechunk = timedelta(minutes=10) #10 minutes
   #  timechunk = timedelta(seconds=1)
-    if turbo_mode:
+    if skip_processing:
         timechunk = timedelta(hours=24)
 
     #slot_start = roundTime(datetime.now() - timedelta(hours=24), 60*60)
