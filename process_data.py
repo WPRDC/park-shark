@@ -709,7 +709,7 @@ def main(*args, **kwargs):
     #turbo_mode = False
     skip_processing = False
 
-    threshold_for_uploading = 1000 # The minimum length of the list of 
+    threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The minimum length of the list of 
     # dicts that triggers uploading to CKAN.
 
     zone_kind = 'new' # 'old' maps to enforcement zones
