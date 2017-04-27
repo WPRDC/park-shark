@@ -697,9 +697,12 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
             print("Found a zone not listed in temp_zone_info: {}".format(zone))
     return list_of_dicts, augmented
 
-def main():
-    output_to_csv = False
-    push_to_CKAN = True
+def main(*args, **kwargs):
+    # This function accepts slot_start and halting_time datetimes as arguments to set 
+    # the time range and push_to_CKAN and output_to_csv to control those output channels.
+
+    output_to_csv = kwargs.get('output_to_csv',False)
+    push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
     turbo_mode = True # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
@@ -744,16 +747,16 @@ def main():
     #slot_start = pgh.localize(datetime(2016,1,1,0,0))
     #slot_start = pgh.localize(datetime(2016,1,2,6,50))
     #slot_start = pgh.localize(datetime(2016,2,11,0,0))
-    slot_start = pgh.localize(datetime(2017,1,1,0,0))
+    slot_start = pgh.localize(datetime(2015,10,1,0,0))
     #slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
-
+    slot_start = kwargs.get('slot_start',slot_start)
 
 ########
     halting_time = slot_start + timedelta(hours=24)
     halting_time = slot_start + timedelta(hours=2)
 
     halting_time = roundTime(datetime.now(pgh), 24*60*60)
-    halting_time = pgh.localize(datetime(2017,4,17,0,0))
+    halting_time = pgh.localize(datetime(2015,11,1,0,0))
     #halting_time = pgh.localize(datetime(2016,4,1,0,0))
     #halting_time = pgh.localize(datetime(2016,9,20,0,0))
     #halting_time = pgh.localize(datetime(2012,9,1,0,0))
@@ -761,6 +764,7 @@ def main():
 #    halting_time = slot_start + timedelta(minutes=40)
 
 #    halting_time = slot_start + timedelta(hours=24*2)
+    halting_time = kwargs.get('halting_time',halting_time)
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
 
