@@ -466,7 +466,16 @@ def numbered_zone(t_id):
     if t_id[:3] == 'PBP': #is_virtual(t)
         num_zone = infer_group(None,t_id)
     else:
-        zone_in_ID, matched = group_by_code(t_id[:3])
+        try:
+            zone_in_ID, matched = group_by_code(t_id[:3])
+        except:
+            if t_id == "B0010X00786401372-STANWX0601":
+                # Workaround for weird terminal ID spotted in 
+                # November 8th, 2012 data.
+                zone_in_ID, matched = '401 - Downtown 1', True
+            else:
+                raise ValueError("Unable to find a numbered zone for terminal ID {}".format(t_id))
+                
         if matched:
             num_zone = zone_in_ID
     return num_zone
