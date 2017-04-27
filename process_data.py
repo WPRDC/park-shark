@@ -892,9 +892,15 @@ def main(*args, **kwargs):
             cumulated_dicts = []
         filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
-        success = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+        success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success:
             cumulated_ad_hoc_dicts = []
 
+        return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
+        # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether 
+        # the whole process succeeded).
+
+    return None # The success Boolean should be defined when push_to_CKAN is false.
+
 if __name__ == '__main__':
-  main()
+    main()
