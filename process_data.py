@@ -4,10 +4,14 @@ import re
 
 import json
 from collections import OrderedDict, Counter, defaultdict
-from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, lot_code, is_virtual, centroid_np, get_terminals, is_timezoneless, write_or_append_to_csv, pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, pure_zones_list, numbered_reporting_zones_list, special_groups, add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, only_these_fields, cast_fields
+from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, pure_zones_list, numbered_reporting_zones_list, special_groups, add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, only_these_fields, cast_fields
 from fetch_terminals import pull_terminals_return_special_zones_and_parent_zones
 import requests
-import zipfile, StringIO
+import zipfile
+try:
+    from StringIO import StringIO # For Python 2
+except ImportError:
+    from io import StringIO # For Python 3
 from copy import copy
 
 import time
@@ -22,6 +26,7 @@ from remote_parameters import server, resource_id, ad_hoc_resource_id
 
 from prime_ckan.push_to_CKAN_resource import push_data_to_ckan  # This function should eventually be
 # pulled from utility_belt.
+#from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan  
 
 last_date_cache = None
 all_day_ps_cache = []
@@ -513,7 +518,7 @@ def build_url(base_url,slot_start,slot_end):
 
 def convert_doc_to_purchases(doc,slot_start,date_format):
     if 'Purchases' not in doc:
-        print "Failed to retrieve records for UTC time " + slot_start.astimezone(pytz.utc).strftime(date_format)
+        print("Failed to retrieve records for UTC time {}".format(slot_start.astimezone(pytz.utc).strftime(date_format)))
         # Possibly an exception should be thrown here.
         return None
     if doc['Purchases']['@Records'] == '0':
@@ -704,9 +709,8 @@ def main(*args, **kwargs):
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
-    turbo_mode = True # When turbo_mode is true, skip time-consuming stuff,
+    turbo_mode = False # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
-    #turbo_mode = False
     skip_processing = False
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The minimum length of the list of 
@@ -781,6 +785,19 @@ def main(*args, **kwargs):
     ps_dict = defaultdict(list)
     current_day = slot_start.date()
 
+    ordered_fields = [{"id": "Zone", "type": "text"}]
+    ordered_fields.append({"id": "Parent Zone", "type": "text"})
+    ordered_fields.append({"id": "Start", "type": "timestamp"})
+    ordered_fields.append({"id": "End", "type": "timestamp"})
+    ordered_fields.append({"id": "UTC Start", "type": "timestamp"})
+    ordered_fields.append({"id": "Transactions", "type": "int"})
+    ordered_fields.append({"id": "Car-minutes", "type": "int"})
+    ordered_fields.append({"id": "Payments", "type": "float"})
+    ordered_fields.append({"id": "Durations", "type": "json"})
+
+    ad_hoc_ordered_fields = list(ordered_fields)
+    ordered_fields.remove({"id": "Parent Zone", "type": "text"})
+
     cumulated_dicts = []
     cumulated_ad_hoc_dicts = []
     while slot_start < datetime.now(pytz.utc) and slot_start < halting_time:
@@ -832,8 +849,6 @@ def main(*args, **kwargs):
             # Return list of OrderedDicts where each OrderedDict
             # represents a row for a parking zone (or lot) and time slot.
 
-            # [Eventually... * Push to database and/or CKAN.]
-
     #        keys = (list_of_dicts.values()[0]).keys()
             keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
 
@@ -850,11 +865,13 @@ def main(*args, **kwargs):
                 print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                 # server and resource_id parameters are imported from remote_parameters.py
                 filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
-                filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+                filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
                 if False and len(filtered_list_of_dicts) > 0:
                     print("Types of fields:")
                     for f in filtered_list_of_dicts[0]:
                         print("{}: {}".format(f,type(filtered_list_of_dicts[0][f])))
+
+                #success = pipe_data_to_ckan(server, resource_id, cumulated_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
                 success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
                 print("success = {}".format(success))
                 if success:
@@ -872,9 +889,9 @@ def main(*args, **kwargs):
             cumulated_ad_hoc_dicts += special_list_of_dicts
             if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
                 filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
-                filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
-                success = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-                if success:
+                filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
+                success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                if success_a:
                     cumulated_ad_hoc_dicts = []
 
             del inferred_occupancy[slot_start]
@@ -886,14 +903,14 @@ def main(*args, **kwargs):
     if push_to_CKAN: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
         filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
-        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields)
         success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success:
             cumulated_dicts = []
         filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
-        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts)
+        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
         success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-        if success:
+        if success_a:
             cumulated_ad_hoc_dicts = []
 
         return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes

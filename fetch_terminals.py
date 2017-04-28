@@ -93,7 +93,7 @@ def pull_terminals_return_special_zones_and_parent_zones(use_cache=False):
     list_of_dicts = []
     set_of_all_groups = set()
     for k,t in enumerate(terminals):
-        print k
+        print(k)
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
         new_entry['ID'] = t['@Id']

@@ -10,7 +10,7 @@ import requests
 import xmltodict
 import time
 from datetime import date, timedelta, datetime
-from dateutil.easter import *
+from dateutil.easter import * # pip install python-dateutil
 from dateutil.relativedelta import relativedelta
 
 from calendar import monthrange
@@ -610,7 +610,7 @@ def corrected_zone_name(t,t_ids=[],t_id=None):
             if t['@Id'] in lost_zone_names.keys():
                 zn = lost_zone_names[t['@Id']]
             else:
-                print "corrected_zone_name: No zone name found or inferred for " + t['@Id']
+                print("corrected_zone_name: No zone name found or inferred for {}".format(t['@Id']))
     return zn
 
 
@@ -635,8 +635,8 @@ def get_terminals(use_cache = False):
     terminals = doc['Terminals']['Terminal']
     return terminals
 
-def cast_fields(original_dicts):
-    dicts = []
+def cast_fields(original_dicts,ordered_fields):
+    data = []
     for d_original in original_dicts:
         d = dict(d_original) # Clone the dict to prevent changing the original
         d['Durations'] = loads(d['Durations'])
@@ -646,8 +646,10 @@ def cast_fields(original_dicts):
         #d['Start'] = datetime.strptime(d['Start'],"%Y-%m-%d %H:%M:%S")
         #d['End'] = datetime.strptime(d['End'],"%Y-%m-%d %H:%M:%S")
         #d['UTC Start'] = datetime.strptime(d['UTC Start'],"%Y-%m-%d %H:%M:%S")
-        dicts.append(d)
-    return dicts
+
+        ordered_row = OrderedDict([(fi['id'],d[fi['id']]) for fi in ordered_fields])
+        data.append(ordered_row)
+    return data
 
 def only_these_fields(dicts,fields):
     filtered_list = []
