@@ -9,7 +9,7 @@ from fetch_terminals import pull_terminals_return_special_zones_and_parent_zones
 import requests
 import zipfile
 try:
-    from StringIO import StringIO # For Python 2
+    import StringIO # For Python 2
 except ImportError:
     from io import StringIO # For Python 3
 from copy import copy
@@ -287,7 +287,16 @@ def is_original(p,t,p_history):
 
 def find_predecessors(p,t,t_guids,terminals,p_history):
     predecessors = p_history[p_hash(p,t)]
-    sps = sorted(predecessors, key=lambda x: x['@EndDateLocal'])
+    try:
+        sps = sorted(predecessors, key=lambda x: x['@EndDateLocal'])
+    except:
+        print("len(predecessors) = {}".format(len(predecessors))) 
+        for pred in predecessors:
+            if '@EndDateLocal' not in pred:
+                print("Missing '@EndDateLocal':")
+                pprint.pprint(to_dict(pred))
+        raise ValueError("Found a transaction that is missing @EndDateLocal")
+
     if len(sps) > 0:
         for sp in sps: # Check that payments are all either physical or virtual.
             if is_virtual(t) != is_virtual(terminal_of(sp,t_guids,terminals)):
@@ -751,8 +760,8 @@ def main(*args, **kwargs):
     #slot_start = pgh.localize(datetime(2016,1,1,0,0))
     #slot_start = pgh.localize(datetime(2016,1,2,6,50))
     #slot_start = pgh.localize(datetime(2016,2,11,0,0))
-    slot_start = pgh.localize(datetime(2015,10,1,0,0))
-    #slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
+    #slot_start = pgh.localize(datetime(2015,10,3,0,0))
+    slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Possibly the earliest available data.
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
@@ -760,7 +769,7 @@ def main(*args, **kwargs):
     halting_time = slot_start + timedelta(hours=2)
 
     halting_time = roundTime(datetime.now(pgh), 24*60*60)
-    halting_time = pgh.localize(datetime(2015,11,1,0,0))
+    halting_time = pgh.localize(datetime(3030,4,13,0,0))
     #halting_time = pgh.localize(datetime(2016,4,1,0,0))
     #halting_time = pgh.localize(datetime(2016,9,20,0,0))
     #halting_time = pgh.localize(datetime(2012,9,1,0,0))
