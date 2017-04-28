@@ -1,17 +1,7 @@
-import xmltodict
-import os
-import re
-
-import json
-from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, lot_code, is_virtual, centroid_np, get_terminals, is_timezoneless, write_or_append_to_csv, pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, pure_zones_list, numbered_reporting_zones_list, special_groups, add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, only_these_fields, cast_fields
 from fetch_terminals import pull_terminals_return_special_zones_and_parent_zones
-import requests
-import zipfile, StringIO
-from copy import copy
 
 import time
-import pprint
 from datetime import datetime, timedelta
 import pytz
 
