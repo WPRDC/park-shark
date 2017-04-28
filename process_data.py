@@ -761,7 +761,8 @@ def main(*args, **kwargs):
     #slot_start = pgh.localize(datetime(2016,1,2,6,50))
     #slot_start = pgh.localize(datetime(2016,2,11,0,0))
     #slot_start = pgh.localize(datetime(2015,10,3,0,0))
-    slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Possibly the earliest available data.
+    slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
+    slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Avoid 2012-08-01 transaction that breaks duration calculations for now.
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
