@@ -641,11 +641,12 @@ def cast_fields(original_dicts,ordered_fields):
         d = dict(d_original) # Clone the dict to prevent changing the original
         d['Durations'] = loads(d['Durations'])
         d['Payments'] = float(d['Payments'])
-        # Timestamps have to be converted BACK to datetimes because of 
-        # intialize_zone_stats
-        #d['Start'] = datetime.strptime(d['Start'],"%Y-%m-%d %H:%M:%S")
-        #d['End'] = datetime.strptime(d['End'],"%Y-%m-%d %H:%M:%S")
-        #d['UTC Start'] = datetime.strptime(d['UTC Start'],"%Y-%m-%d %H:%M:%S")
+        # This may not be necessary, but ensuring that datetimes are in
+        # ISO format is the best way of preparing timestamps to be 
+        # sent to CKAN.
+        d['Start'] = datetime.strptime(d['Start'],"%Y-%m-%d %H:%M:%S").isoformat()
+        d['End'] = datetime.strptime(d['End'],"%Y-%m-%d %H:%M:%S").isoformat()
+        d['UTC Start'] = datetime.strptime(d['UTC Start'],"%Y-%m-%d %H:%M:%S").isoformat()
 
         ordered_row = OrderedDict([(fi['id'],d[fi['id']]) for fi in ordered_fields])
         data.append(ordered_row)
