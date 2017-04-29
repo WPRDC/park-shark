@@ -876,10 +876,6 @@ def main(*args, **kwargs):
                 # server and resource_id parameters are imported from remote_parameters.py
                 filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
                 filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
-                if False and len(filtered_list_of_dicts) > 0:
-                    print("Types of fields:")
-                    for f in filtered_list_of_dicts[0]:
-                        print("{}: {}".format(f,type(filtered_list_of_dicts[0][f])))
 
                 #success = pipe_data_to_ckan(server, resource_id, cumulated_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
                 success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
