@@ -712,8 +712,9 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
     return list_of_dicts, augmented
 
 def main(*args, **kwargs):
-    # This function accepts slot_start and halting_time datetimes as arguments to set 
-    # the time range and push_to_CKAN and output_to_csv to control those output channels.
+    # This function accepts slot_start and halting_time datetimes as 
+    # arguments to set the time range and push_to_CKAN and output_to_csv 
+    # to control those output channels.
 
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
@@ -722,8 +723,8 @@ def main(*args, **kwargs):
     # like correct calculation of durations.
     skip_processing = False
 
-    threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The minimum length of the list of 
-    # dicts that triggers uploading to CKAN.
+    threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The 
+    # minimum length of the list of dicts that triggers uploading to CKAN.
 
     zone_kind = 'new' # 'old' maps to enforcement zones
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
@@ -749,35 +750,23 @@ def main(*args, **kwargs):
     #slot_start = roundTime(datetime.now() - timedelta(hours=24), 60*60)
     # Start 24 hours ago (rounded to the nearest hour).
     # This is a naive (timezoneless) datetime, so let's try it this way:
-    slot_start = roundTime(datetime.now(pytz.utc) - timedelta(hours=24), 60*60)
-    # It is recommended that all work be done in UTC time and that the conversion to a local time zone only happen at the end, when presenting something to humans.
-    slot_start = roundTime(datetime.now(pgh) - timedelta(hours=24), 24*60*60) #+ timedelta(hours=2)
-    slot_start = roundTime(datetime.now(pgh) - timedelta(days=7), 24*60*60)
+    #slot_start = roundTime(datetime.now(pytz.utc) - timedelta(hours=24), 60*60)
+    # It is recommended that all work be done in UTC time and that the 
+    # conversion to a local time zone only happen at the end, when 
+    # presenting something to humans.
+    #slot_start = roundTime(datetime.now(pgh) - timedelta(hours=24), 24*60*60) #+ timedelta(hours=2)
     #slot_start = roundTime(datetime.now(pgh) - timedelta(days=7), 24*60*60)
-    slot_start = pgh.localize(datetime(2016,10,1,0,0))
-    #slot_start += timedelta(hours=4) + timedelta(minutes = 30)
-    slot_start = roundTime(datetime.now(pytz.utc) - timedelta(hours=24*5), 60*60)# -timedelta(minutes = 40)
-    #slot_start = pgh.localize(datetime(2016,1,1,0,0))
-    #slot_start = pgh.localize(datetime(2016,1,2,6,50))
-    #slot_start = pgh.localize(datetime(2016,2,11,0,0))
-    #slot_start = pgh.localize(datetime(2015,10,3,0,0))
     slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
     slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Avoid 2012-08-01 transaction that breaks duration calculations for now.
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
     halting_time = slot_start + timedelta(hours=24)
-    halting_time = slot_start + timedelta(hours=2)
-
-    halting_time = roundTime(datetime.now(pgh), 24*60*60)
-    halting_time = pgh.localize(datetime(3030,4,13,0,0))
-    #halting_time = pgh.localize(datetime(2016,4,1,0,0))
-    #halting_time = pgh.localize(datetime(2016,9,20,0,0))
-    #halting_time = pgh.localize(datetime(2012,9,1,0,0))
-#    halting_time = slot_start + timedelta(hours=4)
-#    halting_time = slot_start + timedelta(minutes=40)
-
-#    halting_time = slot_start + timedelta(hours=24*2)
+    
+    # halting_time = roundTime(datetime.now(pgh), 24*60*60)
+    halting_time = pgh.localize(datetime(3030,4,13,0,0)) # Set halting time 
+    # to the far future so that the script runs all the way up to the most 
+    # recent data (based on the slot_start < now check in the loop below).
     halting_time = kwargs.get('halting_time',halting_time)
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
@@ -810,8 +799,8 @@ def main(*args, **kwargs):
 
     cumulated_dicts = []
     cumulated_ad_hoc_dicts = []
-    while slot_start < datetime.now(pytz.utc) and slot_start < halting_time:
-        # * Get all parking events that start between slot_start and slot_end
+    while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
+        # Get all parking events that start between slot_start and slot_end
         purchases = get_parking_events(slot_start,slot_end,True)
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
@@ -841,7 +830,7 @@ def main(*args, **kwargs):
             #            virtual_zone_checked.append(code)
 
 
-            # * Condense to key statistics (including duration counts).
+            # Condense to key statistics (including duration counts).
             stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
 
