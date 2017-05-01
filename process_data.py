@@ -26,7 +26,9 @@ from remote_parameters import server, resource_id, ad_hoc_resource_id
 
 from prime_ckan.push_to_CKAN_resource import push_data_to_ckan  # This function should eventually be
 # pulled from utility_belt.
-#from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan  
+#from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
+
+DEFAULT_TIMECHUNK = timedelta(minutes=10)
 
 last_date_cache = None
 all_day_ps_cache = []
@@ -271,7 +273,7 @@ def terminal_of(p,t_guids,terminals):
 def p_hash(p,t):
     # Use the combination of the original purchase date for the session
     # and the parking zone that it happened in as a unique identifier
-    # to link transactions that are extensions of an original parking 
+    # to link transactions that are extensions of an original parking
     # purchase back to that first purchase.
     return "{}|{}".format(p['@PurchaseDateLocal'],numbered_zone(t['@Id']))
 
@@ -294,7 +296,7 @@ def find_predecessors(p,t,t_guids,terminals,p_history):
     try: # Sort predecessors for purchase p by EndDateLocal.
         sps = sorted(predecessors, key=lambda x: x['@EndDateLocal'])
     except:
-        print("len(predecessors) = {}".format(len(predecessors))) 
+        print("len(predecessors) = {}".format(len(predecessors)))
         for pred in predecessors:
             if '@EndDateLocal' not in pred:
                 print("Missing '@EndDateLocal':")
@@ -309,7 +311,7 @@ def find_predecessors(p,t,t_guids,terminals,p_history):
                 sps.remove(sp)
     if len(sps) > 0:
         latest = p
-        # Eliminate earlier purchases that already have more paid-for 
+        # Eliminate earlier purchases that already have more paid-for
         # minutes (represented by the field @Units) than the purchase p.
         for sp in sps[1::-1]:
             if int(sp['@Units']) >= int(latest['@Units']):
@@ -451,9 +453,9 @@ def initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/
     stats['Payments'] = 0.0
     stats['Durations'] = [] # The Durations field represents the durations of the purchases
     # made during this time slot. Just as Transactions indicates how many times people
-    # put money into parking meters (or virtual meters via smartphone apps) and 
-    # Payments tells you how much money was paid, Durations tells you the breakdown of 
-    # parking minutes purchased. The sum of all the durations represented in the 
+    # put money into parking meters (or virtual meters via smartphone apps) and
+    # Payments tells you how much money was paid, Durations tells you the breakdown of
+    # parking minutes purchased. The sum of all the durations represented in the
     # Durations dictionary should equal the value in the Car-minutes field.
     if aggregate_by == 'special zone':
         stats['Parent Zone'] = None
@@ -728,8 +730,8 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
     return list_of_dicts, augmented
 
 def main(*args, **kwargs):
-    # This function accepts slot_start and halting_time datetimes as 
-    # arguments to set the time range and push_to_CKAN and output_to_csv 
+    # This function accepts slot_start and halting_time datetimes as
+    # arguments to set the time range and push_to_CKAN and output_to_csv
     # to control those output channels.
 
     output_to_csv = kwargs.get('output_to_csv',False)
@@ -739,7 +741,7 @@ def main(*args, **kwargs):
     # like correct calculation of durations.
     skip_processing = False
 
-    threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The 
+    threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
 
     zone_kind = 'new' # 'old' maps to enforcement zones
@@ -758,7 +760,7 @@ def main(*args, **kwargs):
     t_guids = [t['@Guid'] for t in terminals]
 
 
-    timechunk = timedelta(minutes=10) #10 minutes
+    timechunk = DEFAULT_TIMECHUNK
   #  timechunk = timedelta(seconds=1)
     if skip_processing:
         timechunk = timedelta(hours=24)
@@ -767,23 +769,24 @@ def main(*args, **kwargs):
     # Start 24 hours ago (rounded to the nearest hour).
     # This is a naive (timezoneless) datetime, so let's try it this way:
     #slot_start = roundTime(datetime.now(pytz.utc) - timedelta(hours=24), 60*60)
-    # It is recommended that all work be done in UTC time and that the 
-    # conversion to a local time zone only happen at the end, when 
+    # It is recommended that all work be done in UTC time and that the
+    # conversion to a local time zone only happen at the end, when
     # presenting something to humans.
     #slot_start = roundTime(datetime.now(pgh) - timedelta(hours=24), 24*60*60) #+ timedelta(hours=2)
     #slot_start = roundTime(datetime.now(pgh) - timedelta(days=7), 24*60*60)
     slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
     slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Avoid 2012-08-01 transaction that breaks duration calculations for now.
-    slot_start = pgh.localize(datetime(2016,11,10,0,0)) 
+    slot_start = pgh.localize(datetime(2017,4,15,0,0))
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
     halting_time = slot_start + timedelta(hours=24)
-    
+
     # halting_time = roundTime(datetime.now(pgh), 24*60*60)
-    halting_time = pgh.localize(datetime(3030,4,13,0,0)) # Set halting time 
-    # to the far future so that the script runs all the way up to the most 
+    halting_time = pgh.localize(datetime(3030,4,13,0,0)) # Set halting time
+    # to the far future so that the script runs all the way up to the most
     # recent data (based on the slot_start < now check in the loop below).
+    #halting_time = pgh.localize(datetime(2017,3,2,0,0)) # Set halting time
     halting_time = kwargs.get('halting_time',halting_time)
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
@@ -814,11 +817,11 @@ def main(*args, **kwargs):
     cumulated_ad_hoc_dicts = []
 
     # The current approach to calculating durations tracks the recent transaction history
-    # and subtracts the "Units" value (the number of cumulative minutes purchased) 
+    # and subtracts the "Units" value (the number of cumulative minutes purchased)
     # from the previous transaction to get the incremental duration of the most
     # recent purchase.
 
-    # (Collapsing all those transactions to a single session would be the opposite 
+    # (Collapsing all those transactions to a single session would be the opposite
     # process: Whenver an older predecessor transaction is found, it is folded into
     # one big session object to represent the whole multi-part parking purchase.)
 
@@ -832,8 +835,8 @@ def main(*args, **kwargs):
     real_slot_start = slot_start
     slot_start -= warm_up_period
     # HOWEVER, the above reasoning is inconsistent with how the purchase history is
-    # currently being kept (clearing it at midnight every day). The edge case I 
-    # was concerned about was the parking purchase that happens at 12:05am that 
+    # currently being kept (clearing it at midnight every day). The edge case I
+    # was concerned about was the parking purchase that happens at 12:05am that
     # extends a previous purchase.
 
 
@@ -918,15 +921,15 @@ def main(*args, **kwargs):
             special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
             # [ ] I just added 'UTC Start' to special_keys on April 25, 2017.
 
-            special_list_of_dicts, _ = package_for_output(special_stats_rows,special_zones,None,{},pgh,slot_start,slot_end,'special zone') 
-            # Between the passed use_special_zones boolean and other parameters, more 
-            # information is being passed than necessary to distinguish between 
+            special_list_of_dicts, _ = package_for_output(special_stats_rows,special_zones,None,{},pgh,slot_start,slot_end,'special zone')
+            # Between the passed use_special_zones boolean and other parameters, more
+            # information is being passed than necessary to distinguish between
             # special zones and regular zones.
             if output_to_csv and slot_start >= real_slot_start:
                 write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
             if slot_start >= real_slot_start:
                 cumulated_ad_hoc_dicts += special_list_of_dicts
-            if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading: 
+            if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
                 filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
                 filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
                 success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
@@ -953,7 +956,7 @@ def main(*args, **kwargs):
             cumulated_ad_hoc_dicts = []
 
         return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
-        # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether 
+        # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
         # the whole process succeeded).
 
     return None # The success Boolean should be defined when push_to_CKAN is false.
