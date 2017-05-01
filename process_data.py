@@ -774,7 +774,7 @@ def main(*args, **kwargs):
     #slot_start = roundTime(datetime.now(pgh) - timedelta(days=7), 24*60*60)
     slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
     slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Avoid 2012-08-01 transaction that breaks duration calculations for now.
-    slot_start = pgh.localize(datetime(2016,11,1,0,0)) 
+    slot_start = pgh.localize(datetime(2016,11,10,0,0)) 
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
@@ -828,9 +828,9 @@ def main(*args, **kwargs):
     # over some number of hours (warm_up_period) during which the purchase history
     # is built up but the data is not output to anything (save the console).
 
-    #warm_up_period = timedelta(hours=12)
-    #real_slot_start = slot_start
-    #slot_start -= warm_up_period
+    warm_up_period = timedelta(hours=12)
+    real_slot_start = slot_start
+    slot_start -= warm_up_period
     # HOWEVER, the above reasoning is inconsistent with how the purchase history is
     # currently being kept (clearing it at midnight every day). The edge case I 
     # was concerned about was the parking purchase that happens at 12:05am that 
@@ -896,12 +896,13 @@ def main(*args, **kwargs):
             list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
 
             augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
-            if output_to_csv:
+            if output_to_csv and slot_start >= real_slot_start:
                 write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
                 if not turbo_mode:
                     write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
 
-            cumulated_dicts += list_of_dicts
+            if slot_start >= real_slot_start:
+                cumulated_dicts += list_of_dicts
             if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
                 print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                 # server and resource_id parameters are imported from remote_parameters.py
@@ -921,10 +922,11 @@ def main(*args, **kwargs):
             # Between the passed use_special_zones boolean and other parameters, more 
             # information is being passed than necessary to distinguish between 
             # special zones and regular zones.
-            if output_to_csv:
+            if output_to_csv and slot_start >= real_slot_start:
                 write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
-            cumulated_ad_hoc_dicts += special_list_of_dicts
-            if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
+            if slot_start >= real_slot_start:
+                cumulated_ad_hoc_dicts += special_list_of_dicts
+            if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading: 
                 filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
                 filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
                 success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
@@ -937,7 +939,7 @@ def main(*args, **kwargs):
         slot_end = slot_start + timechunk
 
 
-    if push_to_CKAN: # Upload the last batch.
+    if push_to_CKAN and slot_start >= real_slot_start: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
         filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields)
