@@ -269,6 +269,10 @@ def terminal_of(p,t_guids,terminals):
     return t
 
 def p_hash(p,t):
+    # Use the combination of the original purchase date for the session
+    # and the parking zone that it happened in as a unique identifier
+    # to link transactions that are extensions of an original parking 
+    # purchase back to that first purchase.
     return "{}|{}".format(p['@PurchaseDateLocal'],numbered_zone(t['@Id']))
 
 def is_original(p,t,p_history):
@@ -287,7 +291,7 @@ def is_original(p,t,p_history):
 
 def find_predecessors(p,t,t_guids,terminals,p_history):
     predecessors = p_history[p_hash(p,t)]
-    try:
+    try: # Sort predecessors for purchase p by EndDateLocal.
         sps = sorted(predecessors, key=lambda x: x['@EndDateLocal'])
     except:
         print("len(predecessors) = {}".format(len(predecessors))) 
@@ -297,12 +301,16 @@ def find_predecessors(p,t,t_guids,terminals,p_history):
                 pprint.pprint(to_dict(pred))
         raise ValueError("Found a transaction that is missing @EndDateLocal")
 
+    # Use some sanity checks to filter out transactions that are not actually
+    # related to the purchase p (that is, they're for other cars).
     if len(sps) > 0:
         for sp in sps: # Check that payments are all either physical or virtual.
             if is_virtual(t) != is_virtual(terminal_of(sp,t_guids,terminals)):
                 sps.remove(sp)
     if len(sps) > 0:
         latest = p
+        # Eliminate earlier purchases that already have more paid-for 
+        # minutes (represented by the field @Units) than the purchase p.
         for sp in sps[1::-1]:
             if int(sp['@Units']) >= int(latest['@Units']):
                 sps.remove(sp)
@@ -362,6 +370,9 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
         print("durations = {}".format([int(x['@Units']) for x in predecessors + [p]]))
         #        print("We need to subtract the durations of the previous payments.")
         if len(predecessors) > 0:
+            # Subtract off the cumulative minutes purchased by the most recent
+            # predecssor, so that the Duration field represents just the Duration
+            # of this transaction.
             row['Duration'] -= int(predecessors[-1]['@Units'])
 
 
@@ -438,7 +449,12 @@ def initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/
     stats['Transactions'] = 0
     stats['Car-minutes'] = 0
     stats['Payments'] = 0.0
-    stats['Durations'] = []
+    stats['Durations'] = [] # The Durations field represents the durations of the purchases
+    # made during this time slot. Just as Transactions indicates how many times people
+    # put money into parking meters (or virtual meters via smartphone apps) and 
+    # Payments tells you how much money was paid, Durations tells you the breakdown of 
+    # parking minutes purchased. The sum of all the durations represented in the 
+    # Durations dictionary should equal the value in the Car-minutes field.
     if aggregate_by == 'special zone':
         stats['Parent Zone'] = None
     return stats
@@ -758,6 +774,7 @@ def main(*args, **kwargs):
     #slot_start = roundTime(datetime.now(pgh) - timedelta(days=7), 24*60*60)
     slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
     slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Avoid 2012-08-01 transaction that breaks duration calculations for now.
+    slot_start = pgh.localize(datetime(2016,11,1,0,0)) 
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
@@ -771,8 +788,6 @@ def main(*args, **kwargs):
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
 
-    slot_end = slot_start + timechunk
-
     special_zones, parent_zones = pull_terminals_return_special_zones_and_parent_zones(use_cache)
     print("special zones = {}".format(special_zones))
 
@@ -781,8 +796,6 @@ def main(*args, **kwargs):
 
 
     virtual_zone_checked = []
-    ps_dict = defaultdict(list)
-    current_day = slot_start.date()
 
     ordered_fields = [{"id": "Zone", "type": "text"}]
     ordered_fields.append({"id": "Parent Zone", "type": "text"})
@@ -799,6 +812,35 @@ def main(*args, **kwargs):
 
     cumulated_dicts = []
     cumulated_ad_hoc_dicts = []
+
+    # The current approach to calculating durations tracks the recent transaction history
+    # and subtracts the "Units" value (the number of cumulative minutes purchased) 
+    # from the previous transaction to get the incremental duration of the most
+    # recent purchase.
+
+    # (Collapsing all those transactions to a single session would be the opposite 
+    # process: Whenver an older predecessor transaction is found, it is folded into
+    # one big session object to represent the whole multi-part parking purchase.)
+
+    # Since this approach relies on having a purchase history, for complete consistency
+    # (no matter for which datetime the script starts processing the same durations
+    # and session-clustering should be achieved), it would be best to run the script
+    # over some number of hours (warm_up_period) during which the purchase history
+    # is built up but the data is not output to anything (save the console).
+
+    #warm_up_period = timedelta(hours=12)
+    #real_slot_start = slot_start
+    #slot_start -= warm_up_period
+    # HOWEVER, the above reasoning is inconsistent with how the purchase history is
+    # currently being kept (clearing it at midnight every day). The edge case I 
+    # was concerned about was the parking purchase that happens at 12:05am that 
+    # extends a previous purchase.
+
+
+    slot_end = slot_start + timechunk
+    current_day = slot_start.date()
+    ps_dict = defaultdict(list)
+
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
         purchases = get_parking_events(slot_start,slot_end,True)
