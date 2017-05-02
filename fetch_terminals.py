@@ -93,7 +93,6 @@ def pull_terminals_return_special_zones_and_parent_zones(use_cache=False):
     list_of_dicts = []
     set_of_all_groups = set()
     for k,t in enumerate(terminals):
-        print(k)
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
         new_entry['ID'] = t['@Id']
@@ -115,7 +114,7 @@ def pull_terminals_return_special_zones_and_parent_zones(use_cache=False):
         elif is_a_virtual_zone(t):
             new_entry['LocationType'] = "Virtual Zone"
         new_entry['Zone'] = numbered_zone(t['@Id'])
-        print('ID = {}, new zone = {}'.format(t['@Id'],new_entry['Zone']))
+        #print('{}: ID = {}, new zone = {}'.format(k,t['@Id'],new_entry['Zone']))
         new_entry['AllGroups'] = char_delimit(all_groups(t),'|')
 
         set_of_all_groups.update(all_groups(t))
@@ -182,8 +181,8 @@ def pull_terminals_return_special_zones_and_parent_zones(use_cache=False):
     pprint.pprint(zone_info)
 
     write_to_csv('zone-centroids.csv',sorted_zone_dicts,keys)
-    print("Here is the list of all groups:")
-    pprint.pprint(set_of_all_groups)
+    #print("Here is the list of all groups:")
+    #pprint.pprint(set_of_all_groups)
 
     excluded_zones = ['TEST - South Craig - Reporting']
     excluded_zones = []
