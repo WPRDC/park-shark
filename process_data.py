@@ -848,17 +848,12 @@ def main(*args, **kwargs):
     # Using a separate seeding-mode stage considerably speeds up the warming-up 
     # period (from maybe 10 minutes to closer to one or two).
     seeding_mode = True
-    real_slot_start = slot_start
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
-        
-        slot_start -= warm_up_period
-        slot_end = slot_start + warm_up_period
-        purchases = get_parking_events(slot_start,slot_end,True)
+        purchases = get_parking_events(slot_start-warm_up_period,slot_start,True)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
             reframe(p,terminals,t_guids,ps_dict,turbo_mode)
             ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
-        slot_start = real_slot_start
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
