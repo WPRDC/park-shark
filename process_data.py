@@ -840,12 +840,15 @@ def main(*args, **kwargs):
     # over some number of hours (warm_up_period) during which the purchase history
     # is built up but the data is not output to anything (save the console).
 
-    seeding_mode = True
-    real_slot_start = slot_start
     # HOWEVER, the above reasoning is inconsistent with how the purchase history is
     # currently being kept (clearing it at midnight every day). The edge case I
     # was concerned about was the parking purchase that happens at 12:05am that
     # extends a previous purchase.
+
+    # Using a separate seeding-mode stage considerably speeds up the warming-up 
+    # period (from maybe 10 minutes to closer to one or two).
+    seeding_mode = True
+    real_slot_start = slot_start
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
         
