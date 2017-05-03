@@ -26,7 +26,7 @@ from remote_parameters import server, resource_id, ad_hoc_resource_id
 # These functions should eventually be pulled from utility_belt.
 from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
 #from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
-from prime_ckan.util import get_resource_name
+from prime_ckan.util import get_resource_parameter, get_package_name_from_resource_id
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
 
@@ -822,10 +822,11 @@ def main(*args, **kwargs):
     ordered_fields.remove({"id": "Parent Zone", "type": "text"})
     
     if push_to_CKAN: # Explicitly list the resources in the console.
-        print("server = {}".format(server))
         dp, settings, site, API_key = open_a_channel(server)
-        r_name, _ = get_resource_name(site,resource_id,API_key)
-        a_h_name, _ = get_resource_name(site,ad_hoc_resource_id,API_key)
+        package_name, _ = get_package_name_from_resource_id(site,resource_id,API_key)
+        print("package = {}, site = {}, server = {}".format(package_name, site, server))
+        r_name, _ = get_resource_parameter(site,resource_id,'name',API_key)
+        a_h_name, _ = get_resource_parameter(site,ad_hoc_resource_id,'name',API_key)
         print("resource_id = {} ({}),  ad_hoc_resource_id = {} ({})".format(resource_id, r_name, ad_hoc_resource_id, a_h_name))
 
     cumulated_dicts = []
