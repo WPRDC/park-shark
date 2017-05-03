@@ -5,7 +5,7 @@ import re
 import json
 from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, pure_zones_list, numbered_reporting_zones_list, special_groups, add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, only_these_fields, cast_fields
-from fetch_terminals import pull_terminals_return_special_zones_and_parent_zones
+from fetch_terminals import pull_terminals
 import requests
 import zipfile
 try:
@@ -799,7 +799,7 @@ def main(*args, **kwargs):
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
 
-    special_zones, parent_zones = pull_terminals_return_special_zones_and_parent_zones(use_cache)
+    special_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
     print("special zones = {}".format(special_zones))
 
     print("parent_zones = ...")

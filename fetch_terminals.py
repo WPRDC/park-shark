@@ -36,35 +36,38 @@ from local_parameters import path
 # Pretty-print the first entry in the purchases list with this command:
 #pprint.pprint(dict(purchases[0].items()))
 
-def pull_terminals_return_special_zones_and_parent_zones(use_cache=False):
+def pull_terminals(use_cache=False,return_extra_zones=True):
     if use_cache:
-        return ([u'CMU Study',
-     u'East Liberty (On-street only)',
-     u'Marathon/CMU',
-     u'S. Craig',
-     u'Southside Lots',
-#     u'TEST - South Craig - Reporting'
-     ],
-    {u'CMU Study': ['410 - Oakland 4'],
-     u'East Liberty (On-street only)': ['412 - East Liberty'],
-     u'Marathon/CMU': ['415 - SS & SSW',
-                       '401 - Downtown 1',
-                       '404 - Strip Disctrict',
-                       '408 - Oakland 2',
-                       '407 - Oakland 1',
-                       '409 - Oakland 3',
-                       '406 - Bloomfield (On-street)',
-                       '410 - Oakland 4',
-                       '402 - Downtown 2',
-                       '422 - Northshore'],
-     u'S. Craig': ['409 - Oakland 3'],
-     u'Southside Lots': ['344 - 18th & Carson Lot',
-                         '345 - 20th & Sidney Lot',
-                         '343 - 19th & Carson Lot',
-                         '342 - East Carson Lot',
-                         '341 - 18th & Sidney Lot'],
-#     u'TEST - South Craig - Reporting': ['411 - Shadyside', '409 - Oakland 3']
-     })
+        if return_extra_zones:
+            return ([u'CMU Study',
+         u'East Liberty (On-street only)',
+         u'Marathon/CMU',
+         u'S. Craig',
+         u'Southside Lots',
+    #     u'TEST - South Craig - Reporting'
+         ],
+        {u'CMU Study': ['410 - Oakland 4'],
+         u'East Liberty (On-street only)': ['412 - East Liberty'],
+         u'Marathon/CMU': ['415 - SS & SSW',
+                           '401 - Downtown 1',
+                           '404 - Strip Disctrict',
+                           '408 - Oakland 2',
+                           '407 - Oakland 1',
+                           '409 - Oakland 3',
+                           '406 - Bloomfield (On-street)',
+                           '410 - Oakland 4',
+                           '402 - Downtown 2',
+                           '422 - Northshore'],
+         u'S. Craig': ['409 - Oakland 3'],
+         u'Southside Lots': ['344 - 18th & Carson Lot',
+                             '345 - 20th & Sidney Lot',
+                             '343 - 19th & Carson Lot',
+                             '342 - East Carson Lot',
+                             '341 - 18th & Sidney Lot'],
+    #     u'TEST - South Craig - Reporting': ['411 - Shadyside', '409 - Oakland 3']
+         })
+        else:
+            return None, None
 
     url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
     r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
@@ -153,7 +156,7 @@ def pull_terminals_return_special_zones_and_parent_zones(use_cache=False):
 
         list_of_dicts.append(new_entry)
 
-    keys = list_of_dicts[0].keys()
+    #keys = list_of_dicts[0].keys() # This does not set the correct order for the field names.
     keys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
     'Rate information','Restrictions']
 
@@ -176,11 +179,11 @@ def pull_terminals_return_special_zones_and_parent_zones(use_cache=False):
         zone_info[zone] = d_part
     sorted_zone_dicts = sorted(list_of_zone_dicts, key = lambda x: (x['Type'], x['Zone']))
 
-    keys = ['Zone','Latitude','Longitude','MeterCount','Type']
+    sorted_zone_keys = ['Zone','Latitude','Longitude','MeterCount','Type']
 
     pprint.pprint(zone_info)
 
-    write_to_csv('zone-centroids.csv',sorted_zone_dicts,keys)
+    write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
     #print("Here is the list of all groups:")
     #pprint.pprint(set_of_all_groups)
 
@@ -203,8 +206,11 @@ def pull_terminals_return_special_zones_and_parent_zones(use_cache=False):
 
     pprint.pprint(parent_zones)
 
-    return list(special_zones), parent_zones
+    if return_extra_zones:
+        return list(special_zones), parent_zones
+    else:
+        return list_of_dicts, keys # The data that was previously written to the payment_points.csv file.
 ############
 
 if __name__ == '__main__':
-  pull_terminals_return_special_zones_and_parent_zones()
+  pull_terminals()
