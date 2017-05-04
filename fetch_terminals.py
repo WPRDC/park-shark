@@ -36,7 +36,19 @@ from local_parameters import path
 # Pretty-print the first entry in the purchases list with this command:
 #pprint.pprint(dict(purchases[0].items()))
 
-def pull_terminals(use_cache=False,return_extra_zones=True):
+def pull_terminals(*args, **kwargs):
+    # This function accepts keyword arguments use_cache (to
+    # set whether cached data is used, for offline testing),
+    # return_extra_zones (to set whether the ad hoc and parent
+    # zones are returned rather than the table of terminals),
+    # and push_to_CKAN and output_to_csv (to control those output
+    # channels).
+
+    use_cache = kwargs.get('use_cache',False)
+    return_extra_zones = kwargs.get('return_extra_zones',True)
+    output_to_csv = kwargs.get('output_to_csv',False)
+    push_to_CKAN = kwargs.get('push_to_CKAN',True)
+
     if use_cache:
         if return_extra_zones:
             return ([u'CMU Study',
@@ -160,7 +172,8 @@ def pull_terminals(use_cache=False,return_extra_zones=True):
     keys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
     'Rate information','Restrictions']
 
-    write_to_csv('payment-points.csv',list_of_dicts,keys)
+    if output_to_csv:
+        write_to_csv('payment-points.csv',list_of_dicts,keys)
     ############
     list_of_zone_dicts = []
     zone_info = {}
@@ -183,7 +196,8 @@ def pull_terminals(use_cache=False,return_extra_zones=True):
 
     pprint.pprint(zone_info)
 
-    write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
+    if output_to_csv:
+        write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
     #print("Here is the list of all groups:")
     #pprint.pprint(set_of_all_groups)
 
