@@ -1,13 +1,10 @@
-from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, lot_code, is_virtual, centroid_np, get_terminals, is_timezoneless, write_or_append_to_csv, pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, pure_zones_list, numbered_reporting_zones_list, special_groups, add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, only_these_fields, cast_fields
-from fetch_terminals import pull_terminals_return_special_zones_and_parent_zones
+from util import lot_list, pure_zones_list, numbered_reporting_zones_list
 
 import time
 from datetime import datetime, timedelta
 import pytz
 
-from credentials_file import CALE_API_user, CALE_API_password
-from local_parameters import path
-from process_data import roundTime, build_url, convert_doc_to_purchases, get_parking_events, get_recent_parking_events, get_batch_parking_for_day
+from process_data import roundTime, convert_doc_to_purchases, get_parking_events, get_batch_parking_for_day
 
 last_date_cache = None
 all_day_ps_cache = []
@@ -61,14 +58,14 @@ def main():
     # Start 24 hours ago (rounded to the nearest hour).
     # This is a naive (timezoneless) datetime, so let's try it this way:
     # It is recommended that all work be done in UTC time and that the conversion to a local time zone only happen at the end, when presenting something to humans.
-    slot_start = pgh.localize(datetime(2014,2,7,0,0))
+    slot_start = pgh.localize(datetime(2017,4,16,0,0))
     #slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
 
 
 ########
     halting_time = slot_start + timedelta(hours=2)
     halting_time = roundTime(datetime.now(pgh), 24*60*60)
-    halting_time = pgh.localize(datetime(2017,4,17,0,0))
+    halting_time = pgh.localize(datetime(2017,5,1,0,0))
 
     slot_end = slot_start + timechunk
 
