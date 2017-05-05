@@ -227,4 +227,4 @@ def pull_terminals(*args, **kwargs):
 ############
 
 if __name__ == '__main__':
-  pull_terminals()
+    pull_terminals()

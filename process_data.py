@@ -868,6 +868,9 @@ def main(*args, **kwargs):
     
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
+        if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
+            slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
+
         purchases = get_parking_events(slot_start,slot_end,True)
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
