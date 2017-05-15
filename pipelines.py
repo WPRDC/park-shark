@@ -43,8 +43,16 @@ monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yes
 current_resource_name = 'Current Payment Points'
 
 
+# [ ] Specify key fields
 
-# Combined Data
+
+# Combined Data 
+#   primary keys: Meter ID and/or GUID and the year/month 
+#    The year/month field needs  to come from.... a pre_load function
+#    Though maybe a logged datestamp would be better (more standard 
+#    and more accurate).
+
+
 #aggregated_meters_pipeline = pl.Pipeline('aggregated_meters_pipeline', 'Aggregated Meters History Pipeline', log_status=True) \
 #    .connect(pl.SFTPConnector, target, config_string='sftp.county_sftp', encoding='utf-8') \
 #    .extract(pl.CSVExtractor, firstline_headers=True) \
@@ -53,20 +61,31 @@ current_resource_name = 'Current Payment Points'
 #          fields=MetersSchema().serialize_to_ckan_fields(),
 #          package_id=package_id,
 #          resource_name=combined_resource_name,
-#          method='insert')
+#          method='upsert')
+
+
+
+
+
 
 # Monthly Data
-#monthly_meters_pipeline = pl.Pipeline('monthly_meters_pipeline', 'Monthly Meters Pipeline', log_status=False) \
-#    .connect(pl.SFTPConnector, target, config_string='sftp.county_sftp', encoding='utf-8') \
-#    .extract(pl.CSVExtractor, firstline_headers=True, ) \
+#   primary keys: Meter ID and/or GUID
+#monthly_meters_pipeline = pl.Pipeline('monthly_meters_pipeline', 
+#                                    'Monthly Meters Pipeline', log_status=False) \
+#    .connect(pl.FunctionConnector, 
+#             target=path+'fetch_terminals.py', 
+#             function='pull_terminals', 
+#             kwparameters=kwdict) \ 
+#    .extract(pl.NoOpExtractor) \
 #    .schema(MetersSchema) \
 #    .load(pl.CKANDatastoreLoader, 'ckan',
 #          fields=MetersSchema().serialize_to_ckan_fields(),
 #          package_id=package_id,
 #          resource_name=monthly_resource_name,
-#          method='insert')
+#          method='upsert')
 
-# Current Meters Data
+
+
 
 
 
@@ -84,11 +103,6 @@ current_resource_name = 'Current Payment Points'
     #push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
 
-# [ ] Maybe try running the pipeline on a CSV file first and
-# then switch to pulling from the function
-#target = 'jail_census_data/acj_daily_population_{}.csv'.format(yesterday.strftime('%Y%m%d'))
-
-
 # FunctionConnector specifications:
 #          target: a valid filepath to a file with Python code in it
 #            function: the function within the file to call (defaults
@@ -97,11 +111,20 @@ current_resource_name = 'Current Payment Points'
 #                function [essentially these would be args so
 #                this might need to be complemented by the argument
 #                kwparameters]
+
+
+# [ ] Maybe try running the pipeline on a CSV file first and
+# then switch to pulling from the function
+#target = 'jail_census_data/acj_daily_population_{}.csv'.format(yesterday.strftime('%Y%m%d'))
+
+
 path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
 kwdict = {'return_extra_zones': False,
     'output_to_csv': False,
     'push_to_CKAN': True }
 
+# Current Meters Data
+#   primary keys: Meter ID and/or GUID
 current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
                                       'Current Meters Pipeline', log_status=False) \
     .connect(pl.FunctionConnector, 
@@ -114,4 +137,7 @@ current_meters_pipeline = pl.Pipeline('current_meters_pipeline',
           fields=MetersSchema().serialize_to_ckan_fields(),
           package_id=package_id,
           resource_name=current_resource_name,
-          method='upsert').run()
+          method='upsert')
+
+
+current_meters_pipeline.run()
