@@ -4,7 +4,12 @@ import re
 
 import json
 from collections import OrderedDict, Counter, defaultdict
-from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, pure_zones_list, numbered_reporting_zones_list, special_groups, add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, only_these_fields, cast_fields
+from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
+lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
+pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
+pure_zones_list, numbered_reporting_zones_list, special_groups, \
+add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
+only_these_fields, cast_fields
 from fetch_terminals import pull_terminals
 import requests
 import zipfile
@@ -31,11 +36,14 @@ from remote_parameters import server, resource_id, ad_hoc_resource_id
 import sys 
 try:
     sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
+    #from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
+    
+    
     from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
     from utility_belt.util import get_resource_parameter, get_package_name_from_resource_id
 except:
     try:
-        sys.path.insert(0, '~/bin')
+        sys.path.insert(0, '~/bin') # Office computer location
         from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
         from utility_belt.util import get_resource_parameter, get_package_name_from_resource_id
     except:
@@ -775,7 +783,7 @@ def main(*args, **kwargs):
         zonelist = numbered_reporting_zones_list
 
     pgh = pytz.timezone('US/Eastern')
-    use_cache = False
+    use_cache = kwargs.get('use_cache', False)
     #use_cache = True
     terminals = get_terminals(use_cache)
     t_ids = [t['@Id'] for t in terminals]
@@ -880,6 +888,11 @@ def main(*args, **kwargs):
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
     
+    keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+    augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
+    special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+    # [ ] I just added 'UTC Start' to special_keys on April 25, 2017.
+
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
@@ -933,11 +946,9 @@ def main(*args, **kwargs):
             # represents a row for a parking zone (or lot) and time slot.
 
     #        keys = (list_of_dicts.values()[0]).keys()
-            keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
 
             list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
 
-            augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
             if output_to_csv:
                 write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
                 if not turbo_mode:
@@ -955,9 +966,6 @@ def main(*args, **kwargs):
                 print("success = {}".format(success))
                 if success:
                     cumulated_dicts = []
-
-            special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-            # [ ] I just added 'UTC Start' to special_keys on April 25, 2017.
 
             special_list_of_dicts, _ = package_for_output(special_stats_rows,special_zones,None,{},pgh,slot_start,slot_end,'special zone')
             # Between the passed use_special_zones boolean and other parameters, more
