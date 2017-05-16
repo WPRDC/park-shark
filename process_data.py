@@ -28,7 +28,8 @@ from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
 from remote_parameters import server, resource_id, ad_hoc_resource_id
 
-# These functions should eventually be pulled from utility_belt.
+# These functions should eventually be pulled from a repository othern than
+# utility_belt that can import transmogrifier:
 #from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
 #from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
 #from prime_ckan.util import get_resource_parameter, get_package_name_from_resource_id
@@ -679,8 +680,13 @@ def get_batch_parking_for_day(slot_start,cache=True):
             with open(filename, "wb") as f:
                 json.dump(purchases,f,indent=2)
     else: # Load locally cached version
-        with open(filename,'rb') as f:
-            ps = json.load(f)
+        try: # Python 3 file opening
+            with open(filename, "r", encoding="utf-8") as f:
+                ps = json.load(f)
+        except: # Python 2 file opening
+            with open(filename,'rb') as f:
+                ps = json.load(f)
+
     return ps
 
 def get_batch_parking(slot_start,slot_end,cache,tz):
