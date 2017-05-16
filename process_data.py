@@ -893,6 +893,8 @@ def main(*args, **kwargs):
     special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
     # [ ] I just added 'UTC Start' to special_keys on April 25, 2017.
 
+    # [ ] Check that keys are in fields.
+
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
@@ -948,8 +950,9 @@ def main(*args, **kwargs):
     #        keys = (list_of_dicts.values()[0]).keys()
 
             list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
-
-            if output_to_csv:
+            if output_to_csv and len(list_of_dicts) > 0: # Write to files as
+            # often as necessary, since the associated delay is not as great as 
+            # for pushing data to CKAN.
                 write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
                 if not turbo_mode:
                     write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
@@ -971,8 +974,11 @@ def main(*args, **kwargs):
             # Between the passed use_special_zones boolean and other parameters, more
             # information is being passed than necessary to distinguish between
             # special zones and regular zones.
-            if output_to_csv:
+
+            if output_to_csv and len(special_list_of_dicts) > 0: 
                 write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
+                print("Wrote some ad hoc data to a CSV file")
+
             cumulated_ad_hoc_dicts += special_list_of_dicts
             if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
                 filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
@@ -986,7 +992,8 @@ def main(*args, **kwargs):
         slot_start += timechunk
         slot_end = slot_start + timechunk
 
-    print("len(ps_dict) = {}".format(len(ps_dict)))
+    print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
+
 
     if push_to_CKAN: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
@@ -995,12 +1002,14 @@ def main(*args, **kwargs):
         success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success:
             cumulated_dicts = []
+            print("Pushed the last batch of transactions to {}".format(resource_id))
         filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
         success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success_a:
             cumulated_ad_hoc_dicts = []
-
+            print("Pushed the last batch of ad-hoc transactions to {}".format(ad_hoc_resource_id))
+        
         return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
         # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
         # the whole process succeeded).
