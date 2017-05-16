@@ -36,9 +36,6 @@ from remote_parameters import server, resource_id, ad_hoc_resource_id
 import sys 
 try:
     sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
-    #from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
-    
-    
     from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
     from utility_belt.util import get_resource_parameter, get_package_name_from_resource_id
 except:
@@ -48,7 +45,12 @@ except:
         from utility_belt.util import get_resource_parameter, get_package_name_from_resource_id
     except:
         from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
+        try:
+            from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
+        except:
+            print("Unable to import pipe_data_to_ckan")
         from prime_ckan.util import get_resource_parameter, get_package_name_from_resource_id
+
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
 
@@ -1000,6 +1002,7 @@ def main(*args, **kwargs):
         filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields)
         success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+        #success = pipe_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success:
             cumulated_dicts = []
             print("Pushed the last batch of transactions to {}".format(resource_id))
