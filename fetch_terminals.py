@@ -4,12 +4,17 @@ import pprint
 
 from collections import OrderedDict, defaultdict
 import re
-from util import to_dict, write_to_csv, value_or_blank, is_a_lot, is_a_virtual_lot, is_a_virtual_zone, corrected_zone_name, centroid_np, char_delimit, all_groups, lot_list, pure_zones_list, numbered_reporting_zones_list, zone_lookup, is_virtual, numbered_zone, censor
-import numpy as np
+from util import to_dict, write_to_csv, value_or_blank, is_a_lot, is_a_virtual_lot, is_a_virtual_zone, corrected_zone_name, char_delimit, all_groups, lot_list, pure_zones_list, numbered_reporting_zones_list, zone_lookup, is_virtual, numbered_zone, censor
 
 from credentials_file import CALE_API_user, CALE_API_password
 
 from local_parameters import path
+
+calculate_zone_centroids = False
+if calculate_zone_centroids:
+    import numpy as np
+    from hm_util import centroid_np
+
 # URL for accessing the Purchases listed under August 19, 2016 (seems to be based on UTC time when the purchase was made).
 #url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/2016-08-19/2016-08-20'
 
@@ -177,29 +182,30 @@ def pull_terminals(*args, **kwargs):
     ############
     list_of_zone_dicts = []
     zone_info = {}
-    for zone in points_in_zone.keys():
-        lat_lon_tuple = centroid_np(np.array(points_in_zone[zone]))
-        # It would be nicer to throw out the outliers.
-        zone_d = {'Zone': zone,
-                'Latitude': lat_lon_tuple[0],
-                'Longitude': lat_lon_tuple[1],
-                'MeterCount': len(points_in_zone[zone]),
-                'Type': zone_type[zone]
-                }
-        list_of_zone_dicts.append(zone_d)
-        d_part = dict(zone_d)
-        del d_part['Zone']
-        zone_info[zone] = d_part
-    sorted_zone_dicts = sorted(list_of_zone_dicts, key = lambda x: (x['Type'], x['Zone']))
 
-    sorted_zone_keys = ['Zone','Latitude','Longitude','MeterCount','Type']
+    if calculate_zone_centroids:
+        for zone in points_in_zone.keys():
+            lat_lon_tuple = centroid_np(np.array(points_in_zone[zone]))
+            # It would be nicer to throw out the outliers.
+            zone_d = {'Zone': zone,
+                    'Latitude': lat_lon_tuple[0],
+                    'Longitude': lat_lon_tuple[1],
+                    'MeterCount': len(points_in_zone[zone]),
+                    'Type': zone_type[zone]
+                    }
+            list_of_zone_dicts.append(zone_d)
+            d_part = dict(zone_d)
+            del d_part['Zone']
+            zone_info[zone] = d_part
+        sorted_zone_dicts = sorted(list_of_zone_dicts, key = lambda x: (x['Type'], x['Zone']))
 
-    pprint.pprint(zone_info)
+        sorted_zone_keys = ['Zone','Latitude','Longitude','MeterCount','Type']
 
-    if output_to_csv:
-        write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
-    #print("Here is the list of all groups:")
-    #pprint.pprint(set_of_all_groups)
+        pprint.pprint(zone_info)
+
+        if output_to_csv:
+            write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
+
 
     excluded_zones = ['TEST - South Craig - Reporting']
     excluded_zones = []

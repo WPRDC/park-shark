@@ -5,15 +5,10 @@ from collections import OrderedDict
 from json import loads, dumps
 import pprint
 import operator
-import numpy as np
 import requests
 import xmltodict
 import time
-from datetime import date, timedelta, datetime
-from dateutil.easter import * # pip install python-dateutil
-from dateutil.relativedelta import relativedelta
-
-from calendar import monthrange
+from datetime import datetime
 
 from credentials_file import CALE_API_user, CALE_API_password
 
@@ -180,57 +175,6 @@ def round_to_cent(m):
         return round(m*100)/100.0
     except:
         return None
-
-def nth_m_day(year,month,n,m):
-    # m is the day of the week (where 0 is Monday and 6 is Sunday)
-    # This function calculates the date for the nth m-day of a
-    # given month/year.
-    first = date(year,month,1)
-    day_of_the_week = first.weekday()
-    delta = (m - day_of_the_week) % 7
-    return date(year, month, 1 + (n-1)*7 + delta)
-
-def last_m_day(year,month,m):
-    last = date(year,month,monthrange(year,month)[1])
-    while last.weekday() != m:
-        last -= timedelta(days = 1)
-    return last
-
-def is_holiday(date_i):
-    year = date_i.year
-    holidays = [date(year,1,1), #NEW YEAR'S DAY
-    ### HOWEVER, sometimes New Year's Day falls on a weekend and is then observed on Monday. If it falls on a Saturday (a normal non-free parking day), what happens?
-
-
-    # Really an observed_on() function is needed to offset
-    # some holidays correctly.
-
-        nth_m_day(year,1,3,0),#MARTIN LUTHER KING JR'S BIRTHDAY (third Monday of January)
-        easter(year)-timedelta(days=2),#GOOD FRIDAY
-        last_m_day(year,5,0),#MEMORIAL DAY (last Monday in May)
-        date(year,7,4),#INDEPENDENCE DAY (4TH OF JULY)
-        # [ ] This could be observed on a different day.
-        nth_m_day(year,9,1,0),#LABOR DAY
-        # [ ] This could be observed on a different day.
-        date(year,11,11),#VETERANS' DAY
-        # [ ] This could be observed on a different day.
-
-        nth_m_day(year,11,4,3),#THANKSGIVING DAY
-        nth_m_day(year,11,4,4),#DAY AFTER THANKSGIVING
-        date(year,12,25),#CHRISTMAS DAY
-        # [ ] This could be observed on a different day.
-        date(year,12,26)]#DAY AFTER CHRISTMAS
-        # [ ] This could be observed on a different day.
-    return date_i in holidays
-
-def parking_days_in_month(year,month):
-    count = 0
-    month_length = monthrange(year,month)[1]
-    for day in range(1,month_length+1):
-        date_i = date(year,month,day)
-        if date_i.weekday() < 6 and not is_holiday(date_i):
-            count += 1
-    return count
 
 def value_or_blank(key,d,subfields=[]):
     if key in d:
@@ -470,26 +414,18 @@ def numbered_zone(t_id):
             zone_in_ID, matched = group_by_code(t_id[:3])
         except:
             if t_id == "B0010X00786401372-STANWX0601":
-                # Workaround for weird terminal ID spotted in 
+                # Workaround for weird terminal ID spotted in
                 # November 8th, 2012 data.
                 zone_in_ID, matched = '401 - Downtown 1', True
             else:
                 raise ValueError("Unable to find a numbered zone for terminal ID {}".format(t_id))
-                
+
         if matched:
             num_zone = zone_in_ID
     return num_zone
 
 def sort_dict(d):
     return sorted(d.items(), key=operator.itemgetter(1))
-
-def centroid_np(arr):
-    # Find centroid of NumPy array of coordinates.
-    # For example: centroid_np(np.array([[0,1],[3.0,9]]))
-    length = arr.shape[0]
-    sum_x = np.sum(arr[:, 0])
-    sum_y = np.sum(arr[:, 1])
-    return sum_x/length, sum_y/length
 
 def zone_name(t):
     # For now, use t['ParentTerminalStructure']['@Name'] as the zone
@@ -511,9 +447,9 @@ def zone_name(t):
     # 42-BUTLE-L 		PBP338
     # 18-CARSO-L 		344339-18CARSN0001
 
-    # Lots and zones may be being regarded as separate, based on existing 
-    # reports. Still, we might want to combine all lots in a zone with 
-    # the zone itself to form a superzone to give a better picture of 
+    # Lots and zones may be being regarded as separate, based on existing
+    # reports. Still, we might want to combine all lots in a zone with
+    # the zone itself to form a superzone to give a better picture of
     # total available parking.
     # Superzone? Zone w/lots? (This still ignores garages.)
 
@@ -642,7 +578,7 @@ def cast_fields(original_dicts,ordered_fields):
         d['Durations'] = loads(d['Durations'])
         d['Payments'] = float(d['Payments'])
         # This may not be necessary, but ensuring that datetimes are in
-        # ISO format is the best way of preparing timestamps to be 
+        # ISO format is the best way of preparing timestamps to be
         # sent to CKAN.
         d['Start'] = datetime.strptime(d['Start'],"%Y-%m-%d %H:%M:%S").isoformat()
         d['End'] = datetime.strptime(d['End'],"%Y-%m-%d %H:%M:%S").isoformat()
