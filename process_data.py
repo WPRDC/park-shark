@@ -32,25 +32,27 @@ from remote_parameters import server, resource_id, ad_hoc_resource_id
 # utility_belt that can import transmogrifier:
 #from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
 #from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
-#from prime_ckan.util import get_resource_parameter, get_package_name_from_resource_id
+#from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id
+
+from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
 
 import sys 
 try:
     sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
     from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-    from utility_belt.util import get_resource_parameter, get_package_name_from_resource_id
+    from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
 except:
     try:
         sys.path.insert(0, '~/bin') # Office computer location
         from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-        from utility_belt.util import get_resource_parameter, get_package_name_from_resource_id
+        from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
     except:
         from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
         try:
             from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
         except:
             print("Unable to import pipe_data_to_ckan")
-        from prime_ckan.util import get_resource_parameter, get_package_name_from_resource_id
+        from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id
 
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
