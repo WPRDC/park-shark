@@ -93,7 +93,7 @@ def pull_terminals(*args, **kwargs):
     doc = xmltodict.parse(r.text,encoding = r.encoding)
     terminals = doc['Terminals']['Terminal']
     f_terminals = path + "cached_terminals.xml"
-    with open(f_terminals,'w') as g:
+    with open(f_terminals,'w+') as g:
         g.write(r.text)
 
     attributes_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
