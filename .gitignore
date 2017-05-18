@@ -15,3 +15,12 @@ sample-reports/
 batch-data/
 scratch/
 old-scripts/
+etl/ckan_settings.json
+etl/transmogrifier_settings.json
+etl/settings.py
+*settings.json
+*/*settings.json
+*/settings.py
+prime_ckan/initialize_datastore_*
+prime_ckan_*
+prime_ckan/local_config.py
