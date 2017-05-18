@@ -34,7 +34,7 @@ from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
 #from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
 #from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id
 
-from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
+#from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
 
 import sys 
 try:
@@ -48,10 +48,10 @@ except:
         from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
     except:
         from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-        try:
-            from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
-        except:
-            print("Unable to import pipe_data_to_ckan")
+        #try:
+        #    from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
+        #except:
+        #    print("Unable to import pipe_data_to_ckan")
         from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id
 
 
