@@ -293,6 +293,12 @@ def roundTime(dt=None, roundTo=60):
    rounding = (seconds+roundTo/2) // roundTo * roundTo
    return dt + timedelta(0,rounding-seconds,-dt.microsecond)
 
+def beginning_of_day(dt=None):
+    # Takes a datetime and returns the first datetime before
+    # that that corresponds to local midnight (00:00).
+    if dt == None : dt = datetime.now()
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
 def terminal_of(p,t_guids,terminals):
     t = terminals[t_guids.index(p['@TerminalGuid'])]
     return t
@@ -599,6 +605,10 @@ def get_batch_parking_for_day(slot_start,cache=True):
     # Caches parking once it's been downloaded and checks
     # cache before redownloading.
 
+    # Note that no matter what time of day is associated with slot_start,
+    # this function will get all of the transactions for that entire day.
+    # Filtering the results down to the desired time range is handled 
+    # elsewhere (in the calling function (get_batch_parking)).
     date_format = '%Y-%m-%d'
 
     dashless = slot_start.strftime('%y%m%d')
@@ -608,7 +618,7 @@ def get_batch_parking_for_day(slot_start,cache=True):
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
         print("Sigh! {}.json not found, so I'm pulling the data from the API...".format(dashless))
 
-        slot_start = roundTime(slot_start, 24*60*60)
+        slot_start = beginning_of_day(slot_start)
         slot_end = slot_start + timedelta(days = 1)
 
         base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
@@ -696,12 +706,25 @@ def get_batch_parking_for_day(slot_start,cache=True):
     return ps
 
 def get_batch_parking(slot_start,slot_end,cache,tz):
+    # This function handles situation where slot_start and slot_end are on different days
+    # by calling get_batch_parking_for_day in a loop.
     global last_date_cache, all_day_ps_cache, dts
     if last_date_cache != slot_start.date():
         print("last_date_cache ({}) doesn't match slot_start.date() ({})".format(last_date_cache, slot_start.date()))
-        ps_for_whole_day = get_batch_parking_for_day(slot_start,cache)
-        ps_all = ps_for_whole_day
-        all_day_ps_cache = ps_all
+
+        ps_all = []
+        dt_start_i = slot_start
+        while dt_start_i < slot_end:
+            ps_for_whole_day = get_batch_parking_for_day(dt_start_i,cache)
+            ps_all += ps_for_whole_day
+            dt_start_i += timedelta(days = 1)
+            print("Now there are {} transactions in ps_all".format(len(ps_all)))
+
+        all_day_ps_cache = ps_all # Note that if slot_start and slot_end are not on the same day,
+        # all_day_ps_cache will hold transactions for more than just the date of slot_start, but 
+        # since filtering is done further down in this function, this should not represent a 
+        # problem. There should be no situations where more than two days of transactions will
+        # wind up in this cache at any one time.
         dts = [tz.localize(datetime.strptime(p['@PurchaseDateLocal'],'%Y-%m-%dT%H:%M:%S')) for p in ps_all]
         time.sleep(3)
     else:
@@ -723,6 +746,7 @@ def get_recent_parking_events(slot_start,slot_end):
     date_format = '%Y-%m-%d'
     base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
     url = build_url(base_url,slot_start,slot_end)
+    print("Here's the URL: {}".format(url))
 
     r = pull_from_url(url)
     doc = xmltodict.parse(r.text,encoding = 'utf-8')
@@ -816,8 +840,8 @@ def main(*args, **kwargs):
     # It is recommended that all work be done in UTC time and that the
     # conversion to a local time zone only happen at the end, when
     # presenting something to humans.
-    #slot_start = roundTime(datetime.now(pgh) - timedelta(hours=24), 24*60*60) #+ timedelta(hours=2)
-    #slot_start = roundTime(datetime.now(pgh) - timedelta(days=7), 24*60*60)
+    #slot_start = beginning_of_day(datetime.now(pgh) - timedelta(hours=24)) #+ timedelta(hours=2)
+    #slot_start = beginning_of_day(datetime.now(pgh) - timedelta(days=7))
     slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
     slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Avoid 2012-08-01 transaction that breaks duration calculations for now.
     slot_start = pgh.localize(datetime(2017,4,15,0,0))
@@ -826,7 +850,7 @@ def main(*args, **kwargs):
 ########
     halting_time = slot_start + timedelta(hours=24)
 
-    # halting_time = roundTime(datetime.now(pgh), 24*60*60)
+    # halting_time = beginning_of_day(datetime.now(pgh))
     halting_time = pgh.localize(datetime(3030,4,13,0,0)) # Set halting time
     # to the far future so that the script runs all the way up to the most
     # recent data (based on the slot_start < now check in the loop below).
@@ -894,7 +918,7 @@ def main(*args, **kwargs):
     seeding_mode = True
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
-        purchases = get_parking_events(slot_start-warm_up_period,slot_start,True)
+        purchases = get_parking_events(slot_start - warm_up_period,slot_start,True)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
             reframe(p,terminals,t_guids,ps_dict,turbo_mode)
             ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.

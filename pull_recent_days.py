@@ -20,8 +20,8 @@ import process_data
 def main():
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
-    slot_start = process_data.roundTime(datetime.now(pgh) - timedelta(days=6), 24*60*60) 
-    halting_time = process_data.roundTime(datetime.now(pgh) - timedelta(days=2), 24*60*60)
+    slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=6))
+    halting_time = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=2))
     # Note that these days are chosen to be within the last 7 days so that the data can be
     # pulled from the API without using the bulk API (and without doing any caching).
     # It might be more efficient to pull all of that data in larger chunks and then use
