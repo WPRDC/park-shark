@@ -14,9 +14,9 @@ from fetch_terminals import pull_terminals
 import requests
 import zipfile
 try:
-    import StringIO # For Python 2
+    from StringIO import StringIO as BytesIO # For Python 2
 except ImportError:
-    from io import StringIO # For Python 3
+    from io import BytesIO # For Python 3
 from copy import copy
 
 import time
@@ -36,7 +36,7 @@ from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
 
 #from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
 
-import sys 
+import sys
 try:
     sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
     from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
@@ -638,7 +638,7 @@ def get_batch_parking_for_day(slot_start,cache=True):
             time.sleep(5)
             r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
 
-        z = zipfile.ZipFile(StringIO.StringIO(r3.content))
+        z = zipfile.ZipFile(BytesIO(r3.content))
 
         # Extract contents of a one-file zip file to memory:
         xml = z.read(z.namelist()[0])
@@ -679,8 +679,12 @@ def get_batch_parking_for_day(slot_start,cache=True):
         purchases = remove_field(purchases,'@CardIssuer','PurchasePayUnit')
 
         if cache:
-            with open(filename, "wb") as f:
-                json.dump(purchases,f,indent=2)
+            try: # Python 3 file opening
+                with open(filename, "w") as f:
+                    json.dump(purchases,f,indent=2)
+            except: # Python 2 file opening
+                with open(filename, "wb") as f:
+                    json.dump(purchases,f,indent=2)
     else: # Load locally cached version
         try: # Python 3 file opening
             with open(filename, "r", encoding="utf-8") as f:
@@ -852,7 +856,7 @@ def main(*args, **kwargs):
 
     ad_hoc_ordered_fields = list(ordered_fields)
     ordered_fields.remove({"id": "Parent Zone", "type": "text"})
-    
+
     if push_to_CKAN: # Explicitly list the resources in the console.
         dp, settings, site, API_key = open_a_channel(server)
         package_name, _ = get_package_name_from_resource_id(site,resource_id,API_key)
@@ -885,7 +889,7 @@ def main(*args, **kwargs):
     # was concerned about was the parking purchase that happens at 12:05am that
     # extends a previous purchase.
 
-    # Using a separate seeding-mode stage considerably speeds up the warming-up 
+    # Using a separate seeding-mode stage considerably speeds up the warming-up
     # period (from maybe 10 minutes to closer to one or two).
     seeding_mode = True
     if seeding_mode:
@@ -897,7 +901,7 @@ def main(*args, **kwargs):
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
-    
+
     keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
     augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
     special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
@@ -961,7 +965,7 @@ def main(*args, **kwargs):
 
             list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
             if output_to_csv and len(list_of_dicts) > 0: # Write to files as
-            # often as necessary, since the associated delay is not as great as 
+            # often as necessary, since the associated delay is not as great as
             # for pushing data to CKAN.
                 write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
                 if not turbo_mode:
@@ -985,7 +989,7 @@ def main(*args, **kwargs):
             # information is being passed than necessary to distinguish between
             # special zones and regular zones.
 
-            if output_to_csv and len(special_list_of_dicts) > 0: 
+            if output_to_csv and len(special_list_of_dicts) > 0:
                 write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
                 print("Wrote some ad hoc data to a CSV file")
 
@@ -1020,7 +1024,7 @@ def main(*args, **kwargs):
         if success_a:
             cumulated_ad_hoc_dicts = []
             print("Pushed the last batch of ad-hoc transactions to {}".format(ad_hoc_resource_id))
-        
+
         return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
         # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
         # the whole process succeeded).
