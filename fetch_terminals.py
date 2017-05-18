@@ -1,5 +1,7 @@
+import os
 import requests
 import xmltodict
+import datetime
 import pprint
 
 from collections import OrderedDict, defaultdict
@@ -41,6 +43,12 @@ if calculate_zone_centroids:
 # Pretty-print the first entry in the purchases list with this command:
 #pprint.pprint(dict(purchases[0].items()))
 
+def csv_file_path():
+    path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
+    filename = 'meters_etl/meters-{}.csv'.format(datetime.datetime.today().strftime("%y-%m"))
+    csv_path = path+'/'+filename
+    return csv_path
+    
 def pull_terminals(*args, **kwargs):
     # This function accepts keyword arguments use_cache (to
     # set whether cached data is used, for offline testing),
@@ -178,7 +186,8 @@ def pull_terminals(*args, **kwargs):
     'Rate information','Restrictions']
 
     if output_to_csv:
-        write_to_csv('payment-points.csv',list_of_dicts,keys)
+        csv_path = csv_file_path()
+        write_to_csv(csv_path,list_of_dicts,keys)
     ############
     list_of_zone_dicts = []
     zone_info = {}
@@ -232,5 +241,7 @@ def pull_terminals(*args, **kwargs):
         return list_of_dicts, keys # The data that was previously written to the payment_points.csv file.
 ############
 
+# At present, the default when running this script (or the pull_terminals function) is not to output the results to 
+# a CSV file.
 if __name__ == '__main__':
     pull_terminals()
