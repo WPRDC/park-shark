@@ -26,7 +26,7 @@ import pytz
 
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
-from remote_parameters import server, resource_id, ad_hoc_resource_id
+from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
 
 # These functions should eventually be pulled from a repository othern than
 # utility_belt that can import transmogrifier:
