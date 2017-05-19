@@ -3,6 +3,7 @@ import requests
 import xmltodict
 import datetime
 import pprint
+import copy
 
 from collections import OrderedDict, defaultdict
 import re
@@ -187,6 +188,19 @@ def pull_terminals(*args, **kwargs):
 
     if output_to_csv:
         csv_path = csv_file_path()
+        # Rename 'ID' field to avoid possible problem stemming from Marshmallow's lowercasing of fields and 
+        # Python's treating 'id' as a reserved term.
+        #csv_keys = list(keys)
+        #old_key = 'ID'
+        #new_key  = 'meter_id'
+        #csv_keys[csv_keys.index(old_key)] = new_key
+        #csv_list_of_dicts = list(list_of_dicts)
+        #for d in csv_list_of_dicts:
+        #    d[new_key] = copy.copy(d[old_key])
+        #    del d[old_key]
+
+        #write_to_csv(csv_path,csv_list_of_dicts,csv_keys)
+        # Actually, this seems to not be strictly necessary.
         write_to_csv(csv_path,list_of_dicts,keys)
     ############
     list_of_zone_dicts = []
