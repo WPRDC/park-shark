@@ -1,49 +1,69 @@
-import sys, os
-sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
+import sys
+try:
+    sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
+    from utility_belt.gadgets import get_resource_parameter, get_package_parameter
+except:
+    try:
+        sys.path.insert(0, '~/bin') # Office computer location
+        from utility_belt.gadgets import get_resource_parameter, get_package_parameter
+    except:
+        print("Trying Option 3")
+        from prime_ckan.gadgets import get_resource_parameter, get_package_parameter
 
 import datetime
 from marshmallow import fields, pre_dump, pre_load
+
+import sys, os, json
+sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
 import pipeline as pl # This comes from the wprdc-etl repository.
 
-from fetch_terminals import pull_terminals
+from fetch_terminals import pull_terminals, csv_file_path
+
+from prime_ckan import local_config # This is yet another workaround.
+
 
 class MetersSchema(pl.BaseSchema):
     #ID,Location,LocationType,Latitude,Longitude,Status,Zone,ParentStructure,OldZone,AllGroups,GUID,Cost per hour,Rate information,Restrictions
-    meter_id = fields.String(dump_to='id')
-    location = fields.String(dump_to='location')
-    location_type = fields.String(dump_to='location_type')
-    latitude = fields.String(dump_to='latitude')
-    longitude = fields.String(dump_to='longitude')
-    status = fields.String(dump_to='status')
-    zone = fields.String(dump_to='zone')
-    parent_structure = fields.String(dump_to='parent_structure')
-    old_zone = fields.String(dump_to='old_zone')
-    all_groups = fields.String(dump_to='all_groups') # Should this be JSON?
+    id = fields.String(dump_to='id')
+    location = fields.String(dump_to='location',allow_none=True)
+    locationtype = fields.String(dump_to='location_type',allow_none=True)
+    latitude = fields.String(dump_to='latitude',allow_none=True)
+    longitude = fields.String(dump_to='longitude',allow_none=True)
+    status = fields.String(dump_to='status',allow_none=True)
+    zone = fields.String(dump_to='zone',allow_none=True)
+    parentstructure = fields.String(dump_to='parent_structure',allow_none=True)
+    oldzone = fields.String(dump_to='old_zone',allow_none=True)
+    allgroups = fields.String(dump_to='all_groups',allow_none=True) # Should this be JSON?
     guid = fields.String(dump_to='guid')
-    cost_per_hour = fields.Float(dump_to='cost_per_hour')
-    rate_information = fields.String(dump_to='rate_information')
-    restrictions = fields.String(dump_to='restrictions')
+    cost_per_hour = fields.Float(dump_to='cost_per_hour',allow_none=True)
+    rate_information = fields.String(dump_to='rate_information',allow_none=True)
+    restrictions = fields.String(dump_to='restrictions',allow_none=True)
 
     class Meta:
         ordered = True
 
+#    @pre_load()
+#    def format_date(self, data):
+#        data['date'] = datetime.date(
+#            int(data['date'][0:4]),
+#            int(data['date'][4:6]),
+#            int(data['date'][6:])).isoformat()
+
+class MonthlyMetersSchema(MetersSchema):
+    as_of = fields.DateTime(dump_to='as_of') # The datetime when the meters data was pulled.
+
     @pre_load()
-    def format_date(self, data):
-        data['date'] = datetime.date(
-            int(data['date'][0:4]),
-            int(data['date'][4:6]),
-            int(data['date'][6:])).isoformat()
+    def add_datetime(self):
+        data['as_of'] = datetime.now().isoformat()
 
 
 yesterday = datetime.date.today() - datetime.timedelta(days=1)
 
 package_id = '530f334b-4d7c-40c5-bf50-ba55645bb8b3' # "Testy" test package
-combined_resource_name = 'Payment Points (Combined)'
+archive_resource_name = 'Payment Points (Monthly Archives)'
 monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
 current_resource_name = 'Current Payment Points'
 
-
-# [ ] Specify key fields
 
 
 # Combined Data 
@@ -60,7 +80,7 @@ current_resource_name = 'Current Payment Points'
 #    .load(pl.CKANDatastoreLoader, 'ckan',
 #          fields=MetersSchema().serialize_to_ckan_fields(),
 #          package_id=package_id,
-#          resource_name=combined_resource_name,
+#          resource_name=archive_resource_name,
 #          method='upsert')
 
 
@@ -77,7 +97,7 @@ current_resource_name = 'Current Payment Points'
 #             function='pull_terminals', 
 #             kwparameters=kwdict) \ 
 #    .extract(pl.NoOpExtractor) \
-#    .schema(MetersSchema) \
+#    .schema(MonthlyMetersSchema) \
 #    .load(pl.CKANDatastoreLoader, 'ckan',
 #          fields=MetersSchema().serialize_to_ckan_fields(),
 #          package_id=package_id,
@@ -117,27 +137,77 @@ current_resource_name = 'Current Payment Points'
 # then switch to pulling from the function
 #target = 'jail_census_data/acj_daily_population_{}.csv'.format(yesterday.strftime('%Y%m%d'))
 
+# Run the pull_terminals function to get the tabular data on parking
+# meter parameters, and also output that data to a CSV file.
 
-path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
+unfixed_list_of_dicts, unfixed_keys = pull_terminals(output_to_csv=True)
+
+csv_path = csv_file_path()
+print(csv_path)
+
+# Load CKAN parameters to get the package name.
+with open(local_config.SETTINGS_FILE,'r') as f:
+    settings = json.load(f)
+    site = settings['loader']['ckan']['ckan_root_url']
+    API_key = settings['loader']['ckan']['ckan_api_key']
+
+package_name, _ = get_package_parameter(site,package_id,'name',API_key)
+
 kwdict = {'return_extra_zones': False,
     'output_to_csv': False,
     'push_to_CKAN': True }
 
 # Current Meters Data
 #   primary keys: Meter ID and/or GUID
+#current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
+#                                      'Current Meters Pipeline', log_status=False) \
+#    .connect(pl.FunctionConnector, 
+#             target=path+'fetch_terminals.py', 
+#             function='pull_terminals', 
+#             kwparameters=kwdict) \
+#    .extract(pl.NoOpExtractor) \
+#    .schema(MetersSchema) \
+#    .load(pl.CKANDatastoreLoader, 'ckan',
+#          fields=MetersSchema().serialize_to_ckan_fields(),
+#          package_id=package_id,
+#          resource_name=current_resource_name,
+#          method='upsert')
+
+
+fields_and_types = MetersSchema().serialize_to_ckan_fields()
+fieldnames = [ft['id'] for ft in fields_and_types]
+print("The fields and types are {}".format(MetersSchema().serialize_to_ckan_fields()))
+print("The fieldnames are {}".format(fieldnames))
+
+key_fields = ['id']#['id','guid']
+
+for kf in key_fields:
+    if kf not in fieldnames:
+        raise RuntimeError("key field {} is not in the list of fields ({})".format(kf, fieldnames))
+
 current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
-                                      'Current Meters Pipeline', log_status=False) \
-    .connect(pl.FunctionConnector, 
-             target=path+'fetch_terminals.py', 
-             function='pull_terminals', 
-             kwparameters=kwdict) \ 
-    .extract(pl.NoOpExtractor) \
+                                      'Current Meters Pipeline', 
+                                      settings_file=local_config.SETTINGS_FILE,
+                                      log_status=False) \
+    .connect(pl.FileConnector, csv_path) \
+    .extract(pl.CSVExtractor) \
     .schema(MetersSchema) \
     .load(pl.CKANDatastoreLoader, 'ckan',
           fields=MetersSchema().serialize_to_ckan_fields(),
+          key_fields=key_fields,
           package_id=package_id,
           resource_name=current_resource_name,
           method='upsert')
 
+pipe_output = current_meters_pipeline.run()
 
-current_meters_pipeline.run()
+os.remove(csv_path) # In any event, delete the CSV file.
+
+if hasattr(pipe_output,'upload_complete') and pipe_output.upload_complete:
+    print("Data successfully piped to {}/{}.".format(package_name,current_resource_name))
+    #return True
+else:
+    print("Data not successfully piped to {}/{}.".format(package_name,current_resource_name))
+    #return False
+
+
