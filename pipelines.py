@@ -1,14 +1,14 @@
 import sys
 try:
     sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
-    from utility_belt.gadgets import get_resource_parameter, get_package_parameter, find_resource_id
+    from utility_belt.gadgets import get_resource_parameter, get_package_parameter
 except:
     try:
         sys.path.insert(0, '~/bin') # Office computer location
-        from utility_belt.gadgets import get_resource_parameter, get_package_parameter, find_resource_id
+        from utility_belt.gadgets import get_resource_parameter, get_package_parameter
     except:
         print("Trying Option 3")
-        from prime_ckan.gadgets import get_resource_parameter, get_package_parameter, find_resource_id
+        from prime_ckan.gadgets import get_resource_parameter, get_package_parameter
 
 import os, json
 import datetime
@@ -187,20 +187,6 @@ shoving_method = 'upsert' # Here upserting means that every time we run this
 # method (which doesn't like to be run more than once with the same key 
 # values).
 
-abort_shoving = False
-if shoving_method == 'insert':
-    # Under insertion (which would make sense as a data-shoving method if we only run
-    # this script once per month), if the rows are already in the resource, repiping
-    # them will not work out well.
-
-    # Check whether this data might already be in the resource.
-    r_id, _ = find_resource_id(site, package_id, cumulative_resource_name, API_key)
-    # [ ] Add some more checking logic here, comparing number of rows with 
-    # current year_month value to number of rows in list_of_dicts.
-
-    # If so, abort upload.
-    abort_shoving = True
-
 reordered_fields_and_types = move_to_front('year_month',schema().serialize_to_ckan_fields())
 print(reordered_fields_and_types)
 cumulative_meters_pipeline = pl.Pipeline('cumulative_meters_pipeline', 
@@ -217,8 +203,7 @@ cumulative_meters_pipeline = pl.Pipeline('cumulative_meters_pipeline',
           resource_name=cumulative_resource_name,
           method=shoving_method)
 
-if not abort_shoving:
-    check_and_run_pipeline(cumulative_meters_pipeline,key_fields,schema,package_id,cumulative_resource_name,shoving_method)
+check_and_run_pipeline(cumulative_meters_pipeline,key_fields,schema,package_id,cumulative_resource_name,shoving_method)
 
 ##################################################################
 os.remove(csv_path) # In any event, delete the CSV file. 
