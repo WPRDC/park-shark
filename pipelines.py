@@ -64,7 +64,7 @@ def check_and_run_pipeline(pipe,key_fields,schema,package_id,resource_name,upser
             raise RuntimeError("key field {} is not in the list of fields ({})".format(kf, fieldnames))
 
     pipe_output = pipe.run()
-    package_name, _ = get_package_parameter(site,package_id,'name',API_key)
+    package_name = get_package_parameter(site,package_id,'name',API_key)
 
     if hasattr(pipe_output,'upload_complete') and pipe_output.upload_complete:
         print("Data successfully piped to {}/{} via {}.".format(package_name,current_resource_name,upsert_method))

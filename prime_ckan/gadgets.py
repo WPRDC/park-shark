@@ -197,9 +197,9 @@ def get_number_of_rows(site,resource_id,API_key=None):
         # the API response.
         count = results_dict['total']
     except:
-        return None, False
+        return None
 
-    return count, True
+    return count
 
 def get_fields(site,resource_id,API_key=None):
     # In principle, it should be possible to do this using the datastore_info 
@@ -210,9 +210,9 @@ def get_fields(site,resource_id,API_key=None):
         schema = results_dict['fields']
         fields = [d['id'] for d in schema]
     except:
-        return None, False
+        return None
 
-    return fields, True
+    return fields
 
 def get_schema(site,resource_id,API_key=None):
     # In principle, it should be possible to do this using the datastore_info 
@@ -222,18 +222,18 @@ def get_schema(site,resource_id,API_key=None):
         results_dict = ckan.action.datastore_search(resource_id=resource_id,limit=0)
         schema = results_dict['fields']
     except:
-        return None, False
+        return None
 
-    return schema, True
+    return schema
 
 def get_metadata(site,resource_id,API_key=None):
     try:
         ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
         metadata = resource_show(ckan,resource_id)
     except:
-        return None, False
+        return None
 
-    return metadata, True
+    return metadata
 
 def get_package_parameter(site,package_id,parameter,API_key=None):
     # Some package parameters you can fetch from the WPRDC with
@@ -249,17 +249,15 @@ def get_package_parameter(site,package_id,parameter,API_key=None):
     # 'name', 'isopen', 'url', 'notes', 'license_title',
     # 'temporal_coverage', 'related_documents', 'license_url',
     # 'organization', 'revision_id'
-    success = False
     try:
         ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
         metadata = ckan.action.package_show(id=package_id)
         desired_string = metadata[parameter]
         #print("The parameter {} for this package is {}".format(parameter,metadata[parameter]))
-        success = True
     except:
-        success = False
-
-    return desired_string, success
+        raise RuntimeError("Unable to obtain package parameter '{}' for package with ID {}".format(parameter,package_id))
+        
+    return desired_string
 
 def get_resource_parameter(site,resource_id,parameter,API_key=None):
     # Some resource parameters you can fetch with this function are
@@ -271,134 +269,117 @@ def get_resource_parameter(site,resource_id,parameter,API_key=None):
     # 'revision_id', 'resource_type'
     # Note that 'size' does not seem to be defined for tabular
     # data on WPRDC.org. (It's not the number of rows in the resource.)
-    success = False
     try:
         ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
         metadata = resource_show(ckan,resource_id)
         desired_string = metadata[parameter]
 
         #print("The parameter {} for this resource is {}".format(parameter,metadata[parameter]))
-        success = True
     except:
-        desired_string = None
-        success = False
+        raise RuntimeError("Unable to obtain resource parameter '{}' for resource with ID {}".format(parameter,resource_id))
 
-    return desired_string, success
+    return desired_string
 
 def get_resource_name(site,resource_id,API_key=None):
     return get_resource_parameter(site,resource_id,'name',API_key)
 
 def get_package_name_from_resource_id(site,resource_id,API_key=None):
-    p_id, success = get_resource_parameter(site,resource_id,'package_id',API_key)
-    if success:
-        return get_package_parameter(site,p_id,'title',API_key)
-    else:
-        return None, False
+    p_id = get_resource_parameter(site,resource_id,'package_id',API_key)
+    return get_package_parameter(site,p_id,'title',API_key)
 
 def find_resource_id(site,package_id,resource_name,API_key=None):
-    resources, success = get_package_parameter(site,package_id,'resources',API_key)
-    if success:
-        for r in resources:
-            if r['name'] == resource_name:
-                return r['id'], True
-    return None, False
+    resources = get_package_parameter(site,package_id,'resources',API_key)
+    for r in resources:
+        if r['name'] == resource_name:
+            return r['id']
+    return None
 
 def query_resource(site,query,API_key=None):
     # Use the datastore_search_sql API endpoint to query a CKAN resource.
-    success = False
-    try:
-        ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
-        response = ckan.action.datastore_search_sql(sql=query)
-        # A typical response is a dictionary like this
-        #{u'fields': [{u'id': u'_id', u'type': u'int4'},
-        #             {u'id': u'_full_text', u'type': u'tsvector'},
-        #             {u'id': u'pin', u'type': u'text'},
-        #             {u'id': u'number', u'type': u'int4'},
-        #             {u'id': u'total_amount', u'type': u'float8'}],
-        # u'records': [{u'_full_text': u"'0001b00010000000':1 '11':2 '13585.47':3",
-        #               u'_id': 1,
-        #               u'number': 11,
-        #               u'pin': u'0001B00010000000',
-        #               u'total_amount': 13585.47},
-        #              {u'_full_text': u"'0001c00058000000':3 '2':2 '7827.64':1",
-        #               u'_id': 2,
-        #               u'number': 2,
-        #               u'pin': u'0001C00058000000',
-        #               u'total_amount': 7827.64},
-        #              {u'_full_text': u"'0001c01661006700':3 '1':1 '3233.59':2",
-        #               u'_id': 3,
-        #               u'number': 1,
-        #               u'pin': u'0001C01661006700',
-        #               u'total_amount': 3233.59}]
-        # u'sql': u'SELECT * FROM "d1e80180-5b2e-4dab-8ec3-be621628649e" LIMIT 3'}
-        data = response['records']
-        success = True
-    except:
-        return None, False
-    return data, success
+    ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
+    response = ckan.action.datastore_search_sql(sql=query)
+    # A typical response is a dictionary like this
+    #{u'fields': [{u'id': u'_id', u'type': u'int4'},
+    #             {u'id': u'_full_text', u'type': u'tsvector'},
+    #             {u'id': u'pin', u'type': u'text'},
+    #             {u'id': u'number', u'type': u'int4'},
+    #             {u'id': u'total_amount', u'type': u'float8'}],
+    # u'records': [{u'_full_text': u"'0001b00010000000':1 '11':2 '13585.47':3",
+    #               u'_id': 1,
+    #               u'number': 11,
+    #               u'pin': u'0001B00010000000',
+    #               u'total_amount': 13585.47},
+    #              {u'_full_text': u"'0001c00058000000':3 '2':2 '7827.64':1",
+    #               u'_id': 2,
+    #               u'number': 2,
+    #               u'pin': u'0001C00058000000',
+    #               u'total_amount': 7827.64},
+    #              {u'_full_text': u"'0001c01661006700':3 '1':1 '3233.59':2",
+    #               u'_id': 3,
+    #               u'number': 1,
+    #               u'pin': u'0001C01661006700',
+    #               u'total_amount': 3233.59}]
+    # u'sql': u'SELECT * FROM "d1e80180-5b2e-4dab-8ec3-be621628649e" LIMIT 3'}
+    data = response['records']
+    return data
 
 def get_resource_data(site,resource_id,API_key=None,count=50,offset=0):
     # Use the datastore_search API endpoint to get <count> records from
     # a CKAN resource
-    success = False
-    try:
-        ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
-        response = ckan.action.datastore_search(id=resource_id, limit=count, offset=offset)
-        # A typical response is a dictionary like this
-        #{u'_links': {u'next': u'/api/action/datastore_search?offset=3',
-        #             u'start': u'/api/action/datastore_search'},
-        # u'fields': [{u'id': u'_id', u'type': u'int4'},
-        #             {u'id': u'pin', u'type': u'text'},
-        #             {u'id': u'number', u'type': u'int4'},
-        #             {u'id': u'total_amount', u'type': u'float8'}],
-        # u'limit': 3,
-        # u'records': [{u'_id': 1,
-        #               u'number': 11,
-        #               u'pin': u'0001B00010000000',
-        #               u'total_amount': 13585.47},
-        #              {u'_id': 2,
-        #               u'number': 2,
-        #               u'pin': u'0001C00058000000',
-        #               u'total_amount': 7827.64},
-        #              {u'_id': 3,
-        #               u'number': 1,
-        #               u'pin': u'0001C01661006700',
-        #               u'total_amount': 3233.59}],
-        # u'resource_id': u'd1e80180-5b2e-4dab-8ec3-be621628649e',
-        # u'total': 88232}
-        data = response['records']
-        success = True
-    except:
-        return None, False
-    return data, success
+    ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
+    response = ckan.action.datastore_search(id=resource_id, limit=count, offset=offset)
+    # A typical response is a dictionary like this
+    #{u'_links': {u'next': u'/api/action/datastore_search?offset=3',
+    #             u'start': u'/api/action/datastore_search'},
+    # u'fields': [{u'id': u'_id', u'type': u'int4'},
+    #             {u'id': u'pin', u'type': u'text'},
+    #             {u'id': u'number', u'type': u'int4'},
+    #             {u'id': u'total_amount', u'type': u'float8'}],
+    # u'limit': 3,
+    # u'records': [{u'_id': 1,
+    #               u'number': 11,
+    #               u'pin': u'0001B00010000000',
+    #               u'total_amount': 13585.47},
+    #              {u'_id': 2,
+    #               u'number': 2,
+    #               u'pin': u'0001C00058000000',
+    #               u'total_amount': 7827.64},
+    #              {u'_id': 3,
+    #               u'number': 1,
+    #               u'pin': u'0001C01661006700',
+    #               u'total_amount': 3233.59}],
+    # u'resource_id': u'd1e80180-5b2e-4dab-8ec3-be621628649e',
+    # u'total': 88232}
+    data = response['records']
+    return data
 
 def get_all_records(site,resource_id,API_key=None,chunk_size=5000):
     all_records = []
     failures = 0
     k = 0
     offset = 0 # offset is almost k*chunk_size (but not quite)
-    row_count, _ = get_number_of_rows(site,resource_id,API_key)
+    row_count = get_number_of_rows(site,resource_id,API_key)
     if row_count == 0: # or if the datastore is not active
        print("No data found in the datastore.")
        success = False
     while len(all_records) < row_count and failures < 5:
         time.sleep(0.1)
-        records, success = get_resource_data(site,resource_id,API_key,chunk_size,offset)
-
-        # If the number of rows is a moving target, incorporate
-        # this step:
-        #row_count, success2 = get_number_of_rows(site,resource_id,API_key)
-        if success:
+        try:
+            records = get_resource_data(site,resource_id,API_key,chunk_size,offset)
             if records is not None:
                 all_records += records
             failures = 0
             offset += chunk_size
-        else:
+        except:
             failures += 1
+
+        # If the number of rows is a moving target, incorporate
+        # this step:
+        #row_count = get_number_of_rows(site,resource_id,API_key)
         k += 1
         print("{} iterations, {} failures, {} records, {} total records".format(k,failures,len(records),len(all_records)))
 
-    return all_records, success
+    return all_records
 
 
 def get_resource(site,resource_id,chunk_size=500):
@@ -460,20 +441,18 @@ def elicit_primary_key(site,resource_id,API_key):
     # Note that it has not been tested on primary-key-less resources and this represents
     # kind of a problem because, if used on such a resource, it will succeed in adding 
     # the duplicate row to the table.
-    success = False
     primary_keys = None
     try:
         ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
         # Get the very last row of the resource.
-        row_count,_ = get_number_of_rows(site,resource_id,API_key)
-        records, worked = get_resource_data(site,resource_id,API_key,count=1)
+        row_count = get_number_of_rows(site,resource_id,API_key)
+        records = get_resource_data(site,resource_id,API_key,count=1)
         first_row = records[0]
         # Try to insert it into the database
         del first_row["_id"]
         results = ckan.action.datastore_upsert(resource_id=resource_id, method='insert', 
             records=[first_row], force=True)
         pprint.pprint(results)
-        success = True
     except ckanapi.ValidationError as exception:
         orig = exception.error_dict['info']['orig']
         print(orig)
@@ -493,20 +472,19 @@ def elicit_primary_key(site,resource_id,API_key):
             revised_primary_keys.append(pk)
         primary_keys = revised_primary_keys
     except:
-        success = False
         exc_type, exc_value, exc_traceback = sys.exc_info()
         print("Error: {}".format(exc_type))
         lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
         print(''.join('!!! ' + line for line in lines))
     else:
-        new_row_count,_ = get_number_of_rows(site,resource_id,API_key)
-        records,_ = get_resource_data(site,resource_id,API_key,count=1,offset=new_row_count-1)
+        new_row_count = get_number_of_rows(site,resource_id,API_key)
+        records = get_resource_data(site,resource_id,API_key,count=1,offset=new_row_count-1)
         last_row = records[0]
         value_of_id = int(last_row['_id'])
         msg = "This function was run on a resource that has no primary key"
         msg += " and therefore added a duplicate row that was never intended to be added."
         msg += " The correct thing to do here is to delete"  
-        msg += "row with _id = {}".format(value_of_id)
+        msg += " row with _id = {}".format(value_of_id)
         print(msg)
         
         if new_row_count == row_count+1:
@@ -521,13 +499,13 @@ def elicit_primary_key(site,resource_id,API_key):
 
         primary_keys = []
 
-    return primary_keys, success
+    return primary_keys
 
 def set_resource_parameters_to_values(site,resource_id,parameters,new_values,API_key):
     success = False
     try:
         ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
-        original_values = [get_resource_parameter(site,resource_id,p,API_key)[0] for p in parameters]
+        original_values = [get_resource_parameter(site,resource_id,p,API_key) for p in parameters]
         payload = {}
         payload['id'] = resource_id
         for parameter,new_value in zip(parameters,new_values):
@@ -558,7 +536,7 @@ def set_resource_parameters_to_values(site,resource_id,parameters,new_values,API
 #    # and fix the types (or possibly download everything, reset the datastore, and
 #    # then upload it all with the proper types).
 #
-#    schema, _ = get_schema(site,resource_id,API_key)
+#    schema = get_schema(site,resource_id,API_key)
 #    if schema[0]['id'] == '_id':
 #        new_schema = schema[1:]
 #        for d in new_schema:
@@ -567,11 +545,11 @@ def set_resource_parameters_to_values(site,resource_id,parameters,new_values,API
 #        ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
 #        outcome = ckan.action.datastore_create(resource_id=resource_id,fields=new_schema, force=True)
 #        print("Verifying that the schema has changed...")
-#        final_schema, worked = get_schema(site,resource_id,API_key)
-#        return final_schema, True
+#        final_schema = get_schema(site,resource_id,API_key)
+#        return final_schema
 #    else:
 #        print("Unable to eliminate the _id field from this schema")
-#        return schema, False
+#        return schema
 
 def delete_row_from_resource(site,resource_id,_id,API_key):
     success = False

@@ -883,10 +883,10 @@ def main(*args, **kwargs):
 
     if push_to_CKAN: # Explicitly list the resources in the console.
         dp, settings, site, API_key = open_a_channel(server)
-        package_name, _ = get_package_name_from_resource_id(site,resource_id,API_key)
+        package_name = get_package_name_from_resource_id(site,resource_id,API_key)
         print("package = {}, site = {}, server = {}".format(package_name, site, server))
-        r_name, _ = get_resource_parameter(site,resource_id,'name',API_key)
-        a_h_name, _ = get_resource_parameter(site,ad_hoc_resource_id,'name',API_key)
+        r_name = get_resource_parameter(site,resource_id,'name',API_key)
+        a_h_name = get_resource_parameter(site,ad_hoc_resource_id,'name',API_key)
         print("resource_id = {} ({}),  ad_hoc_resource_id = {} ({})".format(resource_id, r_name, ad_hoc_resource_id, a_h_name))
 
     cumulated_dicts = []
