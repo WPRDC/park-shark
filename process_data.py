@@ -311,11 +311,11 @@ def p_hash(p,t):
     return "{}|{}".format(p['@PurchaseDateLocal'],numbered_zone(t['@Id']))
 
 def is_original(p,t,p_history):
-    # Check apparent rate against official rate for the terminal.
-
-    # Unfortunately, this could only be done for live data.
+    # [ ] Maybe check apparent rate against official rate for the terminal.
+    # (Unfortunately, that could only be done for live data.
     # Older purchases may have different rates that can only
-    # be inferred from looking at other purchases from that day.
+    # be inferred from looking at other purchases from that day.)
+
     #if p['@TerminalGuid'] in t_guids:
         # ValueError: u'401511-WOODST0402' is not in list
     #    t = terminals[t_guids.index(p['@TerminalGuid'])]
@@ -705,9 +705,22 @@ def get_batch_parking_for_day(slot_start,cache=True):
 
     return ps
 
-def get_batch_parking(slot_start,slot_end,cache,tz):
+def get_batch_parking(slot_start,slot_end,cache,tz,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
     # This function handles situation where slot_start and slot_end are on different days
     # by calling get_batch_parking_for_day in a loop.
+
+    # The parameter "time_field" determines which of the timestamps is used for calculating
+    # the datetime values used to filter purchases down to those between slot_start
+    # and start_end.
+
+
+    # Note that the time zone tz and the time_field must be consistent for this to work properly.
+    # Here is a little sanity check:
+    
+    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
+        # This does an XOR between these values.
+        raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
+
     global last_date_cache, all_day_ps_cache, dts
     if last_date_cache != slot_start.date():
         print("last_date_cache ({}) doesn't match slot_start.date() ({})".format(last_date_cache, slot_start.date()))
@@ -725,11 +738,11 @@ def get_batch_parking(slot_start,slot_end,cache,tz):
         # since filtering is done further down in this function, this should not represent a 
         # problem. There should be no situations where more than two days of transactions will
         # wind up in this cache at any one time.
-        dts = [tz.localize(datetime.strptime(p['@PurchaseDateLocal'],'%Y-%m-%dT%H:%M:%S')) for p in ps_all]
+        dts = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all]
         time.sleep(3)
     else:
         ps_all = all_day_ps_cache
-    #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p['@PurchaseDateLocal'],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
+    #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
     # execute each time for busy days since the time calculations
     # are on the scale of tens of microseconds.
     # So let's generate the datetimes once (above), and do
@@ -762,7 +775,8 @@ def get_parking_events(slot_start,slot_end,cache=False):
     if datetime.now(pgh) - slot_end <= timedelta(days = 5):
         return get_recent_parking_events(slot_start,slot_end)
     else:
-        return get_batch_parking(slot_start,slot_end,cache,pgh)
+        return get_batch_parking(slot_start,slot_end,cache,pgh,time_field = '@PurchaseDateLocal')
+        #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by):
     list_of_dicts = []
