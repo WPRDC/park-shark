@@ -311,6 +311,16 @@ def p_hash(p,t):
     return "{}|{}".format(p['@PurchaseDateLocal'],numbered_zone(t['@Id']))
 
 def is_original(p,t,p_history):
+    # This function does an initial check to see if a particular
+    # transaction might be an extension/"TopUp" of a previous
+    # purchase.
+
+
+    # @PurchaseTypeName == Normal might be a usable way of 
+    # identifying original purhcases (though I'm not sure
+    # that all TopUps will be identified as such).
+
+
     # [ ] Maybe check apparent rate against official rate for the terminal.
     # (Unfortunately, that could only be done for live data.
     # Older purchases may have different rates that can only
@@ -667,20 +677,20 @@ def get_batch_parking_for_day(slot_start,cache=True):
         # Filtering out a lot more fields to try to slim down the amount of data:
         #purchases = remove_field(purchases,'@PurchaseGuid')
         #purchases = remove_field(purchases,'@TerminalGuid')
-        purchases = remove_field(purchases,'@PurchaseDateUtc')
-        purchases = remove_field(purchases,'@PayIntervalStartLocal')
-        purchases = remove_field(purchases,'@PayIntervalStartUtc')
-        purchases = remove_field(purchases,'@PayIntervalEndLocal')
-        purchases = remove_field(purchases,'@PayIntervalEndUtc')
-        #purchases = remove_field(purchases,'@EndDateLocal')
-        purchases = remove_field(purchases,'@EndDateUtc')
+        purchases = remove_field(purchases,'@PurchaseDateUtc')#
+        purchases = remove_field(purchases,'@PayIntervalStartLocal')#
+        purchases = remove_field(purchases,'@PayIntervalStartUtc')#
+        purchases = remove_field(purchases,'@PayIntervalEndLocal')#
+        purchases = remove_field(purchases,'@PayIntervalEndUtc')#
+        purchases = remove_field(purchases,'@EndDateLocal')#
+        purchases = remove_field(purchases,'@EndDateUtc')#
         purchases = remove_field(purchases,'@PaymentServiceType')
         purchases = remove_field(purchases,'@TicketNumber')
         purchases = remove_field(purchases,'@TariffPackageID')
-        purchases = remove_field(purchases,'@ExternalID')
+        purchases = remove_field(purchases,'@ExternalID')#
         purchases = remove_field(purchases,'@PurchaseStateName')
         purchases = remove_field(purchases,'@PurchaseTriggerTypeName')
-        purchases = remove_field(purchases,'@PurchaseTypeName')
+        purchases = remove_field(purchases,'@PurchaseTypeName')#
         purchases = remove_field(purchases,'@MaskedPAN','PurchasePayUnit')
         purchases = remove_field(purchases,'@BankAuthorizationReference','PurchasePayUnit')
         purchases = remove_field(purchases,'@CardFeeAmount','PurchasePayUnit')
@@ -705,7 +715,7 @@ def get_batch_parking_for_day(slot_start,cache=True):
 
     return ps
 
-def get_batch_parking(slot_start,slot_end,cache,tz,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
+def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
     # This function handles situation where slot_start and slot_end are on different days
     # by calling get_batch_parking_for_day in a loop.
 
@@ -722,7 +732,7 @@ def get_batch_parking(slot_start,slot_end,cache,tz,time_field = '@PurchaseDateLo
         raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
 
     global last_date_cache, all_day_ps_cache, dts
-    if last_date_cache != slot_start.date():
+    if last_date_cache != slot_start.date() and not mute:
         print("last_date_cache ({}) doesn't match slot_start.date() ({})".format(last_date_cache, slot_start.date()))
 
         ps_all = []
@@ -731,7 +741,8 @@ def get_batch_parking(slot_start,slot_end,cache,tz,time_field = '@PurchaseDateLo
             ps_for_whole_day = get_batch_parking_for_day(dt_start_i,cache)
             ps_all += ps_for_whole_day
             dt_start_i += timedelta(days = 1)
-            print("Now there are {} transactions in ps_all".format(len(ps_all)))
+            if not mute:
+                print("Now there are {} transactions in ps_all".format(len(ps_all)))
 
         all_day_ps_cache = ps_all # Note that if slot_start and slot_end are not on the same day,
         # all_day_ps_cache will hold transactions for more than just the date of slot_start, but 
@@ -767,7 +778,7 @@ def get_recent_parking_events(slot_start,slot_end):
     time.sleep(5)
     return ps
 
-def get_parking_events(slot_start,slot_end,cache=False):
+def get_parking_events(slot_start,slot_end,cache=False,mute=False):
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
         # This is too large of a margin, to be on the safe side.
@@ -775,7 +786,7 @@ def get_parking_events(slot_start,slot_end,cache=False):
     if datetime.now(pgh) - slot_end <= timedelta(days = 5):
         return get_recent_parking_events(slot_start,slot_end)
     else:
-        return get_batch_parking(slot_start,slot_end,cache,pgh,time_field = '@PurchaseDateLocal')
+        return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by):
@@ -932,7 +943,7 @@ def main(*args, **kwargs):
     seeding_mode = True
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
-        purchases = get_parking_events(slot_start - warm_up_period,slot_start,True)
+        purchases = get_parking_events(slot_start - warm_up_period,slot_start,True,False)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
             reframe(p,terminals,t_guids,ps_dict,turbo_mode)
             ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
