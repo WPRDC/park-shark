@@ -7,6 +7,10 @@
 # failed. In this way, this function can still be called by some kind of pipeline/job
 # manager that can send out notifications if a particular ETL job fails.
 
+
+# An intermediate step between making pipe_data_to_CKAN work and this function
+# would be running this script with output_to_csv = True and push_to_CKAN = False
+# and then calling a pipeline function to pipe the CSV to the CKAN resource.
 import pytz
 from datetime import datetime, timedelta
 import process_data
