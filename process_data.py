@@ -732,8 +732,9 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
         raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
 
     global last_date_cache, all_day_ps_cache, dts
-    if last_date_cache != slot_start.date() and not mute:
-        print("last_date_cache ({}) doesn't match slot_start.date() ({})".format(last_date_cache, slot_start.date()))
+    if last_date_cache != slot_start.date():
+        if not mute:
+            print("last_date_cache ({}) doesn't match slot_start.date() ({})".format(last_date_cache, slot_start.date()))
 
         ps_all = []
         dt_start_i = slot_start
