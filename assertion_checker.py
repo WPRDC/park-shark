@@ -83,12 +83,25 @@ def main(*args, **kwargs):
         # One pitfall here is that if the cached JSON file was saved without a particular field,
         # the assertion will not be tested.
         assertion_1 = lambda p: (p['@PurchaseTypeName'] in [None, 'TopUp', 'Normal']) if ('@PurchaseTypeName' in p) else True
+        assertion_2 = lambda p: (p['@PaymentServiceType'] in ['None', 'PrePay Code']) if ('@PaymentServiceType' in p) else False
+        assertion_3 = lambda p: ((p['@PaymentServiceType'] == 'PrePay Code') != (p['PurchasePayUnit']['@PayUnitName']=='Mobile Payment')) 
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
             field = '@PurchaseTypeName'
             if field in p:
-                if assertion_1(p):
+                if not assertion_1(p):
                     print("Assertion 1 has been violated with a @PurchaseTypeName value of {}".format(p['@PurchaseTypeName']))
                     pprint.pprint(p)
+            field = '@PaymentServiceType'
+            if field in p:
+                if not assertion_2(p):
+                    print("Assertion 2 has been violated with a @PaymentServiceType value of {}".format(p[field]))
+                    pprint.pprint(p)
+                field2 = 'PurchasePayUnit'
+                if field2 in p and '@PayUnitName' in p[field2]:
+                    if not assertion_3(p):
+                        print("Assertion 3 has been violated.")
+                        pprint.pprint(p)
+
 
 
         slot_start = beginning_of_day(slot_start + timedelta(hours = 26))
