@@ -611,7 +611,7 @@ def convert_doc_to_purchases(doc,slot_start,date_format):
     print("Found something else of type {}".format(type(ps)))
     return []
 
-def get_batch_parking_for_day(slot_start,cache=True):
+def get_batch_parking_for_day(slot_start,cache=True,mute=False):
     # Caches parking once it's been downloaded and checks
     # cache before redownloading.
 
@@ -626,7 +626,8 @@ def get_batch_parking_for_day(slot_start,cache=True):
     filename = path + "json/"+dashless+".json"
 
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
-        print("Sigh! {}.json not found, so I'm pulling the data from the API...".format(dashless))
+        if not mute:
+            print("Sigh! {}.json not found, so I'm pulling the data from the API...".format(dashless))
 
         slot_start = beginning_of_day(slot_start)
         slot_end = slot_start + timedelta(days = 1)
@@ -634,7 +635,8 @@ def get_batch_parking_for_day(slot_start,cache=True):
         base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
         url = build_url(base_url,slot_start,slot_end)
 
-        print("Here's the URL: {}".format(url))
+        if not mute:
+            print("Here's the URL: {}".format(url))
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
 
         # Convert Cale's XML into a Python dictionary
@@ -690,7 +692,7 @@ def get_batch_parking_for_day(slot_start,cache=True):
         purchases = remove_field(purchases,'@ExternalID')#
         purchases = remove_field(purchases,'@PurchaseStateName')
         purchases = remove_field(purchases,'@PurchaseTriggerTypeName')
-        purchases = remove_field(purchases,'@PurchaseTypeName')#
+        #purchases = remove_field(purchases,'@PurchaseTypeName')#
         purchases = remove_field(purchases,'@MaskedPAN','PurchasePayUnit')
         purchases = remove_field(purchases,'@BankAuthorizationReference','PurchasePayUnit')
         purchases = remove_field(purchases,'@CardFeeAmount','PurchasePayUnit')
@@ -739,7 +741,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
         ps_all = []
         dt_start_i = slot_start
         while dt_start_i < slot_end:
-            ps_for_whole_day = get_batch_parking_for_day(dt_start_i,cache)
+            ps_for_whole_day = get_batch_parking_for_day(dt_start_i,cache,mute)
             ps_all += ps_for_whole_day
             dt_start_i += timedelta(days = 1)
             if not mute:
