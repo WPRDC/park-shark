@@ -20,6 +20,14 @@ import pytz
 
 from process_data import last_date_cache, all_day_ps_cache, dts, beginning_of_day, roundTime, get_batch_parking
 
+#def string_to_datetime(p):
+def time_difference(p):
+    p['start_date_utc'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
+    p['purchase_date_utc'] = datetime.strptime(p['@PurchaseDateUtc'],'%Y-%m-%dT%H:%M:%S')
+    delta = p['purchase_date_utc'] - p['start_date_utc'] 
+    return delta.seconds
+
+#[ ] Find largest difference between StartDate and PurchaseDate
 
 def main(*args, **kwargs):
     # This function accepts slot_start and halting_time datetimes as
@@ -46,19 +54,21 @@ def main(*args, **kwargs):
 
     timechunk = timedelta(days=1)
 
-    slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
+    slot_start = pgh.localize(datetime(2012,7,23,0,0)) # The earliest available data.
+    slot_start = pgh.localize(datetime(2012,9,1,0,0)) 
+    slot_start = pgh.localize(datetime(2013,1,1,0,0)) 
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
     halting_time = slot_start + timedelta(hours=24)
 
     halting_time = beginning_of_day(datetime.now(pgh) - timedelta(days=7))
-    halting_time = pgh.localize(datetime(2013,1,1,0,0)) 
+    halting_time = pgh.localize(datetime(2014,1,1,0,0)) 
     halting_time = kwargs.get('halting_time',halting_time)
 
     special_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
 
-    slot_start = beginning_of_day(slot_start + timedelta(hours = 26))
+    slot_start = beginning_of_day(slot_start)
     slot_end = beginning_of_day(slot_start + timedelta(hours = 26)) 
     # The tricky thing here is that one can't just increment by 24 hours and expect to split the processing into days
     # because on days when Daylight Savings Time turns on and off there can be 23 or 25 hours in a day.
@@ -66,33 +76,53 @@ def main(*args, **kwargs):
     month_mark = slot_start.month
 
     print("The start of the first slot is {}".format(slot_start))
+    assertion_1 = lambda p: (p['@PurchaseTypeName'] in [None, 'TopUp', 'Normal']) if ('@PurchaseTypeName' in p) else True
+    assertion_2 = lambda p: (p['@PaymentServiceType'] in ['None', 'PrePay Code']) if ('@PaymentServiceType' in p) else False
+    assertion_3 = lambda p: ((p['@PaymentServiceType'] == 'PrePay Code') != (p['PurchasePayUnit']['@PayUnitName']=='Mobile Payment')) 
+        # PrePay Code <==> Mobile Payment
+    assertion_4 = lambda p: (p['@PayIntervalEndLocal'] == p['@EndDateLocal'])
 
+    first_seen = {}
+
+    start_purchase_max = 0
+    start_purchase_min = 10000000
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
 
-        # The first Boolean in the function call below suppresses caching. The second 
+        # The first Boolean in the function call below suppresses caching (if False). The second 
         # suppresses some messages to the console, so that assertion results don't 
         # get lost in the noise.
-        purchases = get_batch_parking(slot_start,slot_end,False,True,pgh) #,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S')
+        purchases = get_batch_parking(slot_start,slot_end,True,True,pgh) #,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S')
 
         #print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
 
         # One pitfall here is that if the cached JSON file was saved without a particular field,
         # the assertion will not be tested.
-        assertion_1 = lambda p: (p['@PurchaseTypeName'] in [None, 'TopUp', 'Normal']) if ('@PurchaseTypeName' in p) else True
-        assertion_2 = lambda p: (p['@PaymentServiceType'] in ['None', 'PrePay Code']) if ('@PaymentServiceType' in p) else False
-        assertion_3 = lambda p: ((p['@PaymentServiceType'] == 'PrePay Code') != (p['PurchasePayUnit']['@PayUnitName']=='Mobile Payment')) 
-        for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
+        #pprint.pprint(purchases[0])
+        #print(purchases[0]['@PaymentServiceType'])
+        for k,p in enumerate(sorted(purchases, key = lambda x: x['@DateCreatedUtc'])):
+            if '@StartDateUtc' in p and '@PurchaseDateUtc' in p:
+                delta = time_difference(p)
+                if delta > start_purchase_max:
+                    start_purchase_max = delta
+                    print("Now max = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
+                if delta < start_purchase_min:
+                    start_purchase_min = delta
+                    print("Now min = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
             field = '@PurchaseTypeName'
             if field in p:
+                if field not in first_seen:
+                    first_seen[field] = slot_start
                 if not assertion_1(p):
                     print("Assertion 1 has been violated with a @PurchaseTypeName value of {}".format(p['@PurchaseTypeName']))
                     pprint.pprint(p)
             field = '@PaymentServiceType'
             if field in p:
+                if field not in first_seen:
+                    first_seen[field] = slot_start
                 if not assertion_2(p):
                     print("Assertion 2 has been violated with a @PaymentServiceType value of {}".format(p[field]))
                     pprint.pprint(p)
@@ -101,6 +131,10 @@ def main(*args, **kwargs):
                     if not assertion_3(p):
                         print("Assertion 3 has been violated.")
                         pprint.pprint(p)
+            if '@PayIntervalEndLocal' in p and '@EndDateLocal' in p:
+                if not assertion_4(p):
+                    print("Assertion 4 has been violated.")
+                    pprint.pprint(p)
 
 
 
@@ -115,6 +149,8 @@ def main(*args, **kwargs):
         if month_mark != slot_start.month:
             month_mark = slot_start.month
             print(".", end="", flush=True)
+
+    print("first_seen = {}".format(first_seen))
 
 if __name__ == '__main__':
     main()
