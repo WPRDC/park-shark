@@ -434,7 +434,7 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
     # Options for keeping statistics on such extensions:
     # 1) Delete all older records as they come up.
     # 2) Reduce the Duration of the extension
-#    row['StartDateUTC'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
+    row['StartDateUTC'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
     #'2016-09-19T13:47:16',
     row['StartDateLocal'] = datetime.strptime(p['@StartDateLocal'],'%Y-%m-%dT%H:%M:%S')
     row['PurchaseDateLocal'] = datetime.strptime(p['@PurchaseDateLocal'],'%Y-%m-%dT%H:%M:%S')
@@ -778,7 +778,7 @@ def get_recent_parking_events(slot_start,slot_end):
     r = pull_from_url(url)
     doc = xmltodict.parse(r.text,encoding = 'utf-8')
     ps = convert_doc_to_purchases(doc,slot_start,date_format)
-    time.sleep(5)
+    time.sleep(1)
     return ps
 
 def get_parking_events(slot_start,slot_end,cache=False,mute=False):
@@ -789,7 +789,10 @@ def get_parking_events(slot_start,slot_end,cache=False,mute=False):
     if datetime.now(pgh) - slot_end <= timedelta(days = 5):
         return get_recent_parking_events(slot_start,slot_end)
     else:
-        return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
+
+        return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
+#        return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
+#        return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by):
