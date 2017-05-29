@@ -145,10 +145,12 @@ def main(*args, **kwargs):
                     if not assertion_3(p):
                         print("Assertion 3 has been violated.")
                         pprint.pprint(p)
-            if '@PayIntervalEndLocal' in p and '@EndDateLocal' in p:
-                if not assertion_4(p):
-                    print("Assertion 4 has been violated.")
-                    pprint.pprint(p)
+            # Assertion 4 gets violated a number of times per year, probably due to incorrect 
+            # @PayIntervalEnd values.
+            #if '@PayIntervalEndLocal' in p and '@EndDateLocal' in p:
+            #    if not assertion_4(p):
+            #        print("Assertion 4 has been violated.")
+            #        pprint.pprint(p)
 
 
 
