@@ -766,14 +766,15 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     last_date_cache = slot_start.date()
     return ps
 
-def get_recent_parking_events(slot_start,slot_end):
+def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S')
     # slot_start and slot_end must have time zones so that they
     # can be correctly converted into UTC times for interfacing
     # with the /Cah LAY/ API.
     date_format = '%Y-%m-%d'
     base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
     url = build_url(base_url,slot_start,slot_end)
-    print("Here's the URL: {}".format(url))
+    if not mute:
+        print("Here's the URL: {}".format(url))
 
     r = pull_from_url(url)
     doc = xmltodict.parse(r.text,encoding = 'utf-8')
@@ -787,12 +788,11 @@ def get_parking_events(slot_start,slot_end,cache=False,mute=False):
         # This is too large of a margin, to be on the safe side.
         # I have not yet found the exact edge.
     if datetime.now(pgh) - slot_end <= timedelta(days = 5):
-        return get_recent_parking_events(slot_start,slot_end)
+        return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
     else:
-
         return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
-#        return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
-#        return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
+        #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
+        #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by):
