@@ -1,10 +1,7 @@
 # This script runs through some date range and verifies one or more assertions about the 
 # structure of the parking data (e.g., the value of a given field is always one of three
 # strings or one timestamp for a given transactions is always after some other timestamp).
-import os
-import re
-
-import json
+import os, re, math, json
 from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
@@ -20,12 +17,23 @@ import pytz
 
 from process_data import last_date_cache, all_day_ps_cache, dts, beginning_of_day, roundTime, get_batch_parking
 
-#def string_to_datetime(p):
-def time_difference(p):
+def time_difference(p,ref_field='@PurchaseDateUtc',dt_fmt='%Y-%m-%dT%H:%M:%S'):
+    
     p['start_date_utc'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
-    p['purchase_date_utc'] = datetime.strptime(p['@PurchaseDateUtc'],'%Y-%m-%dT%H:%M:%S')
-    delta = p['purchase_date_utc'] - p['start_date_utc'] 
-    return delta.seconds
+    try:
+        p['ref_field'] = datetime.strptime(p[ref_field],dt_fmt)
+    except:
+        try:
+            p['ref_field'] = datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')
+        except:
+            p['ref_field'] = datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S.%f')
+
+    delta = p['ref_field'] - p['start_date_utc'] 
+    if p['ref_field'] > p['start_date_utc']:
+        in_seconds = delta.seconds
+    else:
+        in_seconds = -(-delta).seconds
+    return in_seconds
 
 #[ ] Find largest difference between StartDate and PurchaseDate
 
@@ -57,6 +65,7 @@ def main(*args, **kwargs):
     slot_start = pgh.localize(datetime(2012,7,23,0,0)) # The earliest available data.
     slot_start = pgh.localize(datetime(2012,9,1,0,0)) 
     slot_start = pgh.localize(datetime(2013,1,1,0,0)) 
+#    slot_start = pgh.localize(datetime(2016,1,1,0,0)) 
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
@@ -84,8 +93,10 @@ def main(*args, **kwargs):
 
     first_seen = {}
 
-    start_purchase_max = 0
-    start_purchase_min = 10000000
+    start_purchase_max = start_created_max = -10000000
+    start_purchase_min = start_created_min = 10000000
+
+    hours = defaultdict(int)
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
@@ -104,14 +115,17 @@ def main(*args, **kwargs):
         #pprint.pprint(purchases[0])
         #print(purchases[0]['@PaymentServiceType'])
         for k,p in enumerate(sorted(purchases, key = lambda x: x['@DateCreatedUtc'])):
-            if '@StartDateUtc' in p and '@PurchaseDateUtc' in p:
-                delta = time_difference(p)
-                if delta > start_purchase_max:
-                    start_purchase_max = delta
+            ref_field = '@DateCreatedUtc' #'@PurchaseDateUtc'
+            if '@StartDateUtc' in p and ref_field in p:
+                delta = time_difference(p,ref_field)#,'%Y-%m-%dT%H:%M:%S.%f')
+                if delta > start_created_max:
+                    start_created_max = delta
                     print("Now max = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
-                if delta < start_purchase_min:
-                    start_purchase_min = delta
+                if delta < start_created_min:
+                    start_created_min = delta
                     print("Now min = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
+                hours[int(math.floor(delta/3600))] += 1
+
             field = '@PurchaseTypeName'
             if field in p:
                 if field not in first_seen:
@@ -152,5 +166,8 @@ def main(*args, **kwargs):
 
     print("first_seen = {}".format(first_seen))
 
+    print("start_created_min = {}, start_created_max = {}".format(start_created_min,start_created_max))
+    print("Distribution of DateCreatedUTC - StartTimeUTC (in hours): ")
+    pprint.pprint(hours)
 if __name__ == '__main__':
     main()
