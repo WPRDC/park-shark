@@ -72,10 +72,10 @@ def main(*args, **kwargs):
     halting_time = slot_start + timedelta(hours=24)
 
     halting_time = beginning_of_day(datetime.now(pgh) - timedelta(days=7))
-    halting_time = pgh.localize(datetime(2014,1,1,0,0)) 
+    halting_time = pgh.localize(datetime(2017,5,1,0,0)) 
     halting_time = kwargs.get('halting_time',halting_time)
 
-    special_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
+    ad_hoc_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
 
     slot_start = beginning_of_day(slot_start)
     slot_end = beginning_of_day(slot_start + timedelta(hours = 26)) 

@@ -7,7 +7,7 @@ from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
-pure_zones_list, numbered_reporting_zones_list, special_groups, \
+pure_zones_list, numbered_reporting_zones_list, ad_hoc_groups, \
 add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
 only_these_fields, cast_fields
 from fetch_terminals import pull_terminals
@@ -387,7 +387,7 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
         row['Latitude'] = value_or_blank('Latitude',t)
         row['Longitude'] = value_or_blank('Longitude',t)
         # Maybe these should be value_or_none instead.
-        row['List_of_Special_Groups'] = special_groups(t)
+        row['List_of_ad_hoc_groups'] = ad_hoc_groups(t)
 
     row['Amount'] = float(p['@Amount'])
     t = terminals[t_guids.index(p['@TerminalGuid'])]
@@ -508,7 +508,7 @@ def initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/
     # Payments tells you how much money was paid, Durations tells you the breakdown of
     # parking minutes purchased. The sum of all the durations represented in the
     # Durations dictionary should equal the value in the Car-minutes field.
-    if aggregate_by == 'special zone':
+    if aggregate_by == 'ad hoc zone':
         stats['Parent Zone'] = None
     return stats
 
@@ -516,9 +516,9 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='o
     # Originally this function just aggregated information
     # between start_time and end_time to the zone level.
 
-    # Then it was modified to support special zones,
+    # Then it was modified to support ad hoc zones,
     # allowing the function to be called separately just to
-    # get special-zone-level aggregation.
+    # get ad-hoc-zone-level aggregation.
 
     # THEN it was modified to also allow aggregation by
     # meter ID instead of only by zone.
@@ -544,10 +544,10 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='o
 
             if zone is not None:
                 zones = [zone]
-        elif aggregate_by == 'special zone':
-            if 'List_of_Special_Groups' in rp and rp['List_of_Special_Groups'] != []:
-                zones = rp['List_of_Special_Groups']
-# The problem with this is that a given purchase is associated with a terminal which may have MULTIPLE special zones. Therefore, each special zone must have its own parent zone(s).
+        elif aggregate_by == 'ad hoc zone':
+            if 'List_of_ad_hoc_groups' in rp and rp['List_of_ad_hoc_groups'] != []:
+                zones = rp['List_of_ad_hoc_groups']
+# The problem with this is that a given purchase is associated with a terminal which may have MULTIPLE ad hoc zones. Therefore, each ad hoc zone must have its own parent zone(s).
         elif aggregate_by == 'meter':
             zones = [t_guid] # [ ] Should this be GUID or just ID?
 
@@ -557,7 +557,7 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='o
             for zone in censor(zones):
                 if zone not in stats_by:
                     stats_by[zone] = initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/Eastern'))
-                if aggregate_by == 'special zone':
+                if aggregate_by == 'ad hoc zone':
                     if 'Parent Zone' in stats_by[zone]:
                         stats_by[zone]['Parent Zone'] = '|'.join(parent_zones[zone])
                 elif aggregate_by == 'meter':
@@ -938,8 +938,8 @@ def main(*args, **kwargs):
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
 
-    special_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
-    print("special zones = {}".format(special_zones))
+    ad_hoc_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
+    print("ad hoc zones = {}".format(ad_hoc_zones))
 
     print("parent_zones = ...")
     pprint.pprint(parent_zones)
@@ -1007,8 +1007,8 @@ def main(*args, **kwargs):
 
     keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
     augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
-    special_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-    # [ ] I just added 'UTC Start' to special_keys on April 25, 2017.
+    ad_hoc_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+    # [ ] I just added 'UTC Start' to ad_hoc_keys on April 25, 2017.
 
     # [ ] Check that keys are in fields.
 
@@ -1050,11 +1050,11 @@ def main(*args, **kwargs):
             stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
 
-            special_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'special zone', parent_zones, tz=pgh)
+            ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
 
             if not turbo_mode:
                 inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
-            # We may eventually need to compute special_inferred_occupancy.
+            # We may eventually need to compute ad_hoc_inferred_occupancy.
 
             if len(stats_rows) == 0:
                 print
@@ -1085,18 +1085,18 @@ def main(*args, **kwargs):
                 if success:
                     cumulated_dicts = []
 
-            special_list_of_dicts, _ = package_for_output(special_stats_rows,special_zones,None,{},pgh,slot_start,slot_end,'special zone')
-            # Between the passed use_special_zones boolean and other parameters, more
+            ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone')
+            # Between the passed use_ad_hoc_zones boolean and other parameters, more
             # information is being passed than necessary to distinguish between
-            # special zones and regular zones.
+            # ad hoc zones and regular zones.
 
-            if output_to_csv and len(special_list_of_dicts) > 0:
-                write_or_append_to_csv('special-parking-dataset-1.csv',special_list_of_dicts,special_keys)
+            if output_to_csv and len(ad_hoc_list_of_dicts) > 0:
+                write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_keys)
                 print("Wrote some ad hoc data to a CSV file")
 
-            cumulated_ad_hoc_dicts += special_list_of_dicts
+            cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
             if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
-                filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
+                filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_keys)
                 filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
                 success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
                 if success_a:
@@ -1119,7 +1119,7 @@ def main(*args, **kwargs):
         if success:
             cumulated_dicts = []
             print("Pushed the last batch of transactions to {}".format(resource_id))
-        filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,special_keys)
+        filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_keys)
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
         success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success_a:

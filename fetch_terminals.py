@@ -233,24 +233,24 @@ def pull_terminals(*args, **kwargs):
     excluded_zones = ['TEST - South Craig - Reporting']
     excluded_zones = []
     print("Here is the list of all groups not already in lot_list or pure_zones_list or numbered_reporting_zones_list or exclude_zones (or those that start with 'TEST'):")
-    maybe_special_zones = set_of_all_groups - set(lot_list) - set(pure_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones)
-    special_zones = censor(maybe_special_zones)
-    pprint.pprint(special_zones)
+    maybe_ad_hoc_zones = set_of_all_groups - set(lot_list) - set(pure_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones)
+    ad_hoc_zones = censor(maybe_ad_hoc_zones)
+    pprint.pprint(ad_hoc_zones)
 
     parent_zones = {}
-    for sz in special_zones:
-        if sz not in parent_zones:
-            parent_zones[sz] = []
+    for ahz in ad_hoc_zones:
+        if ahz not in parent_zones:
+            parent_zones[ahz] = []
         for t in terminals:
-            if sz in all_groups(t):
+            if ahz in all_groups(t):
                 parent = numbered_zone(t['@Id'])
-                if parent not in parent_zones[sz]:
-                    parent_zones[sz].append(parent)
+                if parent not in parent_zones[ahz]:
+                    parent_zones[ahz].append(parent)
 
     pprint.pprint(parent_zones)
 
     if return_extra_zones:
-        return list(special_zones), parent_zones
+        return list(ad_hoc_zones), parent_zones
     else:
         return list_of_dicts, keys # The data that was previously written to the payment_points.csv file.
 ############

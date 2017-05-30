@@ -267,10 +267,10 @@ def all_groups(t):
             return all_group_names
     return []
 
-def special_groups(t):
-    nonspecial_zones = lot_list + pure_zones_list + numbered_reporting_zones_list
+def ad_hoc_groups(t):
+    non_ad_hoc_zones = lot_list + pure_zones_list + numbered_reporting_zones_list
     all_group_names = all_groups(t)
-    sgs = [name for name in all_group_names if name not in nonspecial_zones]
+    sgs = [name for name in all_group_names if name not in non_ad_hoc_zones]
     return sgs
 
 def group_by_code(code):
