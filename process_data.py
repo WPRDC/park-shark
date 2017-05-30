@@ -887,6 +887,10 @@ def main(*args, **kwargs):
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
     augment = kwargs.get('augment',False)
 
+    default_filename = 'parking-dataset-1.csv'
+    filename = kwargs.get('filename',default_filename)
+    overwrite = kwargs.get('overwrite',False)
+
     turbo_mode = False # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
     skip_processing = False
@@ -1011,9 +1015,9 @@ def main(*args, **kwargs):
     # These are dictionary keys (for writing a bunch of dictionaries to a CSV file), NOT database keys.
     augmented_dkeys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
     ad_hoc_dkeys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-    # [ ] I just added 'UTC Start' to ad_hoc_dkeys on April 25, 2017.
+    # I just added 'UTC Start' to ad_hoc_dkeys on April 25, 2017.
 
-    # [ ] Check that dkeys are in fields.
+    # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
@@ -1071,9 +1075,9 @@ def main(*args, **kwargs):
             if output_to_csv and len(list_of_dicts) > 0: # Write to files as
             # often as necessary, since the associated delay is not as great as
             # for pushing data to CKAN.
-                write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,dkeys)
+                write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
                 if not turbo_mode and augment:
-                    write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_dkeys)
+                    write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_dkeys,overwrite)
 
             cumulated_dicts += list_of_dicts
             if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
@@ -1094,7 +1098,7 @@ def main(*args, **kwargs):
             # ad hoc zones and regular zones.
 
             if output_to_csv and len(ad_hoc_list_of_dicts) > 0:
-                write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys)
+                write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys,overwrite)
                 print("Wrote some ad hoc data to a CSV file")
 
             cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
@@ -1127,7 +1131,7 @@ def main(*args, **kwargs):
         success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success_a:
             cumulated_ad_hoc_dicts = []
-            print("Pushed the last batch of ad-hoc transactions to {}".format(ad_hoc_resource_id))
+            print("Pushed the last batch of ad hoc transactions to {}".format(ad_hoc_resource_id))
 
         return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
         # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
