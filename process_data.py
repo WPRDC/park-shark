@@ -582,8 +582,16 @@ def build_url(base_url,slot_start,slot_end):
 
     # This function is called by both get_recent_parking_events
     # and get_batch_parking_for_day.
+
     if is_timezoneless(slot_start) or is_timezoneless(slot_end):
         raise ValueError("Whoa, whoa, whoa! One of those times is unzoned!")
+    # Since a slot_end that is too far in the future results 
+    # in a 400 (reason = "Bad Request"), limit how far in 
+    # the future slot_end may be
+    arbitrary_limit = datetime.now(pytz.utc) + timedelta(hours = 1)
+    if slot_end.astimezone(pytz.utc) > arbitrary_limit:
+        slot_end = arbitrary_limit
+
     date_format = '%Y-%m-%d'
     time_format = '%H%M%S'
     url_parts = [slot_start.astimezone(pytz.utc).strftime(date_format),
@@ -767,10 +775,25 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     return ps
 
 def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
+    # To ensure that all events are obtained, add a huge margin around each slot to collect the outlier 
+    # events that have reference time fields with values very different from when the events were
+    # filed in the CALE database.
+
+    # This approach results in a query for ten minutes of data scanning almost two days worth of data,
+    # but this seems necessary because of how the CALE API works.
+
+    # Alternatives: Do one big query for all the data needed during one run of this script:
+    #                       1) Cache everything from the main()-level slot_start - 1 day to 
+    #                       halting_time + 1 day.
+    #                       2) Use that live_cache repeatedly.
+
     # slot_start and slot_end must have time zones so that they
     # can be correctly converted into UTC times for interfacing
     # with the /Cah LAY/ API.
-    margin = timedelta(hours = 12)
+    if time_field == '@DateCreatedUtc':
+        margin = timedelta(minutes = 0)
+    else:
+        margin = timedelta(hours = 23)
     date_format = '%Y-%m-%d'
     base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
     url = build_url(base_url,slot_start - margin,slot_end + margin)
@@ -812,7 +835,8 @@ def get_parking_events(slot_start,slot_end,cache=False,mute=False):
         # This is too large of a margin, to be on the safe side.
         # I have not yet found the exact edge.
     if datetime.now(pgh) - slot_end <= timedelta(days = 5):
-        return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
+        #return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
+        return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
         return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
@@ -897,8 +921,7 @@ def main(*args, **kwargs):
     # presenting something to humans.
     #slot_start = beginning_of_day(datetime.now(pgh) - timedelta(hours=24)) #+ timedelta(hours=2)
     #slot_start = beginning_of_day(datetime.now(pgh) - timedelta(days=7))
-    slot_start = pgh.localize(datetime(2012,8,1,0,0)) # Possibly the earliest available data.
-    slot_start = pgh.localize(datetime(2012,9,1,0,0)) # Avoid 2012-08-01 transaction that breaks duration calculations for now.
+    slot_start = pgh.localize(datetime(2012,7,23,0,0)) # The actual earliest available data.
     slot_start = pgh.localize(datetime(2017,4,15,0,0))
     slot_start = kwargs.get('slot_start',slot_start)
 
