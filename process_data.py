@@ -1007,12 +1007,13 @@ def main(*args, **kwargs):
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
 
-    keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-    augmented_keys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
-    ad_hoc_keys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-    # [ ] I just added 'UTC Start' to ad_hoc_keys on April 25, 2017.
+    dkeys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+    # These are dictionary keys (for writing a bunch of dictionaries to a CSV file), NOT database keys.
+    augmented_dkeys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
+    ad_hoc_dkeys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+    # [ ] I just added 'UTC Start' to ad_hoc_dkeys on April 25, 2017.
 
-    # [ ] Check that keys are in fields.
+    # [ ] Check that dkeys are in fields.
 
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
@@ -1070,15 +1071,15 @@ def main(*args, **kwargs):
             if output_to_csv and len(list_of_dicts) > 0: # Write to files as
             # often as necessary, since the associated delay is not as great as
             # for pushing data to CKAN.
-                write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
+                write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,dkeys)
                 if not turbo_mode and augment:
-                    write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
+                    write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_dkeys)
 
             cumulated_dicts += list_of_dicts
             if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
                 print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                 # server and resource_id parameters are imported from remote_parameters.py
-                filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
+                filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
                 filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
 
                 #success = pipe_data_to_ckan(server, resource_id, cumulated_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
@@ -1093,12 +1094,12 @@ def main(*args, **kwargs):
             # ad hoc zones and regular zones.
 
             if output_to_csv and len(ad_hoc_list_of_dicts) > 0:
-                write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_keys)
+                write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys)
                 print("Wrote some ad hoc data to a CSV file")
 
             cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
             if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
-                filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_keys)
+                filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
                 filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
                 success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
                 if success_a:
@@ -1114,14 +1115,14 @@ def main(*args, **kwargs):
 
     if push_to_CKAN: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
-        filtered_list_of_dicts = only_these_fields(cumulated_dicts,keys)
+        filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields)
         success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         #success = pipe_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success:
             cumulated_dicts = []
             print("Pushed the last batch of transactions to {}".format(resource_id))
-        filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_keys)
+        filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
         success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success_a:
