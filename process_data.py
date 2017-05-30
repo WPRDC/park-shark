@@ -843,7 +843,7 @@ def get_parking_events(slot_start,slot_end,cache=False,mute=False):
         #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
-def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by):
+def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by,augment):
     list_of_dicts = []
     augmented = []
     zlist = sorted(list(set(sorted(stats_rows.keys())+zonelist)))
@@ -867,8 +867,9 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
             d['Meter count'] = extra['MeterCount']
             d['Zone type'] = extra['Type']
             #augmented.append(d)
-            if d['Inferred occupancy'] > 0 or zone in stats_rows.keys():
-                augmented.append(d)
+            if augment:
+                if d['Inferred occupancy'] > 0 or zone in stats_rows.keys():
+                    augmented.append(d)
 
         elif zone in stats_rows.keys(): # Allentown is missing, but since all those terminals
         # are listed as inactive, this branch should never get called
@@ -884,6 +885,7 @@ def main(*args, **kwargs):
 
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
+    augment = kwargs.get('augment',False)
 
     turbo_mode = False # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
@@ -1052,7 +1054,7 @@ def main(*args, **kwargs):
 
             ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
 
-            if not turbo_mode:
+            if not turbo_mode and augment:
                 inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
             # We may eventually need to compute ad_hoc_inferred_occupancy.
 
@@ -1064,12 +1066,12 @@ def main(*args, **kwargs):
             # Return list of OrderedDicts where each OrderedDict
             # represents a row for a parking zone (or lot) and time slot.
 
-            list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
+            list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone',augment)
             if output_to_csv and len(list_of_dicts) > 0: # Write to files as
             # often as necessary, since the associated delay is not as great as
             # for pushing data to CKAN.
                 write_or_append_to_csv('parking-dataset-1.csv',list_of_dicts,keys)
-                if not turbo_mode:
+                if not turbo_mode and augment:
                     write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_keys)
 
             cumulated_dicts += list_of_dicts
@@ -1085,7 +1087,7 @@ def main(*args, **kwargs):
                 if success:
                     cumulated_dicts = []
 
-            ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone')
+            ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',augment)
             # Between the passed use_ad_hoc_zones boolean and other parameters, more
             # information is being passed than necessary to distinguish between
             # ad hoc zones and regular zones.
