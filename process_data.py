@@ -846,7 +846,8 @@ def get_parking_events(slot_start,slot_end,cache=False,mute=False):
 def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by):
     list_of_dicts = []
     augmented = []
-    zlist = list(set(sorted(stats_rows.keys())+zonelist))
+    zlist = sorted(list(set(sorted(stats_rows.keys())+zonelist)))
+
     for zone in zlist:
         if zone in stats_rows.keys():
             d = stats_rows[zone]
@@ -1062,8 +1063,6 @@ def main(*args, **kwargs):
             #pprint.pprint(stats_rows)
             # Return list of OrderedDicts where each OrderedDict
             # represents a row for a parking zone (or lot) and time slot.
-
-    #        keys = (list_of_dicts.values()[0]).keys()
 
             list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone')
             if output_to_csv and len(list_of_dicts) > 0: # Write to files as
