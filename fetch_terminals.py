@@ -57,12 +57,14 @@ def pull_terminals(*args, **kwargs):
     # zones are returned rather than the table of terminals),
     # and push_to_CKAN and output_to_csv (to control those output
     # channels).
-
+    
     use_cache = kwargs.get('use_cache',False)
     return_extra_zones = kwargs.get('return_extra_zones',True)
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
+
+    print("use_cache = {}".format(use_cache))
     if use_cache:
         if return_extra_zones:
             return ([u'CMU Study',
@@ -182,15 +184,15 @@ def pull_terminals(*args, **kwargs):
 
         list_of_dicts.append(new_entry)
 
-    #keys = list_of_dicts[0].keys() # This does not set the correct order for the field names.
-    keys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
+    #dkeys = list(list_of_dicts[0].keys()) # This does not set the correct order for the field names.
+    dkeys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
     'Rate information','Restrictions']
 
     if output_to_csv:
         csv_path = csv_file_path()
         # Rename 'ID' field to avoid possible problem stemming from Marshmallow's lowercasing of fields and 
         # Python's treating 'id' as a reserved term.
-        #csv_keys = list(keys)
+        #csv_keys = list(dkeys)
         #old_key = 'ID'
         #new_key  = 'meter_id'
         #csv_keys[csv_keys.index(old_key)] = new_key
@@ -201,7 +203,7 @@ def pull_terminals(*args, **kwargs):
 
         #write_to_csv(csv_path,csv_list_of_dicts,csv_keys)
         # Actually, this seems to not be strictly necessary.
-        write_to_csv(csv_path,list_of_dicts,keys)
+        write_to_csv(csv_path,list_of_dicts,dkeys)
     ############
     list_of_zone_dicts = []
     zone_info = {}
