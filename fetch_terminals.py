@@ -63,8 +63,6 @@ def pull_terminals(*args, **kwargs):
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
-
-    print("use_cache = {}".format(use_cache))
     if use_cache:
         if return_extra_zones:
             return ([u'CMU Study',

@@ -908,8 +908,10 @@ def main(*args, **kwargs):
 
     pgh = pytz.timezone('US/Eastern')
     use_cache = kwargs.get('use_cache', False)
+
     #use_cache = True
     terminals = get_terminals(use_cache)
+
     t_ids = [t['@Id'] for t in terminals]
     t_guids = [t['@Guid'] for t in terminals]
 
@@ -943,8 +945,7 @@ def main(*args, **kwargs):
     halting_time = kwargs.get('halting_time',halting_time)
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
-
-    ad_hoc_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
+    ad_hoc_zones, parent_zones = pull_terminals(use_cache=use_cache,return_extra_zones=True)
     print("ad hoc zones = {}".format(ad_hoc_zones))
 
     print("parent_zones = ...")
