@@ -1044,6 +1044,8 @@ def naive_get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timez
     return ps
 
 def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
+    db_caching_mode = True
+
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
         # This is too large of a margin, to be on the safe side.
@@ -1052,11 +1054,12 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
         #return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
-        return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
+        if db_caching_mode:
+            return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
         #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
         # this function should return the same thing as get_ps_from_somewhere.
-
-        #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
+        else:
+            return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
