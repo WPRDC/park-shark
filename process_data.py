@@ -46,7 +46,7 @@ try:
     from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
 except:
     try:
-        sys.path.insert(0, '~/bin') # Office computer location
+        sys.path.insert(0, '/Users/daw165/bin/')# Office computer location
         from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
         from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
     except:
