@@ -24,6 +24,9 @@ import pprint
 from datetime import datetime, timedelta
 import pytz
 
+import dataset
+
+
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
 from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
@@ -619,6 +622,42 @@ def convert_doc_to_purchases(doc,slot_start,date_format):
     print("Found something else of type {}".format(type(ps)))
     return []
 
+def cull_fields(ps):
+    # Remove a bunch of unneeded fields.
+    purchases = remove_field(ps,'@Code')
+    purchases = remove_field(purchases,'@ArticleID')
+    purchases = remove_field(purchases,'@ArticleName')
+    purchases = remove_field(purchases,'@CurrencyCode')
+    purchases = remove_field(purchases,'@VAT')
+    # Other fields that could conceivably be removed:
+    # @ExternalID, @PurchaseStateName, some fields in PurchasePayUnit, maybe others
+
+    # Filtering out a lot more fields to try to slim down the amount of data:
+    #purchases = remove_field(purchases,'@PurchaseGuid')
+    #purchases = remove_field(purchases,'@TerminalGuid')
+    #purchases = remove_field(purchases,'@PurchaseDateUtc')#
+    #purchases = remove_field(purchases,'@PayIntervalStartLocal')#
+    #purchases = remove_field(purchases,'@PayIntervalStartUtc')#
+    #purchases = remove_field(purchases,'@PayIntervalEndLocal')#
+    #purchases = remove_field(purchases,'@PayIntervalEndUtc')#
+    #purchases = remove_field(purchases,'@EndDateLocal')
+    #purchases = remove_field(purchases,'@EndDateUtc')#
+    #purchases = remove_field(purchases,'@PaymentServiceType')
+    purchases = remove_field(purchases,'@TicketNumber')
+    purchases = remove_field(purchases,'@TariffPackageID')
+    purchases = remove_field(purchases,'@ExternalID')#
+    purchases = remove_field(purchases,'@PurchaseStateName')
+    purchases = remove_field(purchases,'@PurchaseTriggerTypeName')
+    #purchases = remove_field(purchases,'@PurchaseTypeName')#
+    purchases = remove_field(purchases,'@MaskedPAN','PurchasePayUnit')
+    purchases = remove_field(purchases,'@BankAuthorizationReference','PurchasePayUnit')
+    purchases = remove_field(purchases,'@CardFeeAmount','PurchasePayUnit')
+    purchases = remove_field(purchases,'@PayUnitID','PurchasePayUnit')
+    purchases = remove_field(purchases,'@TransactionReference','PurchasePayUnit')
+    purchases = remove_field(purchases,'@CardIssuer','PurchasePayUnit')
+
+    return purchases
+
 def get_batch_parking_for_day(slot_start,cache=True,mute=False):
     # Caches parking once it's been downloaded and checks
     # cache before redownloading.
@@ -630,7 +669,6 @@ def get_batch_parking_for_day(slot_start,cache=True,mute=False):
     date_format = '%Y-%m-%d'
 
     dashless = slot_start.strftime('%y%m%d')
-    xml_filename = path + "xml/"+dashless+".xml"
     filename = path + "json/"+dashless+".json"
 
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
@@ -676,37 +714,7 @@ def get_batch_parking_for_day(slot_start,cache=True,mute=False):
 
         ps = convert_doc_to_purchases(doc['BatchExportRoot'],slot_start,date_format)
 
-        purchases = remove_field(ps,'@Code')
-        purchases = remove_field(purchases,'@ArticleID')
-        purchases = remove_field(purchases,'@ArticleName')
-        purchases = remove_field(purchases,'@CurrencyCode')
-        purchases = remove_field(purchases,'@VAT')
-        # Other fields that could conceivably be removed:
-        # @ExternalID, @PurchaseStateName, some fields in PurchasePayUnit, maybe others
-
-        # Filtering out a lot more fields to try to slim down the amount of data:
-        #purchases = remove_field(purchases,'@PurchaseGuid')
-        #purchases = remove_field(purchases,'@TerminalGuid')
-        #purchases = remove_field(purchases,'@PurchaseDateUtc')#
-        #purchases = remove_field(purchases,'@PayIntervalStartLocal')#
-        #purchases = remove_field(purchases,'@PayIntervalStartUtc')#
-        #purchases = remove_field(purchases,'@PayIntervalEndLocal')#
-        #purchases = remove_field(purchases,'@PayIntervalEndUtc')#
-        #purchases = remove_field(purchases,'@EndDateLocal')
-        #purchases = remove_field(purchases,'@EndDateUtc')#
-        #purchases = remove_field(purchases,'@PaymentServiceType')
-        purchases = remove_field(purchases,'@TicketNumber')
-        purchases = remove_field(purchases,'@TariffPackageID')
-        purchases = remove_field(purchases,'@ExternalID')#
-        purchases = remove_field(purchases,'@PurchaseStateName')
-        purchases = remove_field(purchases,'@PurchaseTriggerTypeName')
-        #purchases = remove_field(purchases,'@PurchaseTypeName')#
-        purchases = remove_field(purchases,'@MaskedPAN','PurchasePayUnit')
-        purchases = remove_field(purchases,'@BankAuthorizationReference','PurchasePayUnit')
-        purchases = remove_field(purchases,'@CardFeeAmount','PurchasePayUnit')
-        purchases = remove_field(purchases,'@PayUnitID','PurchasePayUnit')
-        purchases = remove_field(purchases,'@TransactionReference','PurchasePayUnit')
-        purchases = remove_field(purchases,'@CardIssuer','PurchasePayUnit')
+        purchases = cull_fields(ps)
 
         if cache:
             try: # Python 3 file opening
@@ -774,6 +782,212 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     last_date_cache = slot_start.date()
     return ps
 
+def epoch_time(dt):
+   # Be sure to do all this in UTC.  
+
+    if is_timezoneless(dt):
+        raise ValueError("Whoa, whoa, whoa! That time is unzoned!")
+
+    if dt.tzinfo != pytz.utc:
+        dt = copy(dt).astimezone(pytz.utc)
+
+    try:
+        return dt.timestamp() # This only works in Python 3.3 and up.
+    except:
+        return (dt-(pytz.utc).localize(datetime(1970,1,1,0,0,0))).total_seconds()
+
+
+def get_tables_from_db(db):
+    cached_dates = db['cached_dates']
+    cached_ps = db['cached_purchases']
+    return cached_dates,cached_ps
+
+def in_db(cached_dates,date_i):
+    # Return a Boolean indicating whether the date is in cached_dates 
+    # which specifies whether all events with StartDateUTC values 
+    # equal to date_i have been cached in the database.
+    date_format = '%Y-%m-%d'
+    date_string = date_i.strftime(date_format)
+    return (cached_dates.find_one(date=date_string) is not None)
+
+def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
+    # This function gets parking purchases, either from a 
+    # cache database (if the date appears to have been cached)
+    # or else from the API (and then caches the whole thing 
+    # if cache = True).
+
+    # Note that no matter what time of day is associated with slot_start,
+    # this function will get all of the transactions for that entire day.
+
+    # Filtering the results down to the desired time range is now handled 
+    # in this functions (though the function only marks a date as cached
+    # when it has added all events from the day of slot_start (based on
+    # StartDateUtc)).
+    
+    # This approach tries to address the problem of the often 
+    # gigantic discrepancy between the DateCreatedUtc timestamp
+    # and the StartDateUtc timestamp.
+
+    # This new database-centric, StartDateUtc-based approach has
+    # been verified to give the same results as the old approach
+    # for 2012-07-23.
+
+    cached_dates,cached_ps = get_tables_from_db(db)
+
+    ref_field = '@StartDateUtc' # This should not be changed.
+    date_format = '%Y-%m-%d'
+    ps_all = []
+    dts_all = []
+    #for each date in day before, day of, and day after (to get all transactions)
+        # [Three full days is probably slightly overkill since the most extreme 
+        # negative case of DateCreatedUtc - StartDateUtc observed so far has 
+        # been -12 hours.]
+
+    slot_start_date_string = slot_start.strftime(date_format)
+    if cached_dates.find_one(date=slot_start_date_string) is None:
+        # A date is added to cached_dates when the date and the two surrounding it have
+        # been queried and all events with a StartDateUTC value in the day corresponding
+        # to slot_start have been added to the database.
+
+        # That way, if the date is in cached_dates, the query can be done on the 
+        # database without hitting the API.
+        date_string = slot_start.strftime(date_format)
+
+        if not mute:
+            print("Sigh! {} not found in cached_dates, so I'm pulling the data from the API...".format(date_string))
+       # Pull the data from the API.
+        for offset in range(-1,2):
+            query_start = beginning_of_day(slot_start) + (offset)*timedelta(days = 1)
+            query_end = query_start + timedelta(days = 1)
+
+            base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            url = build_url(base_url,query_start,query_end)
+
+            if not mute:
+                print("Here's the URL for offset = {}: {}".format(offset,url))
+            r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
+
+            # Convert Cale's XML into a Python dictionary
+            doc = xmltodict.parse(r.text,encoding = r.encoding)
+
+            url2 = doc['BatchDataExportResponse']['Url']
+            r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
+            doc = xmltodict.parse(r2.text,encoding = r2.encoding)
+
+            while not r2.ok or doc['BatchDataExportFileResponse']['ExportStatus'] != 'Processed':
+                time.sleep(10)
+                r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
+                doc = xmltodict.parse(r2.text,encoding = r2.encoding)
+
+            url3 = doc['BatchDataExportFileResponse']['Url']
+
+            # When the ZIP file is ready:
+            r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
+            while not r3.ok:
+                time.sleep(5)
+                r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
+
+            z = zipfile.ZipFile(BytesIO(r3.content))
+
+            # Extract contents of a one-file zip file to memory:
+            xml = z.read(z.namelist()[0])
+            doc = xmltodict.parse(xml,encoding = 'utf-8')
+
+            ps = convert_doc_to_purchases(doc['BatchExportRoot'],query_start,date_format)
+
+            purchases = cull_fields(ps)
+            datetimes = [(pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')) for p in purchases]
+            #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
+            ps = []
+            dts = []
+            for purchase_i,datetime_i in zip(purchases,datetimes):
+                if beginning_of_day(slot_start) <= datetime_i < beginning_of_day(slot_start) + timedelta(days=1):
+                    ps.append(purchase_i)
+                    dts.append(datetime_i)
+
+            for p,dt in zip(ps,dts):
+                p['unix_time'] = epoch_time(dt)
+                # This is a hack to provide a float that can be stored in SQLite (which has serious problems with datetime 
+                # comparisons) until I can get a Postgres database set up.
+                
+            ps_all += ps #ps_all is all purchases that have StartDateUtc values between the beginning fo the day corresponding to slot_start
+            # and the beginning of the next day (24 hours later, in UTC).
+            dts_all += dts         
+            
+        if cache:
+            #store in the db and update cached_dates 
+
+            p = ps_all[0]
+            dt = (pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S'))
+
+            if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1):
+                print("The datetime {} ({}) checks out, being >= {}.".format(dt,p[ref_field],beginning_of_day(slot_start)))
+            else:
+                print("The datetime {} is in error, being outside the range between {} and {}.".format(p[ref_field],beginning_of_day(slot_start), beginning_of_day(slot_start+timedelta(days=1))))
+                pprint.pprint(p)
+
+            ps_all_fixed = remove_field(ps_all,'PurchasePayUnit') # PurchasePayUnit itself contains a data structure
+            # so dataset can't handle sticking it into a databse.
+            # It might be better to take the payment information fields and add them as scalar fields.
+
+            cached_ps.insert_many(ps_all_fixed) 
+            # This should just work since ps should be a list of dicts.
+
+            cached_dates.insert(dict(date = slot_start_date_string))
+
+        # Now that the data for one full day has been stored in the cache database,
+        # obtain the originally desired transactions.
+
+        requested_ps = [p for p,dt in zip(ps_all,dts_all) if slot_start <= dt < slot_end]
+        for_comparison = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
+
+        # [ ] Do the comparison of requested_ps with for_comparison.
+
+    else: # Load locally cached version
+        #requested_ps = db.query("SELECT * FROM cached_dates WHERE '@StartDateUtc' >= slot_start and '@StartDateUtc' <= slot_end")
+        requested_ps = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
+
+    return requested_ps
+
+def get_events_from_db(db,slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
+    # This function gets all transactions between slot_start and slot_end, using time_field
+    # as the reference field, by relying on get_ps_from_somewhere to do most of the heavy
+    # lifting. The main thing this function adds is adding margins and then filtering down
+    # to handle different reference time fields.
+
+    # The parameter "time_field" determines which of the timestamps is used for calculating
+    # the datetime values used to filter purchases down to those between slot_start
+    # and start_end.
+
+    # This function has been written but has so far not been used.
+    
+    # Note that the time zone tz and the time_field must be consistent for this to work properly.
+    # Here is a little sanity check:
+    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
+        # This does an XOR between these values.
+        raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
+
+    cached_dates,cached_ps = get_tables_from_db(db)
+
+    # if any date in the desired slot does not fall sufficiently within the available pre-downloaded
+    # dates (according to cached_dates), 
+        # call get_ps_from_somewhere to get them from the API.
+  
+    margin = timedelta(hours = 24)
+    day = (slot_start - margin).date() 
+    while day <= (slot_end + margin).date():
+        if not in_db(cached_dates,slot_start):
+            dt_start = datetime.combine(day, datetime.min.time())
+            dt_end = datetime.combine(day + timedelta(days=1), datetime.min.time())
+            get_ps_from_somewhere(db,dt_start,dt_end,cache,mute)
+
+    # call get_ps_from_somewhere with an appropriate margin added on and 
+    # then filter down to the desired events.
+    unfiltered_ps = get_ps_from_somewhere(db,slot_start-margin,slot_end+margin,cache,mute)
+    dts = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in unfiltered_ps]
+    ps = [p for p,dt in zip(ps_all,dts) if slot_start <= dt < slot_end]
+    return ps
+
 def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
     # To ensure that all events are obtained, add a huge margin around each slot to collect the outlier 
     # events that have reference time fields with values very different from when the events were
@@ -829,7 +1043,7 @@ def naive_get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timez
     time.sleep(1)
     return ps
 
-def get_parking_events(slot_start,slot_end,cache=False,mute=False):
+def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
         # This is too large of a margin, to be on the safe side.
@@ -838,7 +1052,11 @@ def get_parking_events(slot_start,slot_end,cache=False,mute=False):
         #return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
-        return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
+        return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
+        #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
+        # this function should return the same thing as get_ps_from_somewhere.
+
+        #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
@@ -897,6 +1115,12 @@ def main(*args, **kwargs):
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
+
+
+    db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
+    # changed with a passed parameter to substituted a test database 
+    # for running controlled tests with small numbers of events.
+    db = dataset.connect('sqlite:///'+db_filename) #'db/b') #('sqlite:///:memory:')
 
     zone_kind = 'new' # 'old' maps to enforcement zones
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
@@ -1004,7 +1228,8 @@ def main(*args, **kwargs):
     seeding_mode = True
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
-        purchases = get_parking_events(slot_start - warm_up_period,slot_start,True,False)
+        print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
+        purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
             reframe(p,terminals,t_guids,ps_dict,turbo_mode)
             ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
@@ -1025,7 +1250,7 @@ def main(*args, **kwargs):
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
 
-        purchases = get_parking_events(slot_start,slot_end,True)
+        purchases = get_parking_events(db,slot_start,slot_end,True)
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
