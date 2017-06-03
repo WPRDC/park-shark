@@ -17,16 +17,24 @@ import pytz
 
 from process_data import last_date_cache, all_day_ps_cache, dts, beginning_of_day, roundTime, get_batch_parking
 
+def cast_string_to_dt(s):
+    try:
+        dt = datetime.strptime(s,'%Y-%m-%dT%H:%M:%S')
+    except:
+        try:
+            dt = datetime.strptime(s,'%Y-%m-%dT%H:%M:%S.%f')
+        except:
+            raise ValueError("Unable to cast {} to a datetime".format(s))
+    return dt
+
+
 def time_difference(p,ref_field='@PurchaseDateUtc',dt_fmt='%Y-%m-%dT%H:%M:%S'):
     
     p['start_date_utc'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
     try:
         p['ref_field'] = datetime.strptime(p[ref_field],dt_fmt)
     except:
-        try:
-            p['ref_field'] = datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')
-        except:
-            p['ref_field'] = datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S.%f')
+        p['ref_field'] = cast_string_to_dt(p[ref_field])
 
     delta = p['ref_field'] - p['start_date_utc'] 
     if p['ref_field'] > p['start_date_utc']:
@@ -63,8 +71,8 @@ def main(*args, **kwargs):
     timechunk = timedelta(days=1)
 
     slot_start = pgh.localize(datetime(2012,7,23,0,0)) # The earliest available data.
-    slot_start = pgh.localize(datetime(2012,9,1,0,0)) 
-    slot_start = pgh.localize(datetime(2013,1,1,0,0)) 
+    #slot_start = pgh.localize(datetime(2012,9,1,0,0)) 
+    #slot_start = pgh.localize(datetime(2013,1,1,0,0)) 
 #    slot_start = pgh.localize(datetime(2016,1,1,0,0)) 
     slot_start = kwargs.get('slot_start',slot_start)
 
@@ -90,6 +98,7 @@ def main(*args, **kwargs):
     assertion_3 = lambda p: ((p['@PaymentServiceType'] == 'PrePay Code') != (p['PurchasePayUnit']['@PayUnitName']=='Mobile Payment')) 
         # PrePay Code <==> Mobile Payment
     assertion_4 = lambda p: (p['@PayIntervalEndLocal'] == p['@EndDateLocal'])
+    assertion_5 = lambda p: (beginning_of_day(cast_string_to_dt(p['@DateCreatedUtc'])) - beginning_of_day(cast_string_to_dt(p['@StartDateUtc']))).days in [-1,0,1]
 
     first_seen = {}
 
@@ -125,6 +134,10 @@ def main(*args, **kwargs):
                     start_created_min = delta
                     print("Now min = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
                 hours[int(math.floor(delta/3600))] += 1
+
+                if not assertion_5(p):
+                    print("Assertion 5 has been violated. Some events have a big time gap between StartDate and DateCreated, like this one:")
+                    pprint.pprint(p)
 
             field = '@PurchaseTypeName'
             if field in p:
