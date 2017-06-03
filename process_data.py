@@ -1143,7 +1143,8 @@ def main(*args, **kwargs):
     t_guids = [t['@Guid'] for t in terminals]
 
 
-    timechunk = DEFAULT_TIMECHUNK
+    timechunk = kwargs.get('timechunk',DEFAULT_TIMECHUNK)
+
   #  timechunk = timedelta(seconds=1)
     if skip_processing:
         timechunk = timedelta(hours=24)
