@@ -10,12 +10,13 @@ pure_zones_list, numbered_reporting_zones_list
 
 from fetch_terminals import pull_terminals
 
+import dataset
 import time
 import pprint
 from datetime import datetime, timedelta
 import pytz
 
-from process_data import last_date_cache, all_day_ps_cache, dts, beginning_of_day, roundTime, get_batch_parking
+from process_data import last_date_cache, all_day_ps_cache, dts, beginning_of_day, roundTime, get_batch_parking, get_parking_events
 
 def cast_string_to_dt(s):
     try:
@@ -99,11 +100,21 @@ def main(*args, **kwargs):
         # PrePay Code <==> Mobile Payment
     assertion_4 = lambda p: (p['@PayIntervalEndLocal'] == p['@EndDateLocal'])
     assertion_5 = lambda p: (beginning_of_day(cast_string_to_dt(p['@DateCreatedUtc'])) - beginning_of_day(cast_string_to_dt(p['@StartDateUtc']))).days in [-1,0,1]
+    # Assertion 5 can not be checked with db_caching == True (since that would be incorporating the assumption in the test).
+
+    # But I think that get_batch_parking also makes its own assumptions.
+
+    # The only thing to do is incorporate this test in one of the lowest-level functions.
+
 
     first_seen = {}
 
     start_purchase_max = start_created_max = -10000000
     start_purchase_min = start_created_min = 10000000
+
+    db_caching = False
+    db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
+    db = dataset.connect('sqlite:///'+db_filename)
 
     hours = defaultdict(int)
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
@@ -114,7 +125,11 @@ def main(*args, **kwargs):
         # The first Boolean in the function call below suppresses caching (if False). The second 
         # suppresses some messages to the console, so that assertion results don't 
         # get lost in the noise.
-        purchases = get_batch_parking(slot_start,slot_end,True,True,pgh) #,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S')
+
+        if db_caching:
+            purchases = get_parking_events(db,slot_start,slot_end,True,True) 
+        else:
+            purchases = get_batch_parking(slot_start,slot_end,True,True,pgh) #,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S')
 
         #print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
