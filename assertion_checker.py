@@ -16,7 +16,9 @@ import pprint
 from datetime import datetime, timedelta
 import pytz
 
-from process_data import last_date_cache, all_day_ps_cache, dts, beginning_of_day, roundTime, get_batch_parking, get_parking_events
+from process_data import last_date_cache, all_day_ps_cache, dts, \
+beginning_of_day, roundTime, get_batch_parking, get_parking_events, \
+get_batch_parking_for_day
 
 def cast_string_to_dt(s):
     try:
@@ -101,11 +103,9 @@ def main(*args, **kwargs):
     assertion_4 = lambda p: (p['@PayIntervalEndLocal'] == p['@EndDateLocal'])
     assertion_5 = lambda p: (beginning_of_day(cast_string_to_dt(p['@DateCreatedUtc'])) - beginning_of_day(cast_string_to_dt(p['@StartDateUtc']))).days in [-1,0,1]
     # Assertion 5 can not be checked with db_caching == True (since that would be incorporating the assumption in the test).
-
-    # But I think that get_batch_parking also makes its own assumptions.
-
-    # The only thing to do is incorporate this test in one of the lowest-level functions.
-
+    # But get_batch_parking also makes its own assumptions, so get_batch_parking_for_day must be used to avoid 
+    # timestamp filtering:
+    deactivate_filter = True
 
     first_seen = {}
 
@@ -126,10 +126,14 @@ def main(*args, **kwargs):
         # suppresses some messages to the console, so that assertion results don't 
         # get lost in the noise.
 
-        if db_caching:
-            purchases = get_parking_events(db,slot_start,slot_end,True,True) 
+        if deactivate_filter:
+            purchases = get_batch_parking_for_day(slot_start,cache=True,mute=True)
         else:
-            purchases = get_batch_parking(slot_start,slot_end,True,True,pgh) #,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S')
+            if db_caching:
+                purchases = get_parking_events(db,slot_start,slot_end,True,True) 
+            else:
+                purchases = get_batch_parking(slot_start,slot_end,True,True,pgh) #,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S')
+
 
         #print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
