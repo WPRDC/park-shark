@@ -1,6 +1,7 @@
-# This script runs through some date range and verifies one or more assertions about the 
-# structure of the parking data (e.g., the value of a given field is always one of three
-# strings or one timestamp for a given transactions is always after some other timestamp).
+# This script runs through some date range and verifies one or more 
+# assertions about the structure of the parking data (e.g., the value of a 
+# given field is always one of three strings or one timestamp for a 
+# given transactions is always after some other timestamp).
 import os, re, math, json
 from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
@@ -32,7 +33,6 @@ def cast_string_to_dt(s):
 
 
 def time_difference(p,ref_field='@PurchaseDateUtc',dt_fmt='%Y-%m-%dT%H:%M:%S'):
-    
     p['start_date_utc'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
     try:
         p['ref_field'] = datetime.strptime(p[ref_field],dt_fmt)
@@ -79,15 +79,18 @@ def main(*args, **kwargs):
     halting_time = slot_start + timedelta(hours=24)
 
     halting_time = beginning_of_day(datetime.now(pgh) - timedelta(days=7))
-    halting_time = pgh.localize(datetime(2017,5,1,0,0)) 
+    halting_time = pgh.localize(datetime(2017,6,1,0,0)) 
+    #halting_time = pgh.localize(datetime(2015,1,1,0,0)) 
     halting_time = kwargs.get('halting_time',halting_time)
 
     ad_hoc_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
 
     slot_start = beginning_of_day(slot_start)
     slot_end = beginning_of_day(slot_start + timedelta(hours = 26)) 
-    # The tricky thing here is that one can't just increment by 24 hours and expect to split the processing into days
-    # because on days when Daylight Savings Time turns on and off there can be 23 or 25 hours in a day.
+    # The tricky thing here is that one can't just increment by 
+    # 24 hours and expect to split the processing into days because 
+    # on days when Daylight Savings Time turns on and off there can be 
+    # 23 or 25 hours in a day.
     current_day = slot_start.date()
     month_mark = slot_start.month
 
@@ -98,9 +101,10 @@ def main(*args, **kwargs):
         # PrePay Code <==> Mobile Payment
     assertion_4 = lambda p: (p['@PayIntervalEndLocal'] == p['@EndDateLocal'])
     assertion_5 = lambda p: (beginning_of_day(cast_string_to_dt(p['@DateCreatedUtc'])) - beginning_of_day(cast_string_to_dt(p['@StartDateUtc']))).days in [-1,0,1]
-    # Assertion 5 can not be checked with db_caching == True (since that would be incorporating the assumption in the test).
-    # But get_batch_parking also makes its own assumptions, so get_batch_parking_for_day must be used to avoid 
-    # timestamp filtering:
+    # Assertion 5 can not be checked with db_caching == True (since that 
+    # would be incorporating the assumption in the test).
+    # But get_batch_parking also makes its own assumptions, so 
+    # get_batch_parking_for_day must be used to avoid timestamp filtering:
     deactivate_filter = True
 
     first_seen = {}
@@ -115,15 +119,16 @@ def main(*args, **kwargs):
     hours = defaultdict(int)
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
-        if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
-            slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
+        if slot_end > datetime.now(pytz.utc): # Clarify the true time 
+            slot_end = datetime.now(pytz.utc) # bounds of slots tha trun up 
+            # against the limit of the current time.
 
-        # The first Boolean in the function call below suppresses caching (if False). The second 
-        # suppresses some messages to the console, so that assertion results don't 
-        # get lost in the noise.
+        # The first Boolean in the function call below suppresses caching 
+        # (if False). The second suppresses some messages to the console, 
+        # so that assertion results don't get lost in the noise.
 
         if deactivate_filter:
-            purchases = get_batch_parking_for_day(slot_start,cache=True,mute=True)
+            purchases = get_batch_parking_for_day(slot_start,cache=False,mute=False)
         else:
             if db_caching:
                 purchases = get_parking_events(db,slot_start,slot_end,True,True) 
@@ -134,8 +139,8 @@ def main(*args, **kwargs):
         #print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
 
-        # One pitfall here is that if the cached JSON file was saved without a particular field,
-        # the assertion will not be tested.
+        # One pitfall here is that if the cached JSON file was saved 
+        # without a particular field, the assertion will not be tested.
         #pprint.pprint(purchases[0])
         #print(purchases[0]['@PaymentServiceType'])
         for k,p in enumerate(sorted(purchases, key = lambda x: x['@DateCreatedUtc'])):
@@ -150,9 +155,11 @@ def main(*args, **kwargs):
                     print("Now min = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
                 hours[int(math.floor(delta/3600))] += 1
 
-                if not assertion_5(p):
-                    print("Assertion 5 has been violated. Some events have a big time gap between StartDate and DateCreated, like this one:")
-                    pprint.pprint(p)
+                #if not assertion_5(p):
+                #    print("Assertion 5 has been violated. Some events have a big time gap between StartDate and DateCreated, like this one:")
+                #    pprint.pprint(p)
+
+                # Assertion 5 gets violated a lot!
 
             field = '@PurchaseTypeName'
             if field in p:
@@ -184,12 +191,14 @@ def main(*args, **kwargs):
 
         slot_start = beginning_of_day(slot_start + timedelta(hours = 26))
         slot_end = beginning_of_day(slot_start + timedelta(hours = 26)) 
-        # The tricky thing here is that one can't just increment by 24 hours and expect to split the processing into days
-        # because on days when Daylight Savings Time turns on and off there can be 23 or 25 hours in a day.
+        # The tricky thing here is that one can't just increment 
+        # by 24 hours and expect to split the processing into days
+        # because on days when Daylight Savings Time turns on and off 
+        # there can be 23 or 25 hours in a day.
         #print("The start and end of the next slot are {} and {}".format(slot_start,slot_end))
 
-        # Print a period to the console for every month of data that has been processed to let the user know that 
-        # something is happening.
+        # Print a period to the console for every month of data that 
+        # has been processed to let the user know that something is happening.
         if month_mark != slot_start.month:
             month_mark = slot_start.month
             print(".", end="", flush=True)
