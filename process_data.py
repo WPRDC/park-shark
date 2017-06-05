@@ -918,8 +918,6 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.t
                         print("beginning_of_day(slot_start) + timedelta(days=1) = {}".format(beginning_of_day(slot_start) + timedelta(days=1)))
                         pprint.pprint(purchase_i)
                         raise ValueError("purchase_i['StartDateUTC__localized_date'] != slot_start_date_string, {} != {}".format(purchase_i['StartDateUTC__localized_date'], slot_start_date_string))
-                    else:
-                        print(".")
                     ps.append(purchase_i)
                     dts.append(datetime_i)
 
@@ -938,12 +936,12 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.t
             p = ps_all[0]
             dt = (pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S'))
 
-            if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1):
-                print("The datetime {} ({}) checks out, being >= {}.".format(dt,p[ref_field],beginning_of_day(slot_start)))
-            else:
+            if not(beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)):
                 print("The datetime {} is in error, being outside the range between {} and {}.".format(p[ref_field],beginning_of_day(slot_start), beginning_of_day(slot_start+timedelta(days=1))))
                 pprint.pprint(p)
-
+            #else:
+            #    print("The datetime {} ({}) checks out, being >= {}.".format(dt,p[ref_field],beginning_of_day(slot_start)))
+                
             ps_all_fixed = remove_field(ps_all,'PurchasePayUnit') # PurchasePayUnit itself contains a data structure
             # so dataset can't handle sticking it into a databse.
             # It might be better to take the payment information fields and add them as scalar fields.
