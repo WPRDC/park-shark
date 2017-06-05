@@ -39,12 +39,8 @@ def time_difference(p,ref_field='@PurchaseDateUtc',dt_fmt='%Y-%m-%dT%H:%M:%S'):
     except:
         p['ref_field'] = cast_string_to_dt(p[ref_field])
 
-    delta = p['ref_field'] - p['start_date_utc'] 
-    if p['ref_field'] > p['start_date_utc']:
-        in_seconds = delta.seconds
-    else:
-        in_seconds = -(-delta).seconds
-    return in_seconds
+    delta = (p['ref_field'] - p['start_date_utc']).total_seconds()
+    return delta
 
 #[ ] Find largest difference between StartDate and PurchaseDate
 
