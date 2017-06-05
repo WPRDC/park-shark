@@ -1,11 +1,12 @@
-# This script can be run to pull the last hour of parking data through the process_data 
-# script and (with the argument push_to_CKAN = True in that function call), cause the
-# resulting data to be pushed to the CKAN instance specified by modules and settings
-# called by process_data.
+# This script can be run to pull the last hour of parking data through 
+# the process_data script and (with the argument push_to_CKAN = True 
+# in that function call), cause the resulting data to be pushed to 
+# the CKAN instance specified by modules and settings called by process_data.
 
-# The main() function returns a Boolean indicating whether this operation succeeded or
-# failed. In this way, this function can still be called by some kind of pipeline/job
-# manager that can send out notifications if a particular ETL job fails.
+# The main() function returns a Boolean indicating whether this operation 
+# succeeded or failed. In this way, this function can still be called by 
+# some kind of pipeline/job manager that can send out notifications if a 
+# particular ETL job fails.
 
 import pytz
 from datetime import datetime, timedelta

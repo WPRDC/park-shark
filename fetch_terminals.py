@@ -18,7 +18,8 @@ if calculate_zone_centroids:
     import numpy as np
     from hm_util import centroid_np
 
-# URL for accessing the Purchases listed under August 19, 2016 (seems to be based on UTC time when the purchase was made).
+# URL for accessing the Purchases listed under August 19, 2016 (seems to 
+# be based on UTC time when the purchase was made).
 #url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/2016-08-19/2016-08-20'
 
 # Add times after dates to narrow the query to a more precise time range:
