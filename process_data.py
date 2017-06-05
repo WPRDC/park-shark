@@ -810,7 +810,7 @@ def in_db(cached_dates,date_i):
     date_string = date_i.strftime(date_format)
     return (cached_dates.find_one(date=date_string) is not None)
 
-def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
+def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.timezone('US/Eastern')):
     # This function gets parking purchases, either from a 
     # cache database (if the date appears to have been cached)
     # or else from the API (and then caches the whole thing 
@@ -836,6 +836,8 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
 
     ref_field = '@StartDateUtc' # This should not be changed.
     date_format = '%Y-%m-%d'
+
+    ref_tz = tz # pytz.utc
     ps_all = []
     dts_all = []
     #for each date in day before, day of, and day after (to get all transactions)
@@ -843,22 +845,26 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
         # negative case of DateCreatedUtc - StartDateUtc observed so far has 
         # been -12 hours.]
 
-    slot_start_date_string = slot_start.strftime(date_format)
+    slot_start_date_string = slot_start.astimezone(ref_tz).strftime(date_format) # This is the date string 
+    # for the start of the overall desired time range.
+
     if cached_dates.find_one(date=slot_start_date_string) is None:
         # A date is added to cached_dates when the date and the two surrounding it have
         # been queried and all events with a StartDateUTC value in the day corresponding
-        # to slot_start have been added to the database.
+        # to slot_start (as well as slot_start_date_string) have been added to the database.
 
         # That way, if the date is in cached_dates, the query can be done on the 
         # database without hitting the API.
-        date_string = slot_start.strftime(date_format)
 
         if not mute:
-            print("Sigh! {} not found in cached_dates, so I'm pulling the data from the API...".format(date_string))
+            print("Sigh! {} not found in cached_dates, so I'm pulling the data from the API...".format(slot_start_date_string))
        # Pull the data from the API.
         for offset in range(-1,2):
             query_start = beginning_of_day(slot_start) + (offset)*timedelta(days = 1)
             query_end = query_start + timedelta(days = 1)
+
+            #query_date_string = query_start.astimezone(tz).strftime(date_format) # This is the date
+            # in the local time zone. # This seems to not be used at all.
 
             base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             url = build_url(base_url,query_start,query_end)
@@ -902,13 +908,25 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
             dts = []
             for purchase_i,datetime_i in zip(purchases,datetimes):
                 if beginning_of_day(slot_start) <= datetime_i < beginning_of_day(slot_start) + timedelta(days=1):
+                    purchase_i['StartDateUTC__localized_date'] = (datetime_i).astimezone(ref_tz).strftime(date_format) # This SHOULD be equal to slot_start.date().........
+                    # but verify this.
+                    if purchase_i['StartDateUTC__localized_date'] != slot_start_date_string:
+                        print("slot_start = {} = {}".format(slot_start, slot_start.astimezone(pytz.utc)))
+                        print("slot_start_date_string (This is the local date) = {}".format(slot_start_date_string))
+                        print("beginning_of_day(slot_start) = {}".format(beginning_of_day(slot_start)))
+                        print("datetime_i = {}".format(datetime_i))
+                        print("beginning_of_day(slot_start) + timedelta(days=1) = {}".format(beginning_of_day(slot_start) + timedelta(days=1)))
+                        pprint.pprint(purchase_i)
+                        raise ValueError("purchase_i['StartDateUTC__localized_date'] != slot_start_date_string, {} != {}".format(purchase_i['StartDateUTC__localized_date'], slot_start_date_string))
+                    else:
+                        print(".")
                     ps.append(purchase_i)
                     dts.append(datetime_i)
 
             for p,dt in zip(ps,dts):
                 p['unix_time'] = epoch_time(dt)
                 # This is a hack to provide a float that can be stored in SQLite (which has serious problems with datetime 
-                # comparisons) until I can get a Postgres database set up.
+
                 
             ps_all += ps #ps_all is all purchases that have StartDateUtc values between the beginning fo the day corresponding to slot_start
             # and the beginning of the next day (24 hours later, in UTC).
@@ -930,6 +948,14 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
             # so dataset can't handle sticking it into a databse.
             # It might be better to take the payment information fields and add them as scalar fields.
 
+            # Verify that there are currently no transactions in the database with the target StartDateUTC date string:
+            should_be_none = cached_ps.find_one(StartDateUTC__localized_date = slot_start_date_string)
+
+            if should_be_none is not None:
+                print("should_be_none = ")
+                pprint.pprint(should_be_none)
+                raise ValueError("A transaction was found in the database even though it shouldn't have been there according to cached_dates.")
+
             cached_ps.insert_many(ps_all_fixed) 
             # This should just work since ps should be a list of dicts.
 
@@ -938,7 +964,18 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
         # Now that the data for one full day has been stored in the cache database,
         # obtain the originally desired transactions.
 
-        requested_ps = [p for p,dt in zip(ps_all,dts_all) if slot_start <= dt < slot_end]
+
+        requested_ps = []
+        ignored_ps = []
+        #requested_ps = [p for p,dt in zip(ps_all,dts_all) if slot_start <= dt < slot_end]
+        for p,dt in zip(ps_all,dts_all):
+            if slot_start <= dt < slot_end:
+                requested_ps.append(p)
+            else:
+                ignored_ps.append(p)
+        
+        print("len(ignored_ps)/len(ps_all) = ".format(len(ignored_ps)/len(ps_all) ))
+
         for_comparison = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
 
         # [ ] Do the comparison of requested_ps with for_comparison.
@@ -983,7 +1020,8 @@ def get_events_from_db(db,slot_start,slot_end,cache,mute=False,tz=pytz.timezone(
 
     # call get_ps_from_somewhere with an appropriate margin added on and 
     # then filter down to the desired events.
-    unfiltered_ps = get_ps_from_somewhere(db,slot_start-margin,slot_end+margin,cache,mute)
+    unfiltered_ps = get_ps_from_somewhere(db,slot_start-margin,slot_end+margin,cache,mute) # These are actually
+        # kind of filtered. The hope is that the margins eliminate any filtering effects.
     dts = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in unfiltered_ps]
     ps = [p for p,dt in zip(ps_all,dts) if slot_start <= dt < slot_end]
     return ps
