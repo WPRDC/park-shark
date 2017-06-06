@@ -1024,7 +1024,7 @@ def get_events_from_db(db,slot_start,slot_end,cache,mute=False,tz=pytz.timezone(
     ps = [p for p,dt in zip(ps_all,dts) if slot_start <= dt < slot_end]
     return ps
 
-def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
+def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
     # To ensure that all events are obtained, add a huge margin around each slot to collect the outlier 
     # events that have reference time fields with values very different from when the events were
     # filed in the CALE database.
@@ -1040,6 +1040,15 @@ def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timezone('U
     # slot_start and slot_end must have time zones so that they
     # can be correctly converted into UTC times for interfacing
     # with the /Cah LAY/ API.
+
+    # The time-zone argument tz is used to specify the time zone of time_field.
+    # Thus, if @StartDateUtc is used as the reference time field for deciding whether a transaction
+    # is in the slot or not, the time zone tz should be UTC.
+    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
+        # This does an XOR between these values.
+        raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
+    
+
     if time_field == '@DateCreatedUtc':
         margin = timedelta(minutes = 0)
     else:
