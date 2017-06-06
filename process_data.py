@@ -969,8 +969,9 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
                 requested_ps.append(p)
             else:
                 ignored_ps.append(p)
-        
-        print("len(ignored_ps)/len(ps_all) = {}".format(len(ignored_ps)/len(ps_all) ))
+
+        if len(ps_all) > 0: 
+            print("len(ignored_ps)/len(ps_all) = {}".format(len(ignored_ps)/len(ps_all) ))
 
         for_comparison = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
 
