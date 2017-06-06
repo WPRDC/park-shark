@@ -810,7 +810,7 @@ def in_db(cached_dates,date_i):
     date_string = date_i.strftime(date_format)
     return (cached_dates.find_one(date=date_string) is not None)
 
-def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.utc):
+def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
     # This function gets parking purchases, either from a 
     # cache database (if the date appears to have been cached)
     # or else from the API (and then caches the whole thing 
@@ -837,7 +837,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.u
     ref_field = '@StartDateUtc' # This should not be changed.
     date_format = '%Y-%m-%d'
 
-    ref_tz = tz # pytz.utc
+    tz = pytz.utc
     ps_all = []
     dts_all = []
     #for each date in day before, day of, and day after (to get all transactions)
@@ -848,9 +848,11 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.u
     # To avoid issues with missing or extra hours during Daylight Savings Time,
     # all slot times should be in UTC.
 
-    # Let's try changing the cached_dates format so that that string is also UTC.
+    # The cached_dates format is also UTC dates. (This change was made to 
+    # route around issues encountered when using localized versions of 
+    # StartDateUtc and converting to dates.)
 
-    slot_start_date_string = slot_start.astimezone(ref_tz).strftime(date_format) # This is the date string 
+    slot_start_date_string = slot_start.astimezone(tz).strftime(date_format) # This is the date string 
     # for the start of the overall desired time range.
 
     if cached_dates.find_one(date=slot_start_date_string) is None:
@@ -868,7 +870,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.u
             query_start = beginning_of_day(slot_start) + (offset)*timedelta(days = 1)
             query_end = query_start + timedelta(days = 1)
 
-            #query_date_string = query_start.astimezone(ref_tz).strftime(date_format) # This is the date
+            #query_date_string = query_start.astimezone(tz).strftime(date_format) # This is the date
             # in the local time zone. # This seems to not be used at all.
 
             base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
@@ -913,16 +915,16 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.u
             dts = []
             for purchase_i,datetime_i in zip(purchases,datetimes):
                 if beginning_of_day(slot_start) <= datetime_i < beginning_of_day(slot_start) + timedelta(days=1):
-                    purchase_i['StartDateUTC__localized_date'] = (datetime_i).astimezone(ref_tz).strftime(date_format) # This SHOULD be equal to slot_start.date().........
+                    purchase_i['StartDateUTC_date'] = (datetime_i).astimezone(tz).strftime(date_format) # This SHOULD be equal to slot_start.date().........
                     # but verify this.
-                    if purchase_i['StartDateUTC__localized_date'] != slot_start_date_string:
+                    if purchase_i['StartDateUTC_date'] != slot_start_date_string:
                         print("slot_start = {} = {}".format(slot_start, slot_start.astimezone(pytz.utc)))
                         print("slot_start_date_string (This is the local date) = {}".format(slot_start_date_string))
                         print("beginning_of_day(slot_start) = {}".format(beginning_of_day(slot_start)))
                         print("datetime_i = {}".format(datetime_i))
                         print("beginning_of_day(slot_start) + timedelta(days=1) = {}".format(beginning_of_day(slot_start) + timedelta(days=1)))
                         pprint.pprint(purchase_i)
-                        raise ValueError("purchase_i['StartDateUTC__localized_date'] != slot_start_date_string, {} != {}".format(purchase_i['StartDateUTC__localized_date'], slot_start_date_string))
+                        raise ValueError("purchase_i['StartDateUTC_date'] != slot_start_date_string, {} != {}".format(purchase_i['StartDateUTC_date'], slot_start_date_string))
                     ps.append(purchase_i)
                     dts.append(datetime_i)
 
@@ -938,6 +940,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.u
         if cache:
             #store in the db and update cached_dates 
 
+            # A spot check of whether the datetime is in the slot:
             p = ps_all[0]
             dt = (pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S'))
 
@@ -946,7 +949,8 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.u
                 pprint.pprint(p)
             #else:
             #    print("The datetime {} ({}) checks out, being >= {}.".format(dt,p[ref_field],beginning_of_day(slot_start)))
-                
+
+
             ps_all_fixed = remove_field(ps_all,'PurchasePayUnit') # PurchasePayUnit itself contains a data structure
             # so dataset can't handle sticking it into a databse.
             # It might be better to take the payment information fields and add them as scalar fields.
@@ -1401,7 +1405,7 @@ def main(*args, **kwargs):
     print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
    
     cached_dates,_ = get_tables_from_db(db)
-    print("Currently cached dates: {}".format(list(cached_dates.all())))
+    print("Currently cached dates (These are UTC dates): {}".format(list(cached_dates.all())))
 
     if push_to_CKAN: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
