@@ -36,6 +36,11 @@ def query_yes_no(question, default="yes"):
     The "answer" return value is True for "yes" or False for "no".
     """
     # obtained from https://code.activestate.com/recipes/577058/
+
+    # Then modified to work under both Python 2 and 3.
+    # (Python 3 renamed "raw_input()" to "input()".)
+    global input
+    
     valid = {"yes": True, "y": True, "ye": True,
              "no": False, "n": False}
     if default is None:
@@ -47,9 +52,12 @@ def query_yes_no(question, default="yes"):
     else:
         raise ValueError("invalid default answer: '%s'" % default)
 
+    try: input = raw_input
+    except NameError: pass
+
     while True:
         sys.stdout.write(question + prompt)
-        choice = raw_input().lower()
+        choice = input().lower()
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:
