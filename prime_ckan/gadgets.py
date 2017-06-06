@@ -58,6 +58,26 @@ def query_yes_no(question, default="yes"):
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
+def fire_grappling_hook(filepath='ckan_settings.json',server='Stage'):
+    # Get parameters to communicate with a CKAN instance
+    # from the specified JSON file.
+    with open(filepath) as f:
+        settings = json.load(f)
+        API_key = settings["API Keys"][server]
+        site = get_site(settings,server)
+
+    return site, API_key, settings
+
+
+## FUNCTIONS RELATED TO DATASTORE ALIASES ##
+def get_resource_aliases(site,resource_id):
+    # If a resource ID is an alias for the real resource ID, this function will
+    # convert the pseudonym into the real resource ID and return it.
+    ckan = ckanapi.RemoteCKAN(site)
+    results = ckan.action.datastore_search(id='_table_metadata',filters={'alias_of':resource_id})['records']
+    known_aliases = [r['name'] for r in results]
+    return known_aliases
+
 def dealias(site,pseudonym):
     # If a resource ID is an alias for the real resource ID, this function will
     # convert the pseudonym into the real resource ID and return it.
@@ -65,6 +85,25 @@ def dealias(site,pseudonym):
     aliases = ckan.action.datastore_search(id='_table_metadata',filters={'name': pseudonym})
     resource_id = aliases['records'][0]['alias_of']
     return resource_id
+
+def add_aliases_to_resource(site,resource_id,API_key,aliases=[],overwrite=False):
+    # Add one or more datastore aliases to an existing CKAN resource.
+    # Set the "overwrite" flag to True to just replace the resource's existing
+    # aliases with the ones passed in the aliases argument.
+    if not overwrite:
+        # Get existing aliases. 
+        known_aliases = get_resource_aliases(site,resource_id)
+        # Add new aliases to existing aliases.
+        if type(aliases) == list:
+            aliases = known_aliases + aliases
+        elif type(aliases) == str:
+            aliases = known_aliases + aliases.split(',')
+    # Push list of aliases back to the datastore.
+    ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
+    outcome = ckan.action.datastore_create(resource_id=resource_id,aliases=aliases,force=True)
+    return outcome
+
+## END OF FUNCTIONS RELATED TO DATASTORE ALIASES ##
 
 
 def resource_show(ckan,resource_id):
@@ -113,75 +152,6 @@ def get_site(settings,server):
     scheme = urlparse(url).scheme
     hostname = urlparse(url).hostname
     return "{}://{}".format(scheme,hostname)
-
-def execute_query(URL,query=None,API_key=None):
-    # [ ] If the query might result in a response that is too large or
-    # too burdensome for the CKAN instance to generate, paginate
-    # this process somehow.
-
-    # Information about better ways to handle requests exceptions:
-    #http://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module/16511493#16511493
-
-
-    #To call the CKAN API, post a JSON dictionary in an HTTP POST
-    # request to one of CKAN's API URLs.
-
-    payload = {}
-    # These attempts to add the Authorization field to the request
-    # are failing, making it not yet possible for this function to work
-    # with private repositories.
-    #if API_key is not None:
-    #    payload = {'Authorization': API_key}
-    if query is not None:
-        payload['sql'] = query
-    try:
-        #print("payload = {}, URL = {}".format(payload,URL))
-
-        #head['Content-Type'] = 'application/x-www-form-urlencoded'
-        #in_dict = urllib.quote(json.dumps(in_dict))
-        #r = requests.post(url, data=in_dict, headers=head)
-
-        #payload = urllib.quote(json.dumps(payload))
-
-        r = requests.post(URL, payload)
-    except requests.exceptions.Timeout:
-        # Maybe set up for a retry, or continue in a retry loop
-        r = requests.post(URL, payload)
-    except requests.exceptions.TooManyRedirects:
-        # Tell the user their URL was bad and try a different one
-        print("This URL keeps redirecting. Maybe you should edit it.")
-    except requests.exceptions.RequestException as e:
-        # catastrophic error. bail.
-        print(e)
-        sys.exit(1)
-    return r
-
-def pull_and_verify_data(URL, site, failures=0):
-    success = False
-    try:
-        r = execute_query(URL)
-        result = r.json()["result"]
-        records = result["records"]
-        # You can just iterate through using the _links results in the
-        # API response:
-        #    "_links": {
-        #  "start": "/api/action/datastore_search?limit=5&resource_id=5bbe6c55-bce6-4edb-9d04-68edeb6bf7b1",
-        #  "next": "/api/action/datastore_search?offset=5&limit=5&resource_id=5bbe6c55-bce6-4edb-9d04-68edeb6bf7b1"
-        list_of_fields_dicts = result['fields']
-        all_fields = [d['id'] for d in list_of_fields_dicts]
-        if r.status_code != 200:
-            failures += 1
-        else:
-            URL = site + result["_links"]["next"]
-            success = True
-    except:
-        records = None
-        all_fields = None
-        #raise ValueError("Unable to obtain data from CKAN instance.")
-    # Information about better ways to handle requests exceptions:
-    #http://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module/16511493#16511493
-
-    return records, all_fields, URL, success
 
 def get_number_of_rows(site,resource_id,API_key=None):
 # This is pretty similar to get_fields and DRYer code might take
@@ -379,61 +349,31 @@ def get_all_records(site,resource_id,API_key=None,chunk_size=5000):
         k += 1
         print("{} iterations, {} failures, {} records, {} total records".format(k,failures,len(records),len(all_records)))
 
-    return all_records
+        # Another option for iterating through the records of a resource would be to 
+        # just iterate through using the _links results in the API response:
+        #    "_links": {
+        #  "start": "/api/action/datastore_search?limit=5&resource_id=5bbe6c55-bce6-4edb-9d04-68edeb6bf7b1",
+        #  "next": "/api/action/datastore_search?offset=5&limit=5&resource_id=5bbe6c55-bce6-4edb-9d04-68edeb6bf7b1"
+        # Like this:
+            #if r.status_code != 200:
+            #    failures += 1
+            #else:
+            #    URL = site + result["_links"]["next"]
 
-
-def get_resource(site,resource_id,chunk_size=500):
-    # Phasing this one out to be replaced by get_all_records
-    # since the latter supports private repositories.
-    limit = chunk_size
-    URL_template = "{}/api/3/action/datastore_search?resource_id={}&limit={}"
-
-    URL = URL_template.format(site, resource_id, limit)
-
-    all_records = []
-
-    failures = 0
-    records = [None, None, "Boojum"]
-    k = 0
-    while len(records) > 0 and failures < 5:
-        time.sleep(0.1)
-        records, fields, next_URL, success = pull_and_verify_data(URL,site,failures)
-        if success:
-            if records is not None:
-                all_records += records
-            URL = next_URL
-            failures = 0
-        else:
-            failures += 1
-        k += 1
-        print("{} iterations, {} failures, {} records, {} total records".format(k,failures,len(records),len(all_records)))
-
-    return all_records, fields, success
-
-
-def retrieve_new_data(self):
-    URL = "{}/api/3/action/datastore_search_sql".format(self.site)
-
-    #query = "SELECT {} FROM \"{}\" WHERE \"{}\" > '{}';".format(self.field, self.resource_id, self.index_field, self.last_index_checked)
-    query = "SELECT \"{}\",\"{}\" FROM \"{}\" WHERE \"{}\" > {};".format(self.field, self.index_field, self.resource_id, self.index_field, int(self.last_index_checked)-1)
-    #query = "SELECT {} FROM \"{}\";".format(self.field, self.resource_id)
-
-    print(query)
-
-    r = execute_query(URL,query)
-
-    print(r.status_code)
-    if r.status_code != 200:
-        r = requests.get(URL, {'sql': query})
-    if r.status_code == 200:
-        records = json.loads(r.text)["result"]["records"]
-        last_index_checked = records[-1][self.index_field]
-        return records, last_index_checked, datetime.now()
-    else:
-        raise ValueError("Unable to obtain data from CKAN instance.")
         # Information about better ways to handle requests exceptions:
         #http://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module/16511493#16511493
 
+    return all_records
+
+
+# A function to upsert data would look like this:
+# def push_new_data(site,resource_id,API_key,list_of_dicts,method='upsert'):
+#   outcome = ckan.action.datastore_upsert(resource_id=resource_id,records=list_of_dicts,method=method,force=True)
+
+##   outcome = ckan.action.datastore_upsert(resource_id='48437601-7682-4b62-b754-5757a0fa3170',records=[{'Number':23,'Another Number':798,'Subway':'FALSE','Foodtongue':'Ice cream sandwich'}],method='upsert',force=True)
+
+
+## PRIMARY KEY FUNCTIONS ##
 def elicit_primary_key(site,resource_id,API_key):
     # This function uses a workaround to determine the primary keys of a resource
     # from a CKAN API call. 
@@ -500,6 +440,12 @@ def elicit_primary_key(site,resource_id,API_key):
         primary_keys = []
 
     return primary_keys
+
+def set_primary_keys(site,resource_id,API_key,keys):
+    ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
+    outcome = ckan.action.datastore_create(resource_id=resource_id,primary_key=keys,force=True)
+    return outcome
+## END OF PRIMARY KEY FUNCTIONS ##
 
 def set_resource_parameters_to_values(site,resource_id,parameters,new_values,API_key):
     success = False
