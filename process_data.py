@@ -927,9 +927,6 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
                         raise ValueError("purchase_i['StartDateUTC_date'] != slot_start_date_string, {} != {}".format(purchase_i['StartDateUTC_date'], slot_start_date_string))
                     ps.append(purchase_i)
                     dts.append(datetime_i)
-                else:
-                    print("The datetime {} is in error, being outside the range between {} and {}.".format(p[ref_field],beginning_of_day(slot_start), beginning_of_day(slot_start+timedelta(days=1))))
-                    pprint.pprint(p)
 
             for p,dt in zip(ps,dts):
                 p['unix_time'] = epoch_time(dt)
