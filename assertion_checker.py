@@ -153,7 +153,11 @@ def main(*args, **kwargs):
                 if delta < start_created_min:
                     start_created_min = delta
                     print("Now min = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
-                hours[int(math.floor(delta/3600))] += 1
+                delta_in_hours = int(math.floor(delta/3600))
+                hours[delta_in_hours] += 1
+                if delta_in_hours*delta_in_hours > 2000*2000:
+                    print("Here's one of the most anomalously large time differences:")
+                    pprint.pprint(p)
 
                 #if not assertion_5(p):
                 #    print("Assertion 5 has been violated. Some events have a big time gap between StartDate and DateCreated, like this one:")
