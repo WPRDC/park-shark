@@ -1208,6 +1208,11 @@ def main(*args, **kwargs):
     #halting_time = pgh.localize(datetime(2017,3,2,0,0)) # Set halting time
     halting_time = kwargs.get('halting_time',halting_time)
 
+
+    slot_start = slot_start.astimezone(pytz.utc)
+    halting_time = halting_time.astimezone(pytz.utc)
+
+
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
     ad_hoc_zones, parent_zones = pull_terminals(use_cache=use_cache,return_extra_zones=True)
     print("ad hoc zones = {}".format(ad_hoc_zones))
