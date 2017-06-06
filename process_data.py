@@ -810,7 +810,7 @@ def in_db(cached_dates,date_i):
     date_string = date_i.strftime(date_format)
     return (cached_dates.find_one(date=date_string) is not None)
 
-def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.timezone('US/Eastern')):
+def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.utc):
     # This function gets parking purchases, either from a 
     # cache database (if the date appears to have been cached)
     # or else from the API (and then caches the whole thing 
@@ -845,6 +845,11 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.t
         # negative case of DateCreatedUtc - StartDateUtc observed so far has 
         # been -12 hours.]
 
+    # To avoid issues with missing or extra hours during Daylight Savings Time,
+    # all slot times should be in UTC.
+
+    # Let's try changing the cached_dates format so that that string is also UTC.
+
     slot_start_date_string = slot_start.astimezone(ref_tz).strftime(date_format) # This is the date string 
     # for the start of the overall desired time range.
 
@@ -863,7 +868,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False,tz=pytz.t
             query_start = beginning_of_day(slot_start) + (offset)*timedelta(days = 1)
             query_end = query_start + timedelta(days = 1)
 
-            #query_date_string = query_start.astimezone(tz).strftime(date_format) # This is the date
+            #query_date_string = query_start.astimezone(ref_tz).strftime(date_format) # This is the date
             # in the local time zone. # This seems to not be used at all.
 
             base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
@@ -1000,7 +1005,7 @@ def get_events_from_db(db,slot_start,slot_end,cache,mute=False,tz=pytz.timezone(
     # Here is a little sanity check:
     if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
         # This does an XOR between these values.
-        raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
+        raise RuntimeError("It looks like time_field may not be consistent with the provided time zone")
 
     cached_dates,cached_ps = get_tables_from_db(db)
 
@@ -1046,8 +1051,7 @@ def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.utc,time_fi
     # is in the slot or not, the time zone tz should be UTC.
     if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
         # This does an XOR between these values.
-        raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
-    
+        raise RuntimeError("It looks like time_field may not be consistent with the provided time zone")
 
     if time_field == '@DateCreatedUtc':
         margin = timedelta(minutes = 0)
@@ -1395,7 +1399,9 @@ def main(*args, **kwargs):
         slot_end = slot_start + timechunk
 
     print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
-
+   
+    cached_dates,_ = get_tables_from_db(db)
+    print("Currently cached dates: {}".format(list(cached_dates.all())))
 
     if push_to_CKAN: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
