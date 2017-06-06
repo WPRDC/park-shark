@@ -1135,11 +1135,11 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
                 if d['Inferred occupancy'] > 0 or zone in stats_rows.keys():
                     augmented.append(d)
 
-        elif zone in stats_rows.keys(): # Allentown is missing, but since all those terminals
+#        elif zone in stats_rows.keys(): # Allentown is missing, but since all those terminals
         # are listed as inactive, this branch should never get called
         # unless someone (maybe the ParkMobile user entering a code)
         # makes an error.
-            print("Found a zone not listed in temp_zone_info: {}".format(zone))
+#            print("Found a zone not listed in temp_zone_info: {}".format(zone))
     return list_of_dicts, augmented
 
 def main(*args, **kwargs):
