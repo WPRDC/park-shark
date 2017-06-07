@@ -797,6 +797,28 @@ def epoch_time(dt):
     except:
         return (dt-(pytz.utc).localize(datetime(1970,1,1,0,0,0))).total_seconds()
 
+# database functions #
+def create_db(db_filename):
+    db = dataset.connect('sqlite:///'+db_filename)
+    db.create_table('cached_dates', primary_id='date', primary_type='String')
+    db.create_table('cached_purchases', primary_id='unix_time', primary_type='Integer')
+    return db
+
+def create_or_connect_to_db(db_filename):
+    # It may be possible to do some of this more succinctly by using 
+    # get_table(table_name, primary_id = 'id', primary_type = 'Integer)
+    # to create the table if it doesn't already exist.
+    if os.path.isfile(path+db_filename):
+        try:
+            # Verify that both tables are present.
+            _ = db.load_table('cached_dates')
+            _ = db.load_table('cached_purchases')
+        except:
+            os.remove(db_filename)
+            db = create_db(db_filename)
+    else:
+        db = create_db(db_filename)
+    return db
 
 def get_tables_from_db(db):
     cached_dates = db['cached_dates']
@@ -810,6 +832,8 @@ def in_db(cached_dates,date_i):
     date_format = '%Y-%m-%d'
     date_string = date_i.strftime(date_format)
     return (cached_dates.find_one(date=date_string) is not None)
+# end database functions #
+
 
 def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
     # This function gets parking purchases, either from a 
@@ -990,7 +1014,9 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
 
     else: # Load locally cached version
         #requested_ps = db.query("SELECT * FROM cached_dates WHERE '@StartDateUtc' >= slot_start and '@StartDateUtc' <= slot_end")
+        t_b = time.time()
         requested_ps = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
+        print("t_c-t_b = {}".format(time.time()-t_b))
 
     return requested_ps
 
@@ -1178,7 +1204,7 @@ def main(*args, **kwargs):
     db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
     # changed with a passed parameter to substituted a test database 
     # for running controlled tests with small numbers of events.
-    db = dataset.connect('sqlite:///'+db_filename) #'db/b') #('sqlite:///:memory:')
+    db = create_or_connect_to_db(db_filename)
 
     zone_kind = 'new' # 'old' maps to enforcement zones
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
