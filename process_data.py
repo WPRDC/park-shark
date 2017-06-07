@@ -437,16 +437,17 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
     # Options for keeping statistics on such extensions:
     # 1) Delete all older records as they come up.
     # 2) Reduce the Duration of the extension
-    row['StartDateUTC'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
+#    row['StartDateUTC'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
     #'2016-09-19T13:47:16',
-    row['StartDateLocal'] = datetime.strptime(p['@StartDateLocal'],'%Y-%m-%dT%H:%M:%S')
-    row['PurchaseDateLocal'] = datetime.strptime(p['@PurchaseDateLocal'],'%Y-%m-%dT%H:%M:%S')
+#    row['StartDateLocal'] = datetime.strptime(p['@StartDateLocal'],'%Y-%m-%dT%H:%M:%S')
+#    row['PurchaseDateLocal'] = datetime.strptime(p['@PurchaseDateLocal'],'%Y-%m-%dT%H:%M:%S')
 
 #    row['PayIntervalStartUTC'] = datetime.strptime(p['@PayIntervalStartUtc'],'%Y-%m-%dT%H:%M:%S')
 
 #    row['EndDateUTC'] = datetime.strptime(p['@EndDateUtc'],'%Y-%m-%dT%H:%M:%S')
-    if '@EndDateUtc' in p:
-        end_time = datetime.strptime(p['@EndDateUtc'],'%Y-%m-%dT%H:%M:%S')
+
+#    if '@EndDateUtc' in p:
+#        end_time = datetime.strptime(p['@EndDateUtc'],'%Y-%m-%dT%H:%M:%S')
         # Some of the JSON files don't have this field because
         # I eliminated it from the more recent saved-file format.
         # Thus, maybe this whole 'Done' field is no longer needed
@@ -456,8 +457,8 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
     # payment extensions.
 
 
-        utc_end_time = (pytz.utc).localize(end_time)
-        row['Done'] = utc_end_time  < datetime.now(pytz.utc)
+#        utc_end_time = (pytz.utc).localize(end_time)
+#        row['Done'] = utc_end_time  < datetime.now(pytz.utc)
 
     return row
 
@@ -908,18 +909,22 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
 
             ps = convert_doc_to_purchases(doc['BatchExportRoot'],query_start,date_format)
 
+            # Remove fields #
             purchases = cull_fields(ps)
+
+            # Filter down to the events in the slot, adding on two date/time fields #
             datetimes = [(pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')) for p in purchases]
             #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
             ps = []
             dts = []
-
+            
             start_of_day = beginning_of_day(slot_start)
             start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
             for purchase_i,datetime_i in zip(purchases,datetimes):
                 if start_of_day <= datetime_i < start_of_next_day:
                     purchase_i['StartDateUTC_date'] = (datetime_i).astimezone(tz).strftime(date_format) # This SHOULD be equal to slot_start.date().........
                     # but verify this.
+                    # [ ] Assuming that these two things are equal would speed up processing a little.
                     if purchase_i['StartDateUTC_date'] != slot_start_date_string:
                         print("slot_start = {} = {}".format(slot_start, slot_start.astimezone(pytz.utc)))
                         print("slot_start_date_string (This is the local date) = {}".format(slot_start_date_string))
@@ -935,11 +940,12 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
                 p['unix_time'] = epoch_time(dt)
                 # This is a hack to provide a float that can be stored in SQLite (which has serious problems with datetime 
                 # comparisons) until I can get a Postgres database set up.
-                
+            
+            # Add these purchases to the overall accumulating set that fit in the slot #
             ps_all += ps #ps_all is all purchases that have StartDateUtc values between the beginning of the day corresponding to slot_start
             # and the beginning of the next day (24 hours later, in UTC).
             dts_all += dts         
-            
+        
         if cache:
             #store in the db and update cached_dates 
 
@@ -975,6 +981,8 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
 
         if len(ps_all) > 0: 
             print("len(ignored_ps)/len(ps_all) = {}".format(len(ignored_ps)/len(ps_all) ))
+            print("len(requested_ps)/len(ps_all) = {}".format(len(requested_ps)/len(ps_all) ))
+            # Note that this ratio can be large for warm-up periods.
 
         for_comparison = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
 
@@ -1149,6 +1157,7 @@ def main(*args, **kwargs):
     # This function accepts slot_start and halting_time datetimes as
     # arguments to set the time range and push_to_CKAN and output_to_csv
     # to control those output channels.
+    t_begin = time.time()
 
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
@@ -1301,11 +1310,17 @@ def main(*args, **kwargs):
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
+
+        t0 = time.time()
+
         # Get all parking events that start between slot_start and slot_end
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
 
         purchases = get_parking_events(db,slot_start,slot_end,True)
+        t1 = time.time()
+        print("t1-t0 = {}".format(t1-t0))
+
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
@@ -1334,10 +1349,14 @@ def main(*args, **kwargs):
             #            virtual_zone_checked.append(code)
 
 
+            t2 = time.time()
+            print("t2-t1 = {}".format(t2-t1))
             # Condense to key statistics (including duration counts).
             stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
 
+            t3 = time.time()
+            print("t3-t2 = {}".format(t3-t2))
             ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
 
             if not turbo_mode and augment:
@@ -1353,6 +1372,9 @@ def main(*args, **kwargs):
             # represents a row for a parking zone (or lot) and time slot.
 
             list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone',augment)
+            t5 = time.time()
+            print("t5-t3 = {}".format(t5-t3))
+            
             if output_to_csv and len(list_of_dicts) > 0: # Write to files as
             # often as necessary, since the associated delay is not as great as
             # for pushing data to CKAN.
@@ -1380,7 +1402,7 @@ def main(*args, **kwargs):
 
             if output_to_csv and len(ad_hoc_list_of_dicts) > 0:
                 write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys,overwrite)
-                print("Wrote some ad hoc data to a CSV file")
+                #print("Wrote some ad hoc data to a CSV file")
 
             cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
             if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
@@ -1395,10 +1417,16 @@ def main(*args, **kwargs):
         slot_start += timechunk
         slot_end = slot_start + timechunk
 
+        t8 = time.time()
+        print("t8-t5 = {}".format(t8-t5))
+
     print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
    
     cached_dates,_ = get_tables_from_db(db)
     print("Currently cached dates (These are UTC dates): {}".format(list(cached_dates.all())))
+
+    t_end = time.time()
+    print("Run time = {}".format(t_end-t_begin))
 
     if push_to_CKAN: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
