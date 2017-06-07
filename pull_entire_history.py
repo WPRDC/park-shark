@@ -25,6 +25,7 @@ def main():
     slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=6))
     halting_time = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=2))
     slot_start = pgh.localize(datetime(2012,7,23,0,0))
+    #slot_start = pgh.localize(datetime(2013,9,24,0,0))
     halting_time = pgh.localize(datetime(3030,4,13,0,0))
     # Note that these days are chosen to be within the last 7 days so that 
     # the data can be pulled from the API without using the bulk API (and 
