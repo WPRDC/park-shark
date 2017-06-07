@@ -931,9 +931,9 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
             for p,dt in zip(ps,dts):
                 p['unix_time'] = epoch_time(dt)
                 # This is a hack to provide a float that can be stored in SQLite (which has serious problems with datetime 
-
+                # comparisons) until I can get a Postgres database set up.
                 
-            ps_all += ps #ps_all is all purchases that have StartDateUtc values between the beginning fo the day corresponding to slot_start
+            ps_all += ps #ps_all is all purchases that have StartDateUtc values between the beginning of the day corresponding to slot_start
             # and the beginning of the next day (24 hours later, in UTC).
             dts_all += dts         
             
