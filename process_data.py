@@ -913,16 +913,19 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
             #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
             ps = []
             dts = []
+
+            start_of_day = beginning_of_day(slot_start)
+            start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
             for purchase_i,datetime_i in zip(purchases,datetimes):
-                if beginning_of_day(slot_start) <= datetime_i < beginning_of_day(slot_start) + timedelta(days=1):
+                if start_of_day <= datetime_i < start_of_next_day:
                     purchase_i['StartDateUTC_date'] = (datetime_i).astimezone(tz).strftime(date_format) # This SHOULD be equal to slot_start.date().........
                     # but verify this.
                     if purchase_i['StartDateUTC_date'] != slot_start_date_string:
                         print("slot_start = {} = {}".format(slot_start, slot_start.astimezone(pytz.utc)))
                         print("slot_start_date_string (This is the local date) = {}".format(slot_start_date_string))
-                        print("beginning_of_day(slot_start) = {}".format(beginning_of_day(slot_start)))
+                        print("beginning_of_day(slot_start) = {}".format(start_of_day))
                         print("datetime_i = {}".format(datetime_i))
-                        print("beginning_of_day(slot_start) + timedelta(days=1) = {}".format(beginning_of_day(slot_start) + timedelta(days=1)))
+                        print("beginning_of_day(slot_start) + timedelta(days=1) = {}".format(start_of_next_day))
                         pprint.pprint(purchase_i)
                         raise ValueError("purchase_i['StartDateUTC_date'] != slot_start_date_string, {} != {}".format(purchase_i['StartDateUTC_date'], slot_start_date_string))
                     ps.append(purchase_i)
