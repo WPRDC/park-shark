@@ -800,7 +800,7 @@ def epoch_time(dt):
 # database functions #
 def create_db(db_filename):
     db = dataset.connect('sqlite:///'+db_filename)
-    db.create_table('cached_dates', primary_id='date', primary_type='String')
+    db.create_table('cached_utc_dates', primary_id='date', primary_type='String')
     db.create_table('cached_purchases', primary_id='@PurchaseGuid', primary_type='String')
     cached_ps = db['cached_purchases']
     cached_ps.create_index(['unix_time']) 
@@ -817,10 +817,10 @@ def create_or_connect_to_db(db_filename):
             db = dataset.connect('sqlite:///'+db_filename)
             print("Database file found with tables {}.".format(db.tables))
             # Verify that both tables are present.
-            cached_ds = db.load_table('cached_dates')
+            cached_ds = db.load_table('cached_utc_dates')
             sorted_ds = cached_ds.find(order_by=['date'])
             cds = list(cached_ds.all())
-            print("cached_dates loaded. It contains {} dates. The first is {}, and the last is {}.".format(len(cds), cds[0], cds[-1]))
+            print("cached_utc_dates loaded. It contains {} dates. The first is {}, and the last is {}.".format(len(cds), cds[0], cds[-1]))
             _ = db.load_table('cached_purchases')
             print("Both tables found.")
         except sqlalchemy.exc.NoSuchTableError as e:
@@ -828,15 +828,15 @@ def create_or_connect_to_db(db_filename):
             os.remove(db_filename)
             db = create_db(db_filename)
             print("Deleted file and created new database.")
-            cds = db.load_table('cached_dates')
-            print("cached_dates loaded again, as another test.")
+            cds = db.load_table('cached_utc_dates')
+            print("cached_utc_dates loaded again, as another test.")
     else:
         print("Database file not found. Creating new one.")
         db = create_db(db_filename)
     return db
 
 def get_tables_from_db(db):
-    cached_dates = db['cached_dates']
+    cached_dates = db['cached_utc_dates']
     cached_ps = db['cached_purchases']
     return cached_dates,cached_ps
 
@@ -1032,7 +1032,6 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
         # [ ] Do the comparison of requested_ps with for_comparison.
 
     else: # Load locally cached version
-        #requested_ps = db.query("SELECT * FROM cached_dates WHERE '@StartDateUtc' >= slot_start and '@StartDateUtc' <= slot_end")
         t_b = time.time()
         requested_ps = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
         print("t_c-t_b = {}".format(time.time()-t_b))
