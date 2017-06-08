@@ -1330,7 +1330,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
         t_b = time.time()
         requested_ps = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
         t_c = time.time()
-        print("Got {} transactions from the database in {} s.".format(t_c-t_b))
+        print("Got {} transactions from the database in {} s.".format(len(requested_ps),t_c-t_b))
     return requested_ps
 
 def get_events_from_db(db,slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
