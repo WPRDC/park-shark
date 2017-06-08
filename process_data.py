@@ -1002,8 +1002,21 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
 
             # ps is a list of dicts.
             t_x = time.time()
-            for p in ps_all_fixed:
-                cached_ps.upsert(p, ['@PurchaseGuid'])
+
+            db.begin()
+            try:
+                for p in ps_all_fixed:
+                    db['cached_purchases'].upsert(p, ['@PurchaseGuid'])
+                db.commit()
+            except:
+                db.rollback()
+            # The upserting code was rewritten from the version below to the version above 
+            # to try to speed up the process, but it's not clear how much it really helped.
+            # Both would need to be tested on a list of ~10,000 transactions to see the 
+            # true improvement.
+
+            #for p in ps_all_fixed:
+            #    cached_ps.upsert(p, ['@PurchaseGuid'])
             t_y = time.time()
             print("     Time required to upsert {} transactions to the database: {} s".format(len(ps_all_fixed),t_y-t_x))
 
