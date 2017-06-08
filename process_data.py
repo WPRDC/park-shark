@@ -1005,7 +1005,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
             for p in ps_all_fixed:
                 cached_ps.upsert(p, ['@PurchaseGuid'])
             t_y = time.time()
-            print("Time required to upsert {} transactions to the database: {} s".format(len(ps_all_fixed),t_y-t_x))
+            print("     Time required to upsert {} transactions to the database: {} s".format(len(ps_all_fixed),t_y-t_x))
 
             cached_dates.upsert(dict(date = slot_start_date_string), ['date'])
 
@@ -1399,8 +1399,6 @@ def main(*args, **kwargs):
             stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
 
-            t3 = time.time()
-            print("t3-t2 = {}".format(t3-t2))
             ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
 
             if not turbo_mode and augment:
@@ -1416,8 +1414,6 @@ def main(*args, **kwargs):
             # represents a row for a parking zone (or lot) and time slot.
 
             list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone',augment)
-            t5 = time.time()
-            print("t5-t3 = {}".format(t5-t3))
             
             if output_to_csv and len(list_of_dicts) > 0: # Write to files as
             # often as necessary, since the associated delay is not as great as
@@ -1460,9 +1456,8 @@ def main(*args, **kwargs):
 
         slot_start += timechunk
         slot_end = slot_start + timechunk
-
         t8 = time.time()
-        print("t8-t5 = {}".format(t8-t5))
+        print("t8-t0 = {}".format(t8-t0))
 
     print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
    
