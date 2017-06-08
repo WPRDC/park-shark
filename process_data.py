@@ -788,6 +788,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     return ps
 
 def epoch_time(dt):
+    """Convert a datetime to the UNIX epoch time."""
    # Be sure to do all this in UTC.  
 
     if is_timezoneless(dt):
@@ -807,8 +808,7 @@ def create_db(db_filename):
     db.create_table('cached_utc_dates', primary_id='date', primary_type='String')
     db.create_table('cached_purchases', primary_id='@PurchaseGuid', primary_type='String')
     cached_ps = db['cached_purchases']
-    cached_ps.create_index(['unix_time']) 
-    # Create this index to massively speed up queries.
+    cached_ps.create_index(['unix_time']) # Creating this index should massively speed up queries.
     return db
 
 def create_or_connect_to_db(db_filename):
@@ -840,6 +840,7 @@ def create_or_connect_to_db(db_filename):
     return db
 
 def get_tables_from_db(db):
+    """Convenience function to get the two cache tables from the cache database."""
     cached_dates = db['cached_utc_dates']
     cached_ps = db['cached_purchases']
     return cached_dates,cached_ps
@@ -1063,7 +1064,7 @@ def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@St
     # which suggests a good test to try.
 
     ###
-    # This function handles situation where slot_start and slot_end are on different days
+    # This function handles the situation where slot_start and slot_end are on different days
     # by calling get_ps_for_day in a loop.
 
     # The parameter "time_field" determines which of the timestamps is used for calculating
@@ -1074,8 +1075,8 @@ def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@St
     # Note that the time zone tz and the time_field must be consistent for this to work properly.
     # Here is a little sanity check:
     
-    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
-        # This does an XOR between these values.
+    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): # This does an XOR 
+                                                                      # between these values.
         raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
 
     global last_utc_date_cache, utc_ps_cache, utc_dts_cache
