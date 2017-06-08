@@ -854,43 +854,13 @@ def in_db(cached_dates,date_i):
 # end database functions #
 
 
-def placeholder():
-        global last_utc_date_cache, utc_ps_cache, utc_ts
-        if last_utc_date_cache != slot_start_date_string:
-            if not mute:
-                print("last_utc_date_cache ({}) doesn't match slot_start_date_string ({})".format(last_utc_date_cache, slot_start_date_string))
-
-            utc_ps_all = []
-            dt_start_i = slot_start
-            while dt_start_i < slot_end:
-                ps_for_whole_utc_day = get_batch_parking_for_day(dt_start_i,cache,mute)
-                ps_all += ps_for_whole_utc_day
-                dt_start_i += timedelta(days = 1)
-                if not mute:
-                    print("Now there are {} transactions in ps_all".format(len(ps_all)))
-
-            all_day_ps_cache = ps_all # Note that if slot_start and slot_end are not on the same day,
-            # all_day_ps_cache will hold transactions for more than just the date of slot_start, but
-            # since filtering is done further down in this function, this should not represent a
-            # problem. There should be no situations where more than two days of transactions will
-            # wind up in this cache at any one time.
-            dts = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all]
-            time.sleep(3)
-        else:
-            utc_ps_all = utc_ps_cache
-        #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
-        # execute each time for busy days since the time calculations
-        # are on the scale of tens of microseconds.
-        # So let's generate the datetimes once (above), and do
-        # it this way:
-        ps = [p for p,utc_dt in zip(utc_ps_all,utc_dts) if slot_start <= utc_dt < slot_end]
-        # Now instead of 3 seconds it takes like 0.03 seconds.
-        last_utc_date_cache = slot_start_date_string
-
 # Attempting to split get_ps_from_somewhere into two functions to enable day-by-day
 # caching, to reduce database hits, like in the previous approach.
 
 def get_ps_for_day(db,slot_start,cache=True,mute=False):
+    # (This is designed to be the "from_somewhere" part of the function
+    # formerly known as get_ps_from_somewhere.)
+    ###
     # Caches parking once it's been downloaded (in a database) and checks
     # cache before redownloading.
 
@@ -1082,7 +1052,17 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
 
     return ps
 
-def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f'):
+def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f'):
+    # (This is designed to be the "get_ps" part of the function
+    # formerly known as get_ps_from_somewhere.)
+    
+    # That is,
+    #       get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
+    # should return the same results as
+    #       get_ps(db,slot_start,slot_end,cache,mute)
+    # which suggests a good test to try.
+
+    ###
     # This function handles situation where slot_start and slot_end are on different days
     # by calling get_ps_for_day in a loop.
 
@@ -1130,7 +1110,6 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_fiel
     # Now instead of 3 seconds it takes like 0.03 seconds.
     last_utc_date_cache = slot_start.date()
     return ps
-
 
 def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
     # This function gets parking purchases, either from a 
