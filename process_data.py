@@ -24,7 +24,7 @@ import pprint
 from datetime import datetime, timedelta
 import pytz
 
-import dataset
+import dataset, sqlalchemy
 
 
 from credentials_file import CALE_API_user, CALE_API_password
@@ -801,22 +801,37 @@ def epoch_time(dt):
 def create_db(db_filename):
     db = dataset.connect('sqlite:///'+db_filename)
     db.create_table('cached_dates', primary_id='date', primary_type='String')
-    db.create_table('cached_purchases', primary_id='unix_time', primary_type='Integer')
+    db.create_table('cached_purchases', primary_id='@PurchaseGuid', primary_type='String')
+    cached_ps = db['cached_purchases']
+    cached_ps.create_index(['unix_time']) 
+    # Create this index to massively speed up queries.
     return db
 
 def create_or_connect_to_db(db_filename):
     # It may be possible to do some of this more succinctly by using 
     # get_table(table_name, primary_id = 'id', primary_type = 'Integer)
     # to create the table if it doesn't already exist.
+    print("Checking for path+db_filename = {}".format(path+db_filename))
     if os.path.isfile(path+db_filename):
         try:
+            db = dataset.connect('sqlite:///'+db_filename)
+            print("Database file found with tables {}.".format(db.tables))
             # Verify that both tables are present.
-            _ = db.load_table('cached_dates')
+            cached_ds = db.load_table('cached_dates')
+            sorted_ds = cached_ds.find(order_by=['date'])
+            cds = list(cached_ds.all())
+            print("cached_dates loaded. It contains {} dates. The first is {}, and the last is {}.".format(len(cds), cds[0], cds[-1]))
             _ = db.load_table('cached_purchases')
-        except:
+            print("Both tables found.")
+        except sqlalchemy.exc.NoSuchTableError as e:
+            print("Unable to load at least one of the tables.")
             os.remove(db_filename)
             db = create_db(db_filename)
+            print("Deleted file and created new database.")
+            cds = db.load_table('cached_dates')
+            print("cached_dates loaded again, as another test.")
     else:
+        print("Database file not found. Creating new one.")
         db = create_db(db_filename)
     return db
 
@@ -985,10 +1000,14 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
                 pprint.pprint(should_be_none)
                 raise ValueError("A transaction was found in the database even though it shouldn't have been there according to cached_dates.")
 
-            cached_ps.insert_many(ps_all_fixed) 
-            # This should just work since ps should be a list of dicts.
+            # ps is a list of dicts.
+            t_x = time.time()
+            for p in ps_all_fixed:
+                cached_ps.upsert(p, ['@PurchaseGuid'])
+            t_y = time.time()
+            print("Time required to upsert {} transactions to the database: {} s".format(len(ps_all_fixed),t_y-t_x))
 
-            cached_dates.insert(dict(date = slot_start_date_string))
+            cached_dates.upsert(dict(date = slot_start_date_string), ['date'])
 
         # Now that the data for one full day has been stored in the cache database,
         # obtain the originally desired transactions.
