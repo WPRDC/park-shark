@@ -62,11 +62,11 @@ DEFAULT_TIMECHUNK = timedelta(minutes=10)
 
 last_date_cache = None
 all_day_ps_cache = []
-dts = []
+dts_cache = []
 
 last_utc_date_cache = None
 utc_ps_cache = []
-utc_dts = []
+utc_dts_cache = []
 
 temp_zone_info = {'344 - 18th & Carson Lot': {'Latitude': 40.428484093957401,
                  'Longitude': -79.98027965426445,
@@ -754,7 +754,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
         # This does an XOR between these values.
         raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
 
-    global last_date_cache, all_day_ps_cache, dts
+    global last_date_cache, all_day_ps_cache, dts_cache
     if last_date_cache != slot_start.date():
         if not mute:
             print("last_date_cache ({}) doesn't match slot_start.date() ({})".format(last_date_cache, slot_start.date()))
@@ -773,7 +773,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
         # since filtering is done further down in this function, this should not represent a 
         # problem. There should be no situations where more than two days of transactions will
         # wind up in this cache at any one time.
-        dts = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all]
+        dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all]
         time.sleep(3)
     else:
         ps_all = all_day_ps_cache
@@ -782,7 +782,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     # are on the scale of tens of microseconds.
     # So let's generate the datetimes once (above), and do
     # it this way:
-    ps = [p for p,dt in zip(ps_all,dts) if slot_start <= dt < slot_end]
+    ps = [p for p,dt in zip(ps_all,dts_cache) if slot_start <= dt < slot_end]
     # Now instead of 3 seconds it takes like 0.03 seconds.
     last_date_cache = slot_start.date()
     return ps
