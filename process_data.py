@@ -1003,7 +1003,9 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             ps_all += ps #ps_all is all purchases that have StartDateUtc values between the beginning of the day corresponding to slot_start
             # and the beginning of the next day (24 hours later, in UTC).
             dts_all += dts         
-        
+            
+            print("len(ps)/len(purchases) = {}".format(len(ps)/len(purchases)))
+
         if cache:
             # Store in db and update cached_dates.
 
@@ -1053,7 +1055,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
 
     return ps
 
-def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f'):
+def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
     # (This is designed to be the "get_ps" part of the function
     # formerly known as get_ps_from_somewhere.)
     
@@ -1288,21 +1290,10 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
         # obtain the originally desired transactions.
 
 
-        requested_ps = []
-        ignored_ps = []
-        #requested_ps = [p for p,dt in zip(ps_all,dts_all) if slot_start <= dt < slot_end]
-        for p,dt in zip(ps_all,dts_all):
-            if slot_start <= dt < slot_end:
-                requested_ps.append(p)
-            else:
-                ignored_ps.append(p)
-
-        if len(ps_all) > 0: 
-            print("len(ignored_ps)/len(ps_all) = {}".format(len(ignored_ps)/len(ps_all) ))
-            print("len(requested_ps)/len(ps_all) = {}".format(len(requested_ps)/len(ps_all) ))
-            # Note that this ratio can be large for warm-up periods.
+        requested_ps = [p for p,dt in zip(ps_all,dts_all) if slot_start <= dt < slot_end]
 
         for_comparison = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(epoch_time(slot_start),epoch_time(slot_end))))
+        print("len(requested_ps) = {}, while len(for_comparison) = {}".format(len(requested_ps),len(for_comparison)))
 
         # [ ] Do the comparison of requested_ps with for_comparison.
 
@@ -1428,6 +1419,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
         if db_caching_mode:
+            #return get_ps(db,slot_start,slot_end,cache,mute)
             return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
         #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
         # this function should return the same thing as get_ps_from_somewhere.
