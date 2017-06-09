@@ -378,6 +378,7 @@ def add_to_dict(p,p_dict,terminals,t_guids):
 def reframe(p,terminals,t_guids,p_history,turbo_mode):
     # Take a dictionary and generate a new dictionary from it that samples
     # the appropriate keys and renames and transforms as desired.
+    t_A = time.time()
     row = {}
     #row['GUID'] = p['@PurchaseGuid'] # To enable this field,
     # get_batch_parking_for_day needs to be tweaked and
@@ -404,10 +405,11 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
 # IT WOULD BE NICE FOR THEM TO BE SO TO SIMPLIFY THE COUNTS
 # DATA STRUCTURE
 
+    t_B = time.time()
     if not turbo_mode and not is_original(p,t,p_history): # This is an initial test, but
     # some of the hits that it can return may still be rejected
     # by the find_predecessors function.
-
+        t_C = time.time()
     # [ ] One option would be to change the p_history dict to
     # correctly separate purchases into sessions.
     # [ ] Another option would be just to eliminate the is_original
@@ -436,6 +438,7 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
             row['Duration'] -= int(predecessors[-1]['@Units'])
 
 
+     
     #row['Extension'] = a Boolean that indicates whether this purchase is
     # an extension of a previous purchase.
     # Options for keeping statistics on such extensions:
@@ -463,6 +466,8 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
 
 #        utc_end_time = (pytz.utc).localize(end_time)
 #        row['Done'] = utc_end_time  < datetime.now(pytz.utc)
+    t_D = time.time()
+    #print("t_B - t_A = {:1.2e}, t_C-t_B = {:1.2e}, t_D-t_C = {:1.2e}".format(t_B-t_A,t_C-t_B,t_D-t_C))
 
     return row
 
@@ -924,7 +929,8 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
 
         if not mute:
             print("Sigh! {} not found in cached_dates, so I'm pulling the data from the API...".format(slot_start_date_string))
-       # Pull the data from the API.
+        # Pull the data from the API.
+        
         for offset in range(-1,2):
             query_start = beginning_of_day(slot_start) + (offset)*timedelta(days = 1)
             query_end = query_start + timedelta(days = 1)
@@ -935,6 +941,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             url = build_url(base_url,query_start,query_end)
 
+            t_start_dl = time.time()
             if not mute:
                 print("Here's the URL for offset = {}: {}".format(offset,url))
             r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
@@ -958,14 +965,18 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             while not r3.ok:
                 time.sleep(5)
                 r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
-
-            z = zipfile.ZipFile(BytesIO(r3.content))
+            
+            z = zipfile.ZipFile(BytesIO(r3.content)) # This unzipping time can be like half a 
+            # second and is sufficient buffer time between the previous API call and the next one.
 
             # Extract contents of a one-file zip file to memory:
             xml = z.read(z.namelist()[0])
             doc = xmltodict.parse(xml,encoding = 'utf-8')
 
             ps = convert_doc_to_purchases(doc['BatchExportRoot'],query_start,date_format)
+
+            t_end_dl = time.time()
+
 
             # Remove fields #
             purchases = cull_fields(ps)
@@ -1004,7 +1015,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             # and the beginning of the next day (24 hours later, in UTC).
             dts_all += dts         
             
-            print("len(ps)/len(purchases) = {}".format(len(ps)/len(purchases)))
+            print("  Time required to pull day {} from the API: {} s  |  len(ps)/len(purchases) = {}".format(offset,t_end_dl-t_start_dl,len(ps)/len(purchases)))
 
         if cache:
             # Store in db and update cached_dates.
@@ -1051,8 +1062,9 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
         # Manual tests suggest that the unix_time query is at least not returning any results outside the intended date range
 
         ps2 = list(db.query("SELECT * FROM cached_purchases WHERE StartDateUTC_date = {}".format(slot_start_date_string)))
-        print("The unix_time query returned {} transactions, while the StartDateUtc_date query (seeking {}) returned {} transactions.".format(len(ps), slot_start_date_string, len(ps2)))
-
+        print("The unix_time query returned {} transactions.".format(len(ps), slot_start_date_string))
+        #print("The unix_time query returned {} transactions, while the StartDateUtc_date query (seeking {}) returned {} transactions.".format(len(ps), slot_start_date_string, len(ps2)))
+    
     return ps
 
 def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
@@ -1320,6 +1332,7 @@ def get_events_from_db(db,slot_start,slot_end,cache,mute=False,tz=pytz.timezone(
     # Here is a little sanity check:
     if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
         # This does an XOR between these values.
+        print("time_field = {}, but tz = {}".format(time_field,tz))
         raise RuntimeError("It looks like time_field may not be consistent with the provided time zone")
 
     cached_dates,cached_ps = get_tables_from_db(db)
@@ -1409,6 +1422,7 @@ def naive_get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timez
 
 def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
     db_caching_mode = True
+    #db_caching_mode = False
 
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
@@ -1630,8 +1644,6 @@ def main(*args, **kwargs):
 
         purchases = get_parking_events(db,slot_start,slot_end,True)
         t1 = time.time()
-        print("t1-t0 = {}".format(t1-t0))
-
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
@@ -1661,16 +1673,18 @@ def main(*args, **kwargs):
 
 
             t2 = time.time()
-            print("t2-t1 = {}".format(t2-t1))
+
             # Condense to key statistics (including duration counts).
             stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
-
+            
             ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
 
+            t3 = time.time()
             if not turbo_mode and augment:
                 inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
             # We may eventually need to compute ad_hoc_inferred_occupancy.
+            t4 = time.time()
 
             if len(stats_rows) == 0:
                 print
@@ -1724,8 +1738,10 @@ def main(*args, **kwargs):
         slot_start += timechunk
         slot_end = slot_start + timechunk
         t8 = time.time()
-        print("t8-t0 = {}".format(t8-t0))
-
+        if len(reframed_ps) > 0:
+            print("t8-t0 = {:1.2e} s. t1-t0 = {:1.2e} s. t2-t1 = {:1.2e} s. t3-t2 = {:1.2e} s.  (t3-t2)/len(rps) = {:1.2e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t3-t2)/len(reframed_ps)))
+        else:
+            print("t8-t0 = {:1.2e} s. t1-t0 = {:1.2e} s. t2-t1 = {:1.2e} s. t3-t2 = {:1.2e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
     print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
    
     cached_dates,_ = get_tables_from_db(db)
