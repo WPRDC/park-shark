@@ -1739,10 +1739,11 @@ def main(*args, **kwargs):
         slot_start += timechunk
         slot_end = slot_start + timechunk
         t8 = time.time()
-        if len(reframed_ps) > 0:
-            print("t8-t0 = {:1.2e} s. t1-t0 = {:1.2e} s. t2-t1 = {:1.2e} s. t3-t2 = {:1.2e} s.  (t3-t2)/len(rps) = {:1.2e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t3-t2)/len(reframed_ps)))
-        else:
-            print("t8-t0 = {:1.2e} s. t1-t0 = {:1.2e} s. t2-t1 = {:1.2e} s. t3-t2 = {:1.2e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
+        if not skip_processing:
+            if len(reframed_ps) > 0:
+                print("t8-t0 = {:1.2e} s. t1-t0 = {:1.2e} s. t2-t1 = {:1.2e} s. t3-t2 = {:1.2e} s.  (t3-t2)/len(rps) = {:1.2e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t3-t2)/len(reframed_ps)))
+            else:
+                print("t8-t0 = {:1.2e} s. t1-t0 = {:1.2e} s. t2-t1 = {:1.2e} s. t3-t2 = {:1.2e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
     print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
    
     cached_dates,_ = get_tables_from_db(db)
