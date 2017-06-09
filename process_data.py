@@ -1492,9 +1492,10 @@ def main(*args, **kwargs):
     filename = kwargs.get('filename',default_filename)
     overwrite = kwargs.get('overwrite',False)
 
-    turbo_mode = False # When turbo_mode is true, skip time-consuming stuff,
+    turbo_mode = kwargs.get('turbo_mode',False)
+    # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
-    skip_processing = False
+    skip_processing = kwargs.get('skip_processing',False)
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
