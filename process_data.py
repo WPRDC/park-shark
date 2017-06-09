@@ -1025,7 +1025,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             # It might be better to take the payment information fields and add them as scalar fields.
 
             # Verify that there are currently no transactions in the database with the target StartDateUTC date string:
-            should_be_none = cached_ps.find_one(StartDateUTC__localized_date = slot_start_date_string)
+            should_be_none = cached_ps.find_one(StartDateUTC_date = slot_start_date_string)
 
             if should_be_none is not None:
                 print("should_be_none = ")
@@ -1269,7 +1269,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
             # It might be better to take the payment information fields and add them as scalar fields.
 
             # Verify that there are currently no transactions in the database with the target StartDateUTC date string:
-            should_be_none = cached_ps.find_one(StartDateUTC__localized_date = slot_start_date_string)
+            should_be_none = cached_ps.find_one(StartDateUTC_date = slot_start_date_string)
 
             if should_be_none is not None:
                 print("should_be_none = ")
