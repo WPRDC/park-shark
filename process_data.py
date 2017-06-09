@@ -1419,8 +1419,8 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
         if db_caching_mode:
-            #return get_ps(db,slot_start,slot_end,cache,mute)
-            return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
+            return get_ps(db,slot_start,slot_end,cache,mute)
+            #return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
         #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
         # this function should return the same thing as get_ps_from_somewhere.
         else:
