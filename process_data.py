@@ -1423,7 +1423,7 @@ def naive_get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timez
     time.sleep(1)
     return ps
 
-def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
+def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,db_caching=True):
     db_caching_mode = True
     db_caching_mode = False
 
@@ -1435,7 +1435,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
         #return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
-        if db_caching_mode:
+        if db_caching:
             #return get_ps(db,slot_start,slot_end,cache,mute)
             return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
         #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
@@ -1499,6 +1499,7 @@ def main(*args, **kwargs):
     # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
     skip_processing = kwargs.get('skip_processing',False)
+    db_caching = kwargs.get('db_caching',False)
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
@@ -1560,12 +1561,16 @@ def main(*args, **kwargs):
     # Setting slot_start and halting_time to UTC has no effect on 
     # getting_ps_from_somewhere, but totally screws up get_batch_parking
     # (resulting in zero transactions after 20:00 (midnight UTC).
-    slot_start = slot_start.astimezone(pytz.utc)
-    halting_time = halting_time.astimezone(pytz.utc)
+    if db_caching:
+        slot_start = slot_start.astimezone(pytz.utc)
+        halting_time = halting_time.astimezone(pytz.utc)
     # This is not related to the resetting of ps_dict, since extending 
     # ps_dict by adding on previous_ps_dict did not change the fact that 
     # casting slot_start and halting_time to UTC caused all transactions
     # after 20:00 ET to not appear in the output.
+
+    # Therefore, (until the real reason is uncovered), slot_start and halting_time
+    # will only be converted to UTC when using database caching.
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
     ad_hoc_zones, parent_zones = pull_terminals(use_cache=use_cache,return_extra_zones=True)
@@ -1631,7 +1636,7 @@ def main(*args, **kwargs):
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
-        purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False)
+        purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False,db_caching)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
             reframe(p,terminals,t_guids,ps_dict,{},turbo_mode)
             ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # ps_dict is intended to
@@ -1657,7 +1662,7 @@ def main(*args, **kwargs):
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
 
-        purchases = get_parking_events(db,slot_start,slot_end,True)
+        purchases = get_parking_events(db,slot_start,slot_end,True,False,db_caching)
         t1 = time.time()
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))

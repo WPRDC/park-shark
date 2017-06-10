@@ -18,13 +18,13 @@ def main():
     halting_time = datetime.now(pgh) #process_data.roundTime(datetime.now(pgh), slot_width)
 
     slot_start = pgh.localize(process_data.beginning_of_day(datetime(2012,7,24,0,0)))
-    slot_start = pgh.localize(process_data.beginning_of_day(datetime(2016,10,10,0,0)))
+    slot_start = pgh.localize(process_data.beginning_of_day(datetime(2013,10,1,0,0)))
     halting_time = slot_start+timedelta(hours = 24)
 #    slot_start = pgh.localize(datetime(2013,1,23,11,45,18))
 #    halting_time = slot_start+timedelta(seconds=1)
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(output_to_csv = True, push_to_CKAN = False, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100)
+    success = process_data.main(output_to_csv = True, push_to_CKAN = False, db_caching = True, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
