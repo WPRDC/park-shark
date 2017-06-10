@@ -317,7 +317,7 @@ def p_hash(p,t):
     # purchase back to that first purchase.
     return "{}|{}".format(p['@PurchaseDateLocal'],numbered_zone(t['@Id']))
 
-def is_original(p,t,p_history):
+def is_original(p,t,p_history,previous_history):
     # This function does an initial check to see if a particular
     # transaction might be an extension/"TopUp" of a previous
     # purchase.
@@ -339,10 +339,13 @@ def is_original(p,t,p_history):
     #else:
     #    t = None
     p_key = p_hash(p,t)
-    return not (p_key in p_history)
+    return ((p_key not in p_history) and (p_key not in previous_history))
 
-def find_predecessors(p,t,t_guids,terminals,p_history):
-    predecessors = p_history[p_hash(p,t)]
+def find_predecessors(p,t,t_guids,terminals,p_history,previous_history):
+    if previous_history != {}:
+        predecessors = p_history[p_hash(p,t)] + previous_history[p_hash(p,t)]
+    else:
+        predecessors = p_history[p_hash(p,t)]
     try: # Sort predecessors for purchase p by EndDateLocal.
         sps = sorted(predecessors, key=lambda x: x['@EndDateLocal'])
     except:
@@ -375,7 +378,7 @@ def add_to_dict(p,p_dict,terminals,t_guids):
     p_dict[p_hash(p,t)].append(p)
     return p_dict
 
-def reframe(p,terminals,t_guids,p_history,turbo_mode):
+def reframe(p,terminals,t_guids,p_history,previous_history,turbo_mode):
     # Take a dictionary and generate a new dictionary from it that samples
     # the appropriate keys and renames and transforms as desired.
     t_A = time.time()
@@ -406,7 +409,7 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
 # DATA STRUCTURE
 
     t_B = time.time()
-    if not turbo_mode and not is_original(p,t,p_history): # This is an initial test, but
+    if not turbo_mode and not is_original(p,t,p_history,previous_history): # This is an initial test, but
     # some of the hits that it can return may still be rejected
     # by the find_predecessors function.
         t_C = time.time()
@@ -414,7 +417,7 @@ def reframe(p,terminals,t_guids,p_history,turbo_mode):
     # correctly separate purchases into sessions.
     # [ ] Another option would be just to eliminate the is_original
     # function and replace it entirely with find_predecessors.
-        predecessors = find_predecessors(p,t,t_guids,terminals,p_history)
+        predecessors = find_predecessors(p,t,t_guids,terminals,p_history,previous_history)
         #print("--------------------")
         #pprint.pprint(p)
         #print("---")
@@ -1422,7 +1425,7 @@ def naive_get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timez
 
 def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
     db_caching_mode = True
-    #db_caching_mode = False
+    db_caching_mode = False
 
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
@@ -1433,8 +1436,8 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False):
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
         if db_caching_mode:
-            return get_ps(db,slot_start,slot_end,cache,mute)
-            #return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
+            #return get_ps(db,slot_start,slot_end,cache,mute)
+            return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
         #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
         # this function should return the same thing as get_ps_from_somewhere.
         else:
@@ -1554,9 +1557,15 @@ def main(*args, **kwargs):
     halting_time = kwargs.get('halting_time',halting_time)
 
 
+    # Setting slot_start and halting_time to UTC has no effect on 
+    # getting_ps_from_somewhere, but totally screws up get_batch_parking
+    # (resulting in zero transactions after 20:00 (midnight UTC).
     slot_start = slot_start.astimezone(pytz.utc)
     halting_time = halting_time.astimezone(pytz.utc)
-
+    # This is not related to the resetting of ps_dict, since extending 
+    # ps_dict by adding on previous_ps_dict did not change the fact that 
+    # casting slot_start and halting_time to UTC caused all transactions
+    # after 20:00 ET to not appear in the output.
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
     ad_hoc_zones, parent_zones = pull_terminals(use_cache=use_cache,return_extra_zones=True)
@@ -1592,6 +1601,9 @@ def main(*args, **kwargs):
     cumulated_dicts = []
     cumulated_ad_hoc_dicts = []
     ps_dict = defaultdict(list)
+    previous_ps_dict = defaultdict(list)
+    print("Extend approach to check two histories so one can be dumped into the other rather than resetting it.")
+
 
     # The current approach to calculating durations tracks the recent transaction history
     # and subtracts the "Units" value (the number of cumulative minutes purchased)
@@ -1621,8 +1633,10 @@ def main(*args, **kwargs):
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
         purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-            reframe(p,terminals,t_guids,ps_dict,turbo_mode)
-            ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
+            reframe(p,terminals,t_guids,ps_dict,{},turbo_mode)
+            ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # ps_dict is intended to
+            # be a way to look up recent transactions that might be part of the same 
+            # session as a particular transaction. Here it is being seeded.
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
@@ -1655,12 +1669,14 @@ def main(*args, **kwargs):
             reframed_ps = []
 
             for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-                reframed_ps.append(reframe(p,terminals,t_guids,ps_dict,turbo_mode))
+                reframed_ps.append(reframe(p,terminals,t_guids,ps_dict,previous_ps_dict,turbo_mode))
 
                 if slot_start.date() == current_day: # Keep a running history of all
                     ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
                 else:
+                    print("Resetting ps_dict entirely at {}. (Should ps_dict be generated before the reframing loop?)".format(slot_start))
                     current_day = slot_start.date()
+                    previous_ps_dict = ps_dict
                     ps_dict = defaultdict(list) # And restart that history when a new day is encountered.
             # Temporary for loop to check for unconsidered virtual zone codes.
             #for rp in reframed_ps:
