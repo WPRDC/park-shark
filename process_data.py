@@ -774,7 +774,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
             ps_all += ps_for_whole_day
             dt_start_i += timedelta(days = 1)
             if not mute:
-                print("Now there are {} transactions in ps_all".format(len(ps_all)))
+                print("Now there are {} transactions in ps_all.".format(len(ps_all)))
 
         all_day_ps_cache = ps_all # Note that if slot_start and slot_end are not on the same day,
         # all_day_ps_cache will hold transactions for more than just the date of slot_start, but 
@@ -832,7 +832,8 @@ def create_or_connect_to_db(db_filename):
             cached_ds = db.load_table('cached_utc_dates')
             sorted_ds = cached_ds.find(order_by=['date'])
             cds = list(cached_ds.all())
-            print("cached_utc_dates loaded. It contains {} dates. The first is {}, and the last is {}.".format(len(cds), cds[0], cds[-1]))
+            d_strings = sorted([list(d.values())[0] for d in cds])
+            print("cached_utc_dates loaded. It contains {} dates. The first is {}, and the last is {}.".format(len(cds), d_strings[0], d_strings[-1]))
             _ = db.load_table('cached_purchases')
             print("Both tables found.")
         except sqlalchemy.exc.NoSuchTableError as e:
@@ -1061,14 +1062,18 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
         start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
         start_epoch = epoch_time(start_of_day)
         next_epoch = epoch_time(start_of_next_day)
-        ps = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(start_epoch,next_epoch)))
+        time0 = time.time()
+        ps_all = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(start_epoch,next_epoch)))
         # Manual tests suggest that the unix_time query is at least not returning any results outside the intended date range
-
-        #ps2 = list(db.query("SELECT * FROM cached_purchases WHERE StartDateUTC_date = {}".format(slot_start_date_string)))
-        print("The unix_time query returned {} transactions.".format(len(ps), slot_start_date_string))
-        #print("The unix_time query returned {} transactions, while the StartDateUtc_date query (seeking {}) returned {} transactions.".format(len(ps), slot_start_date_string, len(ps2)))
+        time1=time.time()
+        print("The unix_time query returned {} transactions in {} s.".format(len(ps), time1-time0))
+        # The unix_time query seems to take about the same amount of time as the StartDateUTC_date query, which is weird
+        # since the unix_time field is supposed to be indexed.
+        #ps_all2 = list(db.query("SELECT * FROM cached_purchases WHERE StartDateUTC_date = '{}'".format(slot_start_date_string)))
+        #time2=time.time()
+        #print("The unix_time query returned {} transactions, while the StartDateUtc_date query (seeking {}) returned {} transactions in {} s.".format(len(ps), slot_start_date_string, len(ps2), time2-time1))
     
-    return ps
+    return ps_all
 
 def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
     # (This is designed to be the "get_ps" part of the function
@@ -1436,8 +1441,8 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,db_caching=
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
         if db_caching:
-            #return get_ps(db,slot_start,slot_end,cache,mute)
-            return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
+            return get_ps(db,slot_start,slot_end,cache,mute)
+            #return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
         #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
         # this function should return the same thing as get_ps_from_somewhere.
         else:
@@ -1607,8 +1612,6 @@ def main(*args, **kwargs):
     cumulated_ad_hoc_dicts = []
     ps_dict = defaultdict(list)
     previous_ps_dict = defaultdict(list)
-    print("Extend approach to check two histories so one can be dumped into the other rather than resetting it.")
-
 
     # The current approach to calculating durations tracks the recent transaction history
     # and subtracts the "Units" value (the number of cumulative minutes purchased)
