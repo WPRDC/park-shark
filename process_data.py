@@ -834,7 +834,8 @@ def create_or_connect_to_db(db_filename):
             cds = list(cached_ds.all())
     
             d_strings = sorted([list(d.values())[0] for d in cds])
-            print("cached_utc_dates loaded. It contains {} dates. The first is {}, and the last is {}.".format(len(cds), d_strings[0], d_strings[-1]))
+            if len(cds) > 0:
+                print("cached_utc_dates loaded. It contains {} dates. The first is {}, and the last is {}.".format(len(cds), d_strings[0], d_strings[-1]))
             _ = db.load_table('cached_purchases')
             print("Both tables found.")
         except sqlalchemy.exc.NoSuchTableError as e:
