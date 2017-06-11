@@ -1066,7 +1066,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
         ps_all = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(start_epoch,next_epoch)))
         # Manual tests suggest that the unix_time query is at least not returning any results outside the intended date range
         time1=time.time()
-        print("The unix_time query returned {} transactions in {} s.".format(len(ps), time1-time0))
+        print("The unix_time query returned {} transactions in {} s.".format(len(ps_all), time1-time0))
         # The unix_time query seems to take about the same amount of time as the StartDateUTC_date query, which is weird
         # since the unix_time field is supposed to be indexed.
         #ps_all2 = list(db.query("SELECT * FROM cached_purchases WHERE StartDateUTC_date = '{}'".format(slot_start_date_string)))
