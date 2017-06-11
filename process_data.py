@@ -832,6 +832,7 @@ def create_or_connect_to_db(db_filename):
             cached_ds = db.load_table('cached_utc_dates')
             sorted_ds = cached_ds.find(order_by=['date'])
             cds = list(cached_ds.all())
+    
             d_strings = sorted([list(d.values())[0] for d in cds])
             print("cached_utc_dates loaded. It contains {} dates. The first is {}, and the last is {}.".format(len(cds), d_strings[0], d_strings[-1]))
             _ = db.load_table('cached_purchases')
@@ -1504,7 +1505,7 @@ def main(*args, **kwargs):
     # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
     skip_processing = kwargs.get('skip_processing',False)
-    db_caching = kwargs.get('db_caching',False)
+    db_caching = kwargs.get('db_caching',True)
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
