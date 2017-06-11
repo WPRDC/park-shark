@@ -1020,7 +1020,8 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             # and the beginning of the next day (24 hours later, in UTC).
             dts_all += dts         
             
-            print("  Time required to pull day {} from the API: {} s  |  len(ps)/len(purchases) = {}".format(offset,t_end_dl-t_start_dl,len(ps)/len(purchases)))
+            if len(purchases) > 0:
+                print("  Time required to pull day {} from the API: {} s  |  len(ps)/len(purchases) = {}".format(offset,t_end_dl-t_start_dl,len(ps)/len(purchases)))
 
         if cache:
             # Store in db and update cached_dates.
