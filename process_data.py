@@ -926,6 +926,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
     # for the start of the overall desired time range.
 
     if cached_dates.find_one(date=slot_start_date_string) is None:
+        print("cached_dates.find_one(date=slot_start_date_string)".format(cached_dates.find_one(date=slot_start_date_string)))
         # A date is added to cached_dates when the date and the two surrounding it have
         # been queried and all events with a StartDateUTC value in the day corresponding
         # to slot_start (as well as slot_start_date_string) have been added to the database.
@@ -937,7 +938,8 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             print("Sigh! {} not found in cached_dates, so I'm pulling the data from the API...".format(slot_start_date_string))
         # Pull the data from the API.
         
-        for offset in range(-1,2):
+        #for offset in range(-1,2):
+        for offset in range(0,2):
             query_start = beginning_of_day(slot_start) + (offset)*timedelta(days = 1)
             query_end = query_start + timedelta(days = 1)
 
@@ -1047,8 +1049,10 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
                 for p in ps_all_fixed:
                     db['cached_purchases'].upsert(p, ['@PurchaseGuid'])
                 db.commit()
+                print("Stored {} transactions in cached_purchases.".format(len(ps_all_fixed)))
             except:
                 db.rollback()
+                print("Failed to store {} transactions in cached_purchases.".format(len(ps_all_fixed)))
             # The upserting code was rewritten from the version below to the version above 
             # to try to speed up the process, but it's not clear how much it really helped.
             # Both would need to be tested on a list of ~10,000 transactions to see the 
@@ -1060,6 +1064,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             print("     Time required to upsert {} transactions to the database: {} s".format(len(ps_all_fixed),t_y-t_x))
 
             cached_dates.upsert(dict(date = slot_start_date_string), ['date'])
+            print("Stored the date {} in cached_dates.".format(slot_start_date_string))
     else: # Load locally cached data
         start_of_day = beginning_of_day(slot_start)
         start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
@@ -1068,7 +1073,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
         time0 = time.time()
         ps_all = list(db.query("SELECT * FROM cached_purchases WHERE unix_time >= {} and unix_time < {}".format(start_epoch,next_epoch)))
         # Manual tests suggest that the unix_time query is at least not returning any results outside the intended date range
-        time1=time.time()
+        time1 = time.time()
         print("The unix_time query returned {} transactions in {} s.".format(len(ps_all), time1-time0))
         # The unix_time query seems to take about the same amount of time as the StartDateUTC_date query, which is weird
         # since the unix_time field is supposed to be indexed.
