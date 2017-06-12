@@ -18,13 +18,14 @@
 import pytz
 from datetime import datetime, timedelta
 import process_data
+import sys
 
-def main():
+def main(*args,**kwargs):
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
     slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=6))
     halting_time = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=2))
-    slot_start = pgh.localize(datetime(2012,7,23,0,0))
+    slot_start = kwargs.get('slot_start',pgh.localize(datetime(2012,7,23,0,0)))
     halting_time = pgh.localize(datetime(3030,4,13,0,0))
     # Note that these days are chosen to be within the last 7 days so that 
     # the data can be pulled from the API without using the bulk API (and 
@@ -33,9 +34,19 @@ def main():
     # for the processing; this would require reworking process_data.py.
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(output_to_csv = False, push_to_CKAN = True, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
+    success = process_data.main(output_to_csv = False, push_to_CKAN = True, db_caching = True, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        pgh = pytz.timezone('US/Eastern')
+        slot_start_string = sys.argv[1]
+        try:
+            slot_start = pgh.localize(datetime.strptime(slot_start_string,'%Y-%m-%d'))
+        except:
+            slot_start = pgh.localize(datetime.strptime(slot_start_string,'%Y-%m-%dT%H:%M:%S'))
+        main(slot_start=slot_start)
+    else:
+        main()
+
