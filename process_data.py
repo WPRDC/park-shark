@@ -1687,7 +1687,7 @@ def main(*args, **kwargs):
                 if slot_start.date() == current_day: # Keep a running history of all
                     ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
                 else:
-                    print("Resetting ps_dict entirely at {}. (Should ps_dict be generated before the reframing loop?)".format(slot_start))
+                    print("Moving ps_dict to previous_ps_dict at {}. (Should ps_dict be generated before the reframing loop for better efficiency? Would that screw up durations computations?)".format(slot_start))
                     current_day = slot_start.date()
                     previous_ps_dict = ps_dict
                     ps_dict = defaultdict(list) # And restart that history when a new day is encountered.
