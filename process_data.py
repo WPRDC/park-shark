@@ -1432,9 +1432,6 @@ def naive_get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timez
     return ps
 
 def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,db_caching=True):
-    db_caching_mode = True
-    db_caching_mode = False
-
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
         # This is too large of a margin, to be on the safe side.
