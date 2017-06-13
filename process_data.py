@@ -671,7 +671,7 @@ def cull_fields(ps):
 
     return purchases
 
-def get_day_from_json_or_api(slot_start,tz,filename,date_format,cache=True,mute=False):
+def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
     # Caches parking once it's been downloaded and checks
     # cache before redownloading.
 
@@ -685,11 +685,20 @@ def get_day_from_json_or_api(slot_start,tz,filename,date_format,cache=True,mute=
     # is why transactions are dropped if we send this function a UTC
     # slot_start (I think).
 
+    date_format = '%Y-%m-%d'
+    slot_start = slot_start.astimezone(tz)
+
+    dashless = slot_start.strftime('%y%m%d')
+    if tz == pytz.utc:
+        filename = path + "utc_json/"+dashless+".json"
+    else:
+        filename = path + "json/"+dashless+".json"
+    
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
         if not mute:
             print("Sigh! {} not found, so I'm pulling the data from the API...".format(filename))
 
-        slot_start = beginning_of_day(slot_start.astimezone(tz))
+        slot_start = beginning_of_day(slot_start)
         slot_end = slot_start + timedelta(days = 1)
 
         base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
@@ -763,15 +772,7 @@ def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False):
     # files. I am now trying to fix this by specifying the timezone 
     # and distinguishing between JSON-file folders.
 
-    date_format = '%Y-%m-%d'
-
-    dashless = slot_start.strftime('%y%m%d')
-    if tz == pytz.utc:
-        filename = path + "utc_json/"+dashless+".json"
-    else:
-        filename = path + "json/"+dashless+".json"
-    
-    ps = get_day_from_json_or_api(slot_start,tz,filename,date_format,cache,mute)
+    ps = get_day_from_json_or_api(slot_start,tz,cache,mute)
 
     return ps
 
@@ -939,14 +940,16 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # route around issues encountered when using localized versions of 
     # StartDateUtc and converting to dates.)
 
-    pgh = pytz.timezone('US/Eastern') # This time zone needs to be hard-coded since
-    # get_batch_parking_for_day still only works when using the local time zone
-    # (for some reason).
-    #for offset in range(-1,2):
+    #pgh = pytz.timezone('US/Eastern') # This time zone no longer needs to be hard-coded 
+    # since get_batch_parking_for_day has been fixed to work for different time zones 
+    # (I think).
+
     ps_all = []
     dts_all = []
+    #for offset in range(-1,2):
     for offset in range(0,2):
-        query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pgh)
+        #query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pgh)
+        query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pytz.utc)
 
         ps = []
         dts = []
@@ -963,14 +966,14 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
             if start_of_day <= datetime_i < start_of_next_day:
                 ps.append(purchase_i)
                 dts.append(datetime_i)
-            if purchase_i['@PurchaseGuid'] == 'EE37C59D-F9AD-97E8-D296-1C0A5A683A67':
-                print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                print("start_of_day <= datetime_i < start_of_next_day = {}".format(start_of_day <= datetime_i < start_of_next_day))
-                pprint.pprint(purchase_i)
+            #if purchase_i['@PurchaseGuid'] == 'EE37C59D-F9AD-97E8-D296-1C0A5A683A67':
+            #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            #    print("start_of_day <= datetime_i < start_of_next_day = {}".format(start_of_day <= datetime_i < start_of_next_day))
+            #    pprint.pprint(purchase_i)
 
         t_end_fetch = time.time()
         if len(ps) > 0:
-            print("  Time required to pull day {} (either from the API or from a JSON file): {} s  |  len(ps)/len(purchases) = {}".format(offset,t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
+            print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
         ps_all += ps
         dts_all += datetimes
 
