@@ -671,7 +671,7 @@ def cull_fields(ps):
 
     return purchases
 
-def get_batch_parking_for_day(slot_start,cache=True,mute=False):
+def get_day_from_json_or_api(slot_start,filename,date_format,cache=True,mute=False):
     # Caches parking once it's been downloaded and checks
     # cache before redownloading.
 
@@ -679,14 +679,15 @@ def get_batch_parking_for_day(slot_start,cache=True,mute=False):
     # this function will get all of the transactions for that entire day.
     # Filtering the results down to the desired time range is handled 
     # elsewhere (in the calling function (get_batch_parking)).
-    date_format = '%Y-%m-%d'
 
-    dashless = slot_start.strftime('%y%m%d')
-    filename = path + "json/"+dashless+".json"
+
+    # Caching by date ties this approach to a particular time zone. This
+    # is why transactions are dropped if we send this function a UTC
+    # slot_start (I think).
 
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
         if not mute:
-            print("Sigh! {}.json not found, so I'm pulling the data from the API...".format(dashless))
+            print("Sigh! {}.json not found, so I'm pulling the data from the API...".format(filename))
 
         slot_start = beginning_of_day(slot_start)
         slot_end = slot_start + timedelta(days = 1)
@@ -746,6 +747,28 @@ def get_batch_parking_for_day(slot_start,cache=True,mute=False):
 
     return ps
 
+def get_batch_parking_for_day(slot_start,cache=True,mute=False):
+    # Caches parking once it's been downloaded and checks
+    # cache before redownloading.
+
+    # Note that no matter what time of day is associated with slot_start,
+    # this function will get all of the transactions for that entire day.
+    # Filtering the results down to the desired time range is handled 
+    # elsewhere (in the calling function (get_batch_parking)).
+
+
+    # Caching by date ties this approach to a particular time zone. This
+    # is why transactions are dropped if we send this function a UTC
+    # slot_start (I think).
+    date_format = '%Y-%m-%d'
+
+    dashless = slot_start.strftime('%y%m%d')
+    filename = path + "json/"+dashless+".json"
+    
+    ps = get_day_from_json_or_api(slot_start,filename,date_format,cache,mute)
+
+    return ps
+
 def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
     # This function handles situation where slot_start and slot_end are on different days
     # by calling get_batch_parking_for_day in a loop.
@@ -794,7 +817,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     # Now instead of 3 seconds it takes like 0.03 seconds.
     last_date_cache = slot_start.date()
     return ps
-
+########################
 def epoch_time(dt):
     """Convert a datetime to the UNIX epoch time."""
    # Be sure to do all this in UTC.  
@@ -865,6 +888,94 @@ def in_db(cached_dates,date_i):
     return (cached_dates.find_one(date=date_string) is not None)
 # end database functions #
 
+########################
+
+def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
+    # (This is designed to be the "from_somewhere" part of the function
+    # formerly known as get_ps_from_somewhere.)
+    ###
+    # Caches parking once it's been downloaded (in individual JSON files) and checks
+    # cache before redownloading.
+
+    # Note that no matter what time of day is associated with slot_start,
+    # this function will get all of the transactions for that entire day.
+    # Filtering the results down to the desired time range is handled 
+    # elsewhere (in the calling function (get_batch_parking)).
+    ###############
+    # This function gets parking purchases, either from a 
+    # JSON cache (if the date appears to have been cached)
+    # or else from the API (and then caches the whole thing 
+    # if cache = True), by using get_batch_parking_for_day.
+
+    # Note that no matter what time of day is associated with slot_start,
+    # this function will get all of the transactions for that entire day.
+
+    # Filtering the results down to the desired time range is now handled 
+    # in this functions (though the function only marks a date as cached
+    # when it has added all events from the day of slot_start (based on
+    # StartDateUtc)).
+    
+    # This approach tries to address the problem of the often 
+    # gigantic discrepancy between the DateCreatedUtc timestamp
+    # and the StartDateUtc timestamp.
+
+    ref_field = '@StartDateUtc' # This should not be changed.
+
+    #for each date in day before, day of, and day after (to get all transactions)
+        # [Three full days is probably slightly overkill since the most extreme 
+        # negative case of DateCreatedUtc - StartDateUtc observed so far has 
+        # been -12 hours.]
+
+    # To avoid issues with missing or extra hours during Daylight Savings Time,
+    # all slot times should be in UTC.
+
+    # The cached_dates format is also UTC dates. (This change was made to 
+    # route around issues encountered when using localized versions of 
+    # StartDateUtc and converting to dates.)
+
+    date_format = '%Y-%m-%d'
+
+    dashless = slot_start.strftime('%y%m%d')
+    filename = path + "json/"+dashless+".json"
+
+    pgh = pytz.timezone('US/Eastern') # This time zone needs to be hard-coded since
+    # get_batch_parking_for_day still only works when using the local time zone
+    # (for some reason).
+    #for offset in range(-1,2):
+    ps_all = []
+    dts_all = []
+    for offset in range(0,2):
+        query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pgh)
+
+        ps = []
+        dts = []
+        t_start_fetch = time.time()
+        ps_for_whole_day = get_batch_parking_for_day(query_start,cache,mute)
+
+        # Filter down to the events in the slot, adding on two date/time fields #
+        datetimes = [(pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')) for p in ps_for_whole_day]
+        #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
+        
+        start_of_day = beginning_of_day(slot_start)
+        start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
+        for purchase_i,datetime_i in zip(ps_for_whole_day,datetimes):
+            if start_of_day <= datetime_i < start_of_next_day:
+                ps.append(purchase_i)
+                dts.append(datetime_i)
+            if purchase_i['@PurchaseGuid'] == 'EE37C59D-F9AD-97E8-D296-1C0A5A683A67':
+                print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                print("start_of_day <= datetime_i < start_of_next_day = {}".format(start_of_day <= datetime_i < start_of_next_day))
+                pprint.pprint(purchase_i)
+
+        t_end_fetch = time.time()
+        if len(ps) > 0:
+            print("  Time required to pull day {} from the API: {} s  |  len(ps)/len(purchases) = {}".format(offset,t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
+        ps_all += ps
+        dts_all += datetimes
+
+    return ps_all
+
+# ~~~~~~~~~~~~~~~~
 
 # Attempting to split get_ps_from_somewhere into two functions to enable day-by-day
 # caching, to reduce database hits, like in the previous approach.
@@ -1117,7 +1228,8 @@ def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@St
         ps_all = []
         dt_start_i = slot_start
         while dt_start_i < slot_end:
-            ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
+            #ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
+            ps_for_whole_day = get_utc_ps_for_day_from_json(slot_start,cache,mute)
             ps_all += ps_for_whole_day
             dt_start_i += timedelta(days = 1)
             if not mute:
@@ -1129,7 +1241,6 @@ def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@St
         # problem. There should be no situations where more than two days of transactions will
         # wind up in this cache at any one time.
         utc_dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all] # This may break for StartDateUtc!!!!!
-        time.sleep(2)
     else:
         ps_all = utc_ps_cache
     #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
@@ -1139,6 +1250,19 @@ def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@St
     # it this way:
     ps = [p for p,dt in zip(ps_all,utc_dts_cache) if slot_start <= dt < slot_end]
     # Now instead of 3 seconds it takes like 0.03 seconds.
+
+    #pgh = pytz.timezone('US/Eastern')
+    #for p in ps:
+        #if p['@TerminalID'] == '404451-22NDST0002':
+        #    pprint.pprint(p)
+
+        # Search for particular transactions and print them.
+        #if re.search('404',p['@TerminalID']) is not None:
+        #    if p['@Units'] == '45':
+        #        sdu = (pytz.utc).localize(datetime.strptime(p[time_field],dt_format))
+        #        sdl = sdu.astimezone(pgh)
+        #        if pgh.localize(datetime(2013,10,1,17,30)) <= sdl < pgh.localize(datetime(2013,10,1,17,40)):
+        #            pprint.pprint(p)
     last_utc_date_cache = slot_start.date()
     return ps
 
