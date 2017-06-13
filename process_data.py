@@ -671,7 +671,7 @@ def cull_fields(ps):
 
     return purchases
 
-def get_day_from_json_or_api(slot_start,filename,date_format,cache=True,mute=False):
+def get_day_from_json_or_api(slot_start,tz,filename,date_format,cache=True,mute=False):
     # Caches parking once it's been downloaded and checks
     # cache before redownloading.
 
@@ -687,9 +687,9 @@ def get_day_from_json_or_api(slot_start,filename,date_format,cache=True,mute=Fal
 
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
         if not mute:
-            print("Sigh! {}.json not found, so I'm pulling the data from the API...".format(filename))
+            print("Sigh! {} not found, so I'm pulling the data from the API...".format(filename))
 
-        slot_start = beginning_of_day(slot_start)
+        slot_start = beginning_of_day(slot_start.astimezone(tz))
         slot_end = slot_start + timedelta(days = 1)
 
         base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
@@ -747,7 +747,7 @@ def get_day_from_json_or_api(slot_start,filename,date_format,cache=True,mute=Fal
 
     return ps
 
-def get_batch_parking_for_day(slot_start,cache=True,mute=False):
+def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False):
     # Caches parking once it's been downloaded and checks
     # cache before redownloading.
 
@@ -759,13 +759,19 @@ def get_batch_parking_for_day(slot_start,cache=True,mute=False):
 
     # Caching by date ties this approach to a particular time zone. This
     # is why transactions are dropped if we send this function a UTC
-    # slot_start (I think).
+    # slot_start (I think) and try to use the Eastern Time Zone JSON 
+    # files. I am now trying to fix this by specifying the timezone 
+    # and distinguishing between JSON-file folders.
+
     date_format = '%Y-%m-%d'
 
     dashless = slot_start.strftime('%y%m%d')
-    filename = path + "json/"+dashless+".json"
+    if tz == pytz.utc:
+        filename = path + "utc_json/"+dashless+".json"
+    else:
+        filename = path + "json/"+dashless+".json"
     
-    ps = get_day_from_json_or_api(slot_start,filename,date_format,cache,mute)
+    ps = get_day_from_json_or_api(slot_start,tz,filename,date_format,cache,mute)
 
     return ps
 
@@ -783,7 +789,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     
     if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
         # This does an XOR between these values.
-        raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
+        raise RuntimeError("It looks like time_field may not be consistent with the provided time zone")
 
     global last_date_cache, all_day_ps_cache, dts_cache
     if last_date_cache != slot_start.date():
@@ -793,7 +799,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
         ps_all = []
         dt_start_i = slot_start
         while dt_start_i < slot_end:
-            ps_for_whole_day = get_batch_parking_for_day(dt_start_i,cache,mute)
+            ps_for_whole_day = get_batch_parking_for_day(dt_start_i,tz,cache,mute)
             ps_all += ps_for_whole_day
             dt_start_i += timedelta(days = 1)
             if not mute:
@@ -933,11 +939,6 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # route around issues encountered when using localized versions of 
     # StartDateUtc and converting to dates.)
 
-    date_format = '%Y-%m-%d'
-
-    dashless = slot_start.strftime('%y%m%d')
-    filename = path + "json/"+dashless+".json"
-
     pgh = pytz.timezone('US/Eastern') # This time zone needs to be hard-coded since
     # get_batch_parking_for_day still only works when using the local time zone
     # (for some reason).
@@ -950,7 +951,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         ps = []
         dts = []
         t_start_fetch = time.time()
-        ps_for_whole_day = get_batch_parking_for_day(query_start,cache,mute)
+        ps_for_whole_day = get_batch_parking_for_day(query_start,pytz.utc,cache,mute)
 
         # Filter down to the events in the slot, adding on two date/time fields #
         datetimes = [(pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')) for p in ps_for_whole_day]
@@ -969,7 +970,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 
         t_end_fetch = time.time()
         if len(ps) > 0:
-            print("  Time required to pull day {} from the API: {} s  |  len(ps)/len(purchases) = {}".format(offset,t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
+            print("  Time required to pull day {} (either from the API or from a JSON file): {} s  |  len(ps)/len(purchases) = {}".format(offset,t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
         ps_all += ps
         dts_all += datetimes
 
