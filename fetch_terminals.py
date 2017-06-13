@@ -259,4 +259,4 @@ def pull_terminals(*args, **kwargs):
 # At present, the default when running this script (or the pull_terminals function) is not to output the results to 
 # a CSV file.
 if __name__ == '__main__':
-    pull_terminals()
+    pull_terminals(output_to_csv=True)
