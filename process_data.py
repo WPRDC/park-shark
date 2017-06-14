@@ -924,6 +924,9 @@ def in_db(cached_dates,date_i):
 def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # (This is designed to be the "from_somewhere" part of the function
     # formerly known as get_ps_from_somewhere.)
+
+    # As suggested by the name, this function is designed specifially
+    # for the 'utc_json' caching mode.
     ###
     # Caches parking once it's been downloaded (in individual JSON files) and checks
     # cache before redownloading.
@@ -1011,6 +1014,8 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 def get_ps_for_day(db,slot_start,cache=True,mute=False):
     # (This is designed to be the "from_somewhere" part of the function
     # formerly known as get_ps_from_somewhere.)
+
+    # This function is for 'db_caching' caching mode.
     ###
     # Caches parking once it's been downloaded (in a database) and checks
     # cache before redownloading.
@@ -1222,7 +1227,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
     
     return ps_all
 
-def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
+def get_ps(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
     # (This is designed to be the "get_ps" part of the function
     # formerly known as get_ps_from_somewhere.)
     
@@ -1256,8 +1261,12 @@ def get_ps(db,slot_start,slot_end,cache,mute=False,tz=pytz.utc,time_field = '@St
         ps_all = []
         dt_start_i = slot_start
         while dt_start_i < slot_end:
-            #ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
-            ps_for_whole_day = get_utc_ps_for_day_from_json(slot_start,cache,mute)
+            if caching_mode == 'db_caching':
+                ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
+            elif caching_mode == 'utc_json':
+                ps_for_whole_day = get_utc_ps_for_day_from_json(slot_start,cache,mute)
+            else:
+                raise ValueError("Behavior for caching_mode = {} is undefined".format(caching_mode))
             ps_all += ps_for_whole_day
             dt_start_i += timedelta(days = 1)
             if not mute:
@@ -1315,6 +1324,8 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
     # This new database-centric, StartDateUtc-based approach has
     # been verified to give the same results as the old approach
     # for 2012-07-23.
+
+    # Implicity, caching_mode is 'db_caching" in this function.
 
     cached_dates,cached_ps = get_tables_from_db(db)
 
@@ -1495,7 +1506,9 @@ def get_events_from_db(db,slot_start,slot_end,cache,mute=False,tz=pytz.timezone(
     # and start_end.
 
     # This function has been written but has so far not been used.
-    
+   
+    # This function is only for cases where caching_mode == 'db_caching'.
+
     # Note that the time zone tz and the time_field must be consistent for this to work properly.
     # Here is a little sanity check:
     if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
@@ -1588,7 +1601,7 @@ def naive_get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timez
     time.sleep(1)
     return ps
 
-def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,db_caching=True):
+def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mode='utc_json'):
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
         # This is too large of a margin, to be on the safe side.
@@ -1597,12 +1610,12 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,db_caching=
         #return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
-        if db_caching:
-            return get_ps(db,slot_start,slot_end,cache,mute)
+        if caching_mode == 'utc_json':
+            return get_ps(db,slot_start,slot_end,cache,mute,caching_mode)
             #return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
         #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
         # this function should return the same thing as get_ps_from_somewhere.
-        else:
+        elif caching_mode == 'local_json': # The original approach
             return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
@@ -1661,7 +1674,7 @@ def main(*args, **kwargs):
     # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
     skip_processing = kwargs.get('skip_processing',False)
-    db_caching = kwargs.get('db_caching',True)
+    caching_mode = kwargs.get('caching_mode','utc_json')
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
@@ -1723,7 +1736,7 @@ def main(*args, **kwargs):
     # Setting slot_start and halting_time to UTC has no effect on 
     # getting_ps_from_somewhere, but totally screws up get_batch_parking
     # (resulting in zero transactions after 20:00 (midnight UTC).
-    if db_caching:
+    if caching_mode == 'db_caching':
         slot_start = slot_start.astimezone(pytz.utc)
         halting_time = halting_time.astimezone(pytz.utc)
     # This is not related to the resetting of ps_dict, since extending 
@@ -1796,7 +1809,7 @@ def main(*args, **kwargs):
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
-        purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False,db_caching)
+        purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False,caching_mode)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
             reframe(p,terminals,t_guids,ps_dict,{},turbo_mode)
             ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # ps_dict is intended to
@@ -1822,7 +1835,7 @@ def main(*args, **kwargs):
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
 
-        purchases = get_parking_events(db,slot_start,slot_end,True,False,db_caching)
+        purchases = get_parking_events(db,slot_start,slot_end,True,False,caching_mode)
         t1 = time.time()
 
         print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
