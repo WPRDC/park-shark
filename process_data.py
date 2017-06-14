@@ -682,27 +682,41 @@ def get_doc_from_url(url):
     r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
     doc = xmltodict.parse(r2.text,encoding = r2.encoding)
 
+    delays = 0
     while not r2.ok or doc['BatchDataExportFileResponse']['ExportStatus'] != 'Processed':
         time.sleep(10)
         r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
         doc = xmltodict.parse(r2.text,encoding = r2.encoding)
-        print(".", end="", flush=True)
+        delays += 1
+        if delays % 5 == 0:
+            print("|", end="", flush=True)
+        else:
+            print(".", end="", flush=True)
+        if delays > 30:
+            return None, False
 
     url3 = doc['BatchDataExportFileResponse']['Url']
 
     # When the ZIP file is ready:
+    delays = 0
     r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
-    while not r3.ok:
+    while not r3.ok and delays < 20:
         time.sleep(5)
         r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
-        print(",", end="", flush=True)
+        delays += 1
+        if delays % 5 == 0:
+            print("|", end="", flush=True)
+        else:
+            print(",", end="", flush=True)
+        if delays > 30:
+            return None, False
 
     z = zipfile.ZipFile(BytesIO(r3.content))
 
     # Extract contents of a one-file zip file to memory:
     xml = z.read(z.namelist()[0])
     doc = xmltodict.parse(xml,encoding = 'utf-8')
-    return doc
+    return doc, True
 
 def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
     # Caches parking once it's been downloaded and checks
@@ -740,8 +754,10 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
         if not mute:
             print("Here's the URL: {}".format(url))
 
-        doc = get_doc_from_url(url)
-
+        downloaded = False
+        while not downloaded:
+            doc, downloaded = get_doc_from_url(url)
+            print("!", end="", flush=True)
 
         ps = convert_doc_to_purchases(doc['BatchExportRoot'],slot_start,date_format)
 
