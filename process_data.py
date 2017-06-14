@@ -720,6 +720,7 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
             time.sleep(10)
             r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
             doc = xmltodict.parse(r2.text,encoding = r2.encoding)
+            print(".", end="", flush=True)
 
         url3 = doc['BatchDataExportFileResponse']['Url']
 
@@ -728,6 +729,7 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
         while not r3.ok:
             time.sleep(5)
             r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
+            print(",", end="", flush=True)
 
         z = zipfile.ZipFile(BytesIO(r3.content))
 
