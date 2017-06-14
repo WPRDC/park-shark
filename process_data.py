@@ -671,6 +671,39 @@ def cull_fields(ps):
 
     return purchases
 
+def get_doc_from_url(url):
+    r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
+
+    # Convert Cale's XML into a Python dictionary
+    doc = xmltodict.parse(r.text,encoding = r.encoding)
+
+
+    url2 = doc['BatchDataExportResponse']['Url']
+    r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
+    doc = xmltodict.parse(r2.text,encoding = r2.encoding)
+
+    while not r2.ok or doc['BatchDataExportFileResponse']['ExportStatus'] != 'Processed':
+        time.sleep(10)
+        r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
+        doc = xmltodict.parse(r2.text,encoding = r2.encoding)
+        print(".", end="", flush=True)
+
+    url3 = doc['BatchDataExportFileResponse']['Url']
+
+    # When the ZIP file is ready:
+    r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
+    while not r3.ok:
+        time.sleep(5)
+        r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
+        print(",", end="", flush=True)
+
+    z = zipfile.ZipFile(BytesIO(r3.content))
+
+    # Extract contents of a one-file zip file to memory:
+    xml = z.read(z.namelist()[0])
+    doc = xmltodict.parse(xml,encoding = 'utf-8')
+    return doc
+
 def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
     # Caches parking once it's been downloaded and checks
     # cache before redownloading.
@@ -706,36 +739,9 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
         if not mute:
             print("Here's the URL: {}".format(url))
-        r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
 
-        # Convert Cale's XML into a Python dictionary
-        doc = xmltodict.parse(r.text,encoding = r.encoding)
+        doc = get_doc_from_url(url)
 
-
-        url2 = doc['BatchDataExportResponse']['Url']
-        r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
-        doc = xmltodict.parse(r2.text,encoding = r2.encoding)
-
-        while not r2.ok or doc['BatchDataExportFileResponse']['ExportStatus'] != 'Processed':
-            time.sleep(10)
-            r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
-            doc = xmltodict.parse(r2.text,encoding = r2.encoding)
-            print(".", end="", flush=True)
-
-        url3 = doc['BatchDataExportFileResponse']['Url']
-
-        # When the ZIP file is ready:
-        r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
-        while not r3.ok:
-            time.sleep(5)
-            r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
-            print(",", end="", flush=True)
-
-        z = zipfile.ZipFile(BytesIO(r3.content))
-
-        # Extract contents of a one-file zip file to memory:
-        xml = z.read(z.namelist()[0])
-        doc = xmltodict.parse(xml,encoding = 'utf-8')
 
         ps = convert_doc_to_purchases(doc['BatchExportRoot'],slot_start,date_format)
 
