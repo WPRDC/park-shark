@@ -934,7 +934,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # Note that no matter what time of day is associated with slot_start,
     # this function will get all of the transactions for that entire day.
     # Filtering the results down to the desired time range is handled 
-    # elsewhere (in the calling function (get_batch_parking)).
+    # elsewhere (in the calling function).
     ###############
     # This function gets parking purchases, either from a 
     # JSON cache (if the date appears to have been cached)
@@ -1680,10 +1680,13 @@ def main(*args, **kwargs):
     # minimum length of the list of dicts that triggers uploading to CKAN.
 
 
-    db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
-    # changed with a passed parameter to substituted a test database 
-    # for running controlled tests with small numbers of events.
-    db = create_or_connect_to_db(db_filename)
+    if caching_mode == 'db_caching':
+        db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
+        # changed with a passed parameter to substituted a test database 
+        # for running controlled tests with small numbers of events.
+        db = create_or_connect_to_db(db_filename)
+    else:
+        db = None
 
     zone_kind = 'new' # 'old' maps to enforcement zones
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
@@ -1939,9 +1942,10 @@ def main(*args, **kwargs):
             else:
                 print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
     print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
-   
-    cached_dates,_ = get_tables_from_db(db)
-    print("Currently cached dates (These are UTC dates): {}".format(list(cached_dates.all())))
+  
+    if caching_mode == 'db_caching':
+        cached_dates,_ = get_tables_from_db(db)
+        print("Currently cached dates (These are UTC dates): {}".format(list(cached_dates.all())))
 
     t_end = time.time()
     print("Run time = {}".format(t_end-t_begin))
