@@ -34,7 +34,7 @@ def main(*args,**kwargs):
     # for the processing; this would require reworking process_data.py.
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(output_to_csv = False, push_to_CKAN = True, db_caching = True, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
+    success = process_data.main(output_to_csv = False, push_to_CKAN = True, caching_mode = 'utc_json', slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 

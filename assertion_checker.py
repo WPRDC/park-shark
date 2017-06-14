@@ -101,7 +101,7 @@ def main(*args, **kwargs):
         # PrePay Code <==> Mobile Payment
     assertion_4 = lambda p: (p['@PayIntervalEndLocal'] == p['@EndDateLocal'])
     assertion_5 = lambda p: (beginning_of_day(cast_string_to_dt(p['@DateCreatedUtc'])) - beginning_of_day(cast_string_to_dt(p['@StartDateUtc']))).days in [-1,0,1]
-    # Assertion 5 can not be checked with db_caching == True (since that 
+    # Assertion 5 can not be checked with caching_mode == 'db_caching' (since that 
     # would be incorporating the assumption in the test).
     # But get_batch_parking also makes its own assumptions, so 
     # get_batch_parking_for_day must be used to avoid timestamp filtering:
@@ -112,9 +112,10 @@ def main(*args, **kwargs):
     start_purchase_max = start_created_max = -10000000
     start_purchase_min = start_created_min = 10000000
 
-    db_caching = False
-    db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
-    db = dataset.connect('sqlite:///'+db_filename)
+    caching_mode = 'utc_json'
+    if caching_mode == 'db_caching':
+        db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
+        db = dataset.connect('sqlite:///'+db_filename)
 
     hours = defaultdict(int)
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
@@ -130,9 +131,9 @@ def main(*args, **kwargs):
         if deactivate_filter:
             purchases = get_batch_parking_for_day(slot_start,cache=False,mute=False)
         else:
-            if db_caching:
-                purchases = get_parking_events(db,slot_start,slot_end,True,True) 
-            else:
+            if caching_mode in ['db_caching', 'utc_json']:
+                purchases = get_parking_events(db,slot_start,slot_end,True,True,caching_mode) 
+            else: # caching_mode == 'local_json'?
                 purchases = get_batch_parking(slot_start,slot_end,True,True,pgh) #,time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S')
 
 
