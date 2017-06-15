@@ -621,8 +621,11 @@ def remove_field(dicts,field,superfield = None):
 def pull_from_url(url):
     r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
     retries = 0
-    while r.status_code != 200 and retries < 3:
+    retry_limit = 5
+    while r.status_code != 200 and retries < retry_limit:
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
         retries += 1
         time.sleep(retries*5)
+    if retries == retry_limit:
+        print("Retry limit hit when pulling from {}".format(url))
     return r
