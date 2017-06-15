@@ -1563,12 +1563,13 @@ def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.utc,time_fi
         raise RuntimeError("It looks like time_field may not be consistent with the provided time zone")
 
     if time_field == '@DateCreatedUtc':
-        margin = timedelta(minutes = 0)
+        margin_before = margin_after = timedelta(minutes = 0)
     else:
-        margin = timedelta(hours = 24)
+        margin_before = timedelta(hours = 12)
+        margin_after = timedelta(hours = 24)
     date_format = '%Y-%m-%d'
     base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
-    url = build_url(base_url,slot_start - margin,slot_end + margin)
+    url = build_url(base_url,slot_start - margin_before,slot_end + margin_after)
     if not mute:
         print("Here's the URL: {}".format(url))
 
