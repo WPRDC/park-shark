@@ -626,6 +626,15 @@ def pull_from_url(url):
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
         retries += 1
         time.sleep(retries*5)
+        if retries  % 5 == 0:
+            print("|", end="", flush=True)
+        else:
+            print(".", end="", flush=True)
+
     if retries == retry_limit:
         print("Retry limit hit when pulling from {}".format(url))
+        print("dir(r) = {}".format(dir(r)))
+        print("r.status_code = {}".format(r.status_code))
+        print("r.reason = {}".format(r.reason))
+
     return r
