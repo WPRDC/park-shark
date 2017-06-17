@@ -1567,6 +1567,8 @@ def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.utc,time_fi
     else:
         margin_before = timedelta(hours = 12)
         margin_after = timedelta(hours = 24)
+        # Note that if these margins are sufficiently big that the query window is 48 hours or longer,
+        # the LiveDataExport seems to fail with a 400 error (Bad Request).
     date_format = '%Y-%m-%d'
     base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
     url = build_url(base_url,slot_start - margin_before,slot_end + margin_after)
