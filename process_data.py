@@ -932,7 +932,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     #       in a JSON file. If not, it fetches the data from the API.
     #
     #       get_utc_ps_for_day_from_json: Takes lots of data (filtered
-    #       by DateCreatedUtc) and synthesizes them into a single day
+    #       by DateCreatedUtc) and synthesizes it into a single day
     #       of purchases, filtered instead by StartDateUtc.
     #
     #       cache_in_memory_and_filter: Caches the most recent UTC day
