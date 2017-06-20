@@ -1628,7 +1628,8 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
         # This is too large of a margin, to be on the safe side.
         # I have not yet found the exact edge.
-    if datetime.now(pgh) - slot_end <= timedelta(days = 5):
+    recent = datetime.now(pgh) - slot_end <= timedelta(days = 5)
+    if recent:
         #return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
