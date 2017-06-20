@@ -793,7 +793,7 @@ def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False):
     # Caching by date ties this approach to a particular time zone. This
     # is why transactions are dropped if we send this function a UTC
     # slot_start (I think) and try to use the Eastern Time Zone JSON 
-    # files. I am now trying to fix this by specifying the timezone 
+    # files. This has been fixed by specifying the timezone 
     # and distinguishing between JSON-file folders.
 
     ps = get_day_from_json_or_api(slot_start,tz,cache,mute)
@@ -922,15 +922,34 @@ def in_db(cached_dates,date_i):
 ########################
 
 def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
+    # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
+    # collecting data over two UTC days (from a function that 
+    # caches API query results as raw JSON files) and then filters
+    # those results down to a single UTC day.
+
+    # Thus, the sequence is
+    #       get_day_from_json_or_API: Check if the desired day is 
+    #       in a JSON file. If not, it fetches the data from the API.
+    #
+    #       get_utc_ps_for_day_from_json: Takes lots of data (filtered
+    #       by DateCreatedUtc) and synthesizes them into a single day
+    #       of purchases, filtered instead by StartDateUtc.
+    #
+    #       cache_in_memory_and_filter: Caches the most recent UTC day
+    #       of purchases in memory (or else uses the existing cache)
+    #       and then filters the results down to the desired slot.
+    #
+    #       get_parking_events: Dispatches the correct function based
+    #       on recency of the slot and then by caching method.
+
+
+
     # (This is designed to be the "from_somewhere" part of the function
     # formerly known as get_ps_from_somewhere.)
 
     # As suggested by the name, this function is designed specifially
     # for the 'utc_json' caching mode.
     ###
-    # Caches parking once it's been downloaded (in individual JSON files) and checks
-    # cache before redownloading.
-
     # Note that no matter what time of day is associated with slot_start,
     # this function will get all of the transactions for that entire day.
     # Filtering the results down to the desired time range is handled 
@@ -981,9 +1000,9 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         ps = []
         dts = []
         t_start_fetch = time.time()
-        ps_for_whole_day = get_batch_parking_for_day(query_start,pytz.utc,cache,mute)
+        ps_for_whole_day = get_day_from_json_or_api(query_start,pytz.utc,cache,mute)
 
-        # Filter down to the events in the slot, adding on two date/time fields #
+        # Filter down to the events in the slot #
         datetimes = [(pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')) for p in ps_for_whole_day]
         #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
         
@@ -1227,14 +1246,14 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
     
     return ps_all
 
-def get_ps(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
+def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
     # (This is designed to be the "get_ps" part of the function
     # formerly known as get_ps_from_somewhere.)
     
     # That is,
     #       get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
     # should return the same results as
-    #       get_ps(db,slot_start,slot_end,cache,mute)
+    #       cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute)
     # which suggests a good test to try.
 
     ###
@@ -1261,10 +1280,10 @@ def get_ps(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=py
         ps_all = []
         dt_start_i = slot_start
         while dt_start_i < slot_end:
-            if caching_mode == 'db_caching':
-                ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
-            elif caching_mode == 'utc_json':
+            if caching_mode == 'utc_json':
                 ps_for_whole_day = get_utc_ps_for_day_from_json(slot_start,cache,mute)
+            elif caching_mode == 'db_caching':
+                ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
             else:
                 raise ValueError("Behavior for caching_mode = {} is undefined".format(caching_mode))
             ps_all += ps_for_whole_day
@@ -1614,7 +1633,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
         if caching_mode == 'utc_json':
-            return get_ps(db,slot_start,slot_end,cache,mute,caching_mode)
+            return cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute,caching_mode)
             #return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
         #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
         # this function should return the same thing as get_ps_from_somewhere.
