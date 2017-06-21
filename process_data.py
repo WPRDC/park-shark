@@ -712,6 +712,7 @@ def get_doc_from_url(url):
             return None, False
 
     z = zipfile.ZipFile(BytesIO(r3.content))
+    time.sleep(0.5)
 
     # Extract contents of a one-file zip file to memory:
     xml = z.read(z.namelist()[0])
@@ -740,33 +741,62 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
         filename = path + "utc_json/"+dashless+".json"
     else:
         filename = path + "json/"+dashless+".json"
-    
+   
+    too_soon = slot_start.date() >= datetime.now(tz).date()
+    # If the day that is being requested is today, definitely don't cache it.
+
+    recent = datetime.now(tz) - slot_start <= timedelta(days = 5) # This 
+    # definition of recent is a little different since a) it uses slot_start 
+    # rather than slot_end (which is fine here, as we know that slot_start
+    # and slot_end are separated by one day) and b) it uses the time zone tz 
+    # (though that should be fine since slot_start has already been converted 
+    # to time zone tz).
+
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
         if not mute:
             print("Sigh! {} not found, so I'm pulling the data from the API...".format(filename))
 
         slot_start = beginning_of_day(slot_start)
         slot_end = slot_start + timedelta(days = 1)
-
-        base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+        
+        if recent:
+            base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
+        else:
+            base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            
         url = build_url(base_url,slot_start,slot_end)
 
         if not mute:
             print("Here's the URL: {}".format(url))
 
-        downloaded = False
-        while not downloaded:
-            doc, downloaded = get_doc_from_url(url)
-            print("!", end="", flush=True)
+        if recent:
+            # [ ] pull_from_url currently has a different retry-on-failure model
+            # than get_doc_from_url (which is wrapped in a while loop so it will
+            # either succeed or keep trying forever, while pull_from_url eventually
+            # gives up).
+            r = pull_from_url(url)
+            doc = xmltodict.parse(r.text,encoding = 'utf-8')
+            ps = convert_doc_to_purchases(doc,slot_start,date_format)
+        else:
+            downloaded = False
+            while not downloaded:
+                doc, downloaded = get_doc_from_url(url)
+                print("!", end="", flush=True)
 
-        ps = convert_doc_to_purchases(doc['BatchExportRoot'],slot_start,date_format)
+            ps = convert_doc_to_purchases(doc['BatchExportRoot'],slot_start,date_format)
 
         purchases = cull_fields(ps)
 
-        if cache:
+        print("cache = {}, recent = {}, too_soon = {}".format(cache,recent,too_soon))
+
+
+        if cache and not too_soon:
+            # Caching data from the LiveDataExport andpoint (but not today's data) is an interesting experiment.
             try: # Python 3 file opening
                 with open(filename, "w") as f:
                     json.dump(purchases,f,indent=2)
+                if recent:
+                    print(" !!!!!!!!!!! Cached some data from the LiveDataExport endpoint in {}".format(filename))
             except: # Python 2 file opening
                 with open(filename, "wb") as f:
                     json.dump(purchases,f,indent=2)
@@ -1628,18 +1658,26 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
         # This is too large of a margin, to be on the safe side.
         # I have not yet found the exact edge.
-    recent = datetime.now(pgh) - slot_end <= timedelta(days = 5)
-    if recent:
+    #recent = datetime.now(pgh) - slot_end <= timedelta(days = 5)
+    # This definition of the 'recent' variable doesn't handle well situations where we 
+    # want to pull 12 hours of data (as in the warming-up/seeding scenario) and that
+    # 12-hour block happens to cross over the boundary between recent and non-recent.
+
+    # Actually, those cases will be handled fine, since the real limit of the LiveData
+    # export is like 6 hours and 19 or 20 hours, but to be able to handle slots of 
+    # arbitrary size, I am changing the definition to use slot_start to decide recency:
+    recent = datetime.now(pgh) - slot_start <= timedelta(days = 5)
+
+    if caching_mode == 'utc_json' or recent:
+        #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live" 
+        # (recent transactions) API.
+        return cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute,caching_mode)
+    elif recent:
         #return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
         return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
-        if caching_mode == 'utc_json':
-            return cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute,caching_mode)
-            #return get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
-        #return get_events_from_db(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc') # With time_field = '@StartDateUtc',
-        # this function should return the same thing as get_ps_from_somewhere.
-        elif caching_mode == 'local_json': # The original approach
-            return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
+        #elif caching_mode == 'local_json': # The original approach
+        return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
