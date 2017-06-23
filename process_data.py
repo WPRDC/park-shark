@@ -1109,27 +1109,6 @@ def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.utc,time_fi
     time.sleep(1)
     return ps
 
-def naive_get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
-    # [This version has now been labelled "naive" since it does not account 
-    # for the fact that the default reference time field (@DateCreatedUtc)
-    # does not really enable selection of parking sessions by their 
-    # true temporal bounds.]
-
-    # slot_start and slot_end must have time zones so that they
-    # can be correctly converted into UTC times for interfacing
-    # with the /Cah LAY/ API.
-    date_format = '%Y-%m-%d'
-    base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
-    url = build_url(base_url,slot_start,slot_end)
-    if not mute:
-        print("Here's the URL: {}".format(url))
-
-    r = pull_from_url(url)
-    doc = xmltodict.parse(r.text,encoding = 'utf-8')
-    ps = convert_doc_to_purchases(doc,slot_start,date_format)
-    time.sleep(1)
-    return ps
-
 def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mode='utc_json'):
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
