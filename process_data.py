@@ -25,8 +25,6 @@ from datetime import datetime, timedelta
 import pytz
 
 from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
-import dataset, sqlalchemy
-
 
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
