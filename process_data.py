@@ -527,7 +527,7 @@ def initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/
         stats['Parent Zone'] = None
     return stats
 
-def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='old', aggregate_by='zone', parent_zones=[], tz=pytz.timezone('US/Eastern')):
+def distill_stats(stats_by={},rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='old', aggregate_by='zone', parent_zones=[], tz=pytz.timezone('US/Eastern')):
     # Originally this function just aggregated information
     # between start_time and end_time to the zone level.
 
@@ -537,7 +537,6 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='o
 
     # THEN it was modified to also allow aggregation by
     # meter ID instead of only by zone.
-    stats_by = {}
     for k,rp in enumerate(rps):
         t_guid = rp['TerminalGUID']
         t_id = rp['TerminalID']
@@ -564,10 +563,11 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='o
                 zones = rp['List_of_ad_hoc_groups']
 # The problem with this is that a given purchase is associated with a terminal which may have MULTIPLE ad hoc zones. Therefore, each ad hoc zone must have its own parent zone(s).
         elif aggregate_by == 'meter':
-            zones = [t_guid] # [ ] Should this be GUID or just ID?
+            zones = [t_guid] # [X] Should this be GUID or just ID? ... Let's
+                # make it GUID (as it will not change), but store meter ID as
+                # an additional field.
 
-
-            # The above could really stand to be refactored
+            # The above could really stand to be refactored.
         if zones != []:
             for zone in censor(zones):
                 if zone not in stats_by:
@@ -1344,10 +1344,10 @@ def main(*args, **kwargs):
             t2 = time.time()
 
             # Condense to key statistics (including duration counts).
-            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
+            stats_rows = distill_stats({},reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
             
-            ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
+            ad_hoc_stats_rows = distill_stats({},reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
 
             t3 = time.time()
             if not turbo_mode and augment:
