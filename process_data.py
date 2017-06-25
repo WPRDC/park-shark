@@ -595,8 +595,8 @@ def build_url(base_url,slot_start,slot_end):
     # converting the datetimes to UTC (which is what the CALE
     # API expects).
 
-    # This function is called by both get_recent_parking_events
-    # and get_batch_parking_for_day.
+    # This function is called by get_batch_parking_for_day 
+    # (and was also used by get_recent_parking_events).
 
     if is_timezoneless(slot_start) or is_timezoneless(slot_end):
         raise ValueError("Whoa, whoa, whoa! One of those times is unzoned!")
@@ -1062,52 +1062,11 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     last_utc_date_cache = slot_start.date()
     return ps
 
-def get_recent_parking_events(slot_start,slot_end,mute=False,tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
-    # To ensure that all events are obtained, add a huge margin around each slot to collect the outlier 
-    # events that have reference time fields with values very different from when the events were
-    # filed in the CALE database.
-
-    # This approach results in a query for ten minutes of data scanning almost two days worth of data,
-    # but this seems necessary because of how the CALE API works.
-
-    # Alternatives: Do one big query for all the data needed during one run of this script:
-    #                       1) Cache everything from the main()-level slot_start - 1 day to 
-    #                       halting_time + 1 day.
-    #                       2) Use that live_cache repeatedly.
-
+def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mode='utc_json'):
     # slot_start and slot_end must have time zones so that they
     # can be correctly converted into UTC times for interfacing
     # with the /Cah LAY/ API.
 
-    # The time-zone argument tz is used to specify the time zone of time_field.
-    # Thus, if @StartDateUtc is used as the reference time field for deciding whether a transaction
-    # is in the slot or not, the time zone tz should be UTC.
-    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
-        # This does an XOR between these values.
-        raise RuntimeError("It looks like time_field may not be consistent with the provided time zone")
-
-    if time_field == '@DateCreatedUtc':
-        margin_before = margin_after = timedelta(minutes = 0)
-    else:
-        margin_before = timedelta(hours = 12)
-        margin_after = timedelta(hours = 24)
-        # Note that if these margins are sufficiently big that the query window is 48 hours or longer,
-        # the LiveDataExport seems to fail with a 400 error (Bad Request).
-    date_format = '%Y-%m-%d'
-    base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
-    url = build_url(base_url,slot_start - margin_before,slot_end + margin_after)
-    if not mute:
-        print("Here's the URL: {}".format(url))
-
-    r = pull_from_url(url)
-    doc = xmltodict.parse(r.text,encoding = 'utf-8')
-    ps_all = convert_doc_to_purchases(doc,slot_start,date_format)
-    dts = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all]
-    ps = [p for p,dt in zip(ps_all,dts) if slot_start <= dt < slot_end]
-    time.sleep(1)
-    return ps
-
-def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mode='utc_json'):
     pgh = pytz.timezone('US/Eastern')
     #if datetime.now(pgh) - slot_end <= timedelta(hours = 24):
         # This is too large of a margin, to be on the safe side.
@@ -1126,9 +1085,6 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live" 
         # (recent transactions) API.
         return cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute,caching_mode)
-    elif recent:
-        #return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
-        return get_recent_parking_events(slot_start,slot_end,mute,pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S')
     else:
         #elif caching_mode == 'local_json': # The original approach
         return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
