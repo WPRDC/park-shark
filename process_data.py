@@ -9,7 +9,7 @@ lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
 pure_zones_list, numbered_reporting_zones_list, ad_hoc_groups, \
 add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
-only_these_fields, cast_fields
+only_these_fields, cast_fields, build_keys
 from fetch_terminals import pull_terminals
 import requests
 import zipfile
