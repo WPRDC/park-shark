@@ -510,7 +510,7 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
 #                print t, to_dict(inferred_occupancy[t])
     return inferred_occupancy
 
-def initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/Eastern')):
+def initialize_zone_stats(start_time,end_time,space_aggregate_by,tz=pytz.timezone('US/Eastern')):
     stats = {}
 
     # This is where it would be nice to maybe do some different formatting based on the 
@@ -533,11 +533,11 @@ def initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/
     # Payments tells you how much money was paid, Durations tells you the breakdown of
     # parking minutes purchased. The sum of all the durations represented in the
     # Durations dictionary should equal the value in the Car-minutes field.
-    if aggregate_by == 'ad hoc zone':
+    if space_aggregate_by == 'ad hoc zone':
         stats['Parent Zone'] = None
     return stats
 
-def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},zone_kind='old', aggregate_by='zone', parent_zones=[], tz=pytz.timezone('US/Eastern')):
+def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},zone_kind='old', space_aggregate_by='zone', time_aggregate_by=None, parent_zones=[], tz=pytz.timezone('US/Eastern')):
     # Originally this function just aggregated information
     # between start_time and end_time to the zone level.
 
@@ -552,7 +552,7 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
         t_id = rp['TerminalID']
         zone = None
         zones = []
-        if aggregate_by == 'zone':
+        if space_aggregate_by == 'zone':
             if zone_kind == 'new':
                 zone = numbered_zone(t_id)
             elif t_guid in t_guids:
@@ -568,11 +568,11 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
 
             if zone is not None:
                 zones = [zone]
-        elif aggregate_by == 'ad hoc zone':
+        elif space_aggregate_by == 'ad hoc zone':
             if 'List_of_ad_hoc_groups' in rp and rp['List_of_ad_hoc_groups'] != []:
                 zones = rp['List_of_ad_hoc_groups']
 # The problem with this is that a given purchase is associated with a terminal which may have MULTIPLE ad hoc zones. Therefore, each ad hoc zone must have its own parent zone(s).
-        elif aggregate_by == 'meter':
+        elif space_aggregate_by == 'meter':
             zones = [t_guid] # [X] Should this be GUID or just ID? ... Let's
                 # make it GUID (as it will not change), but store meter ID as
                 # an additional field.
@@ -581,11 +581,11 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
         if zones != []:
             for zone in censor(zones):
                 if zone not in stats_by:
-                    stats_by[zone] = initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/Eastern'))
-                if aggregate_by == 'ad hoc zone':
+                    stats_by[zone] = initialize_zone_stats(start_time,end_time,space_aggregate_by,tz=pytz.timezone('US/Eastern'))
+                if space_aggregate_by == 'ad hoc zone':
                     if 'Parent Zone' in stats_by[zone]:
                         stats_by[zone]['Parent Zone'] = '|'.join(parent_zones[zone])
-                elif aggregate_by == 'meter':
+                elif space_aggregate_by == 'meter':
                     stats_by[zone]['Meter ID'] = t_id
                     stats_by[zone]['Zone'] = numbered_zone(t_id)
                 stats_by[zone]['Transactions'] += 1
@@ -1098,7 +1098,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
-def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by,augment):
+def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,space_aggregate_by,augment):
     # This function works for zones and ad hoc zones. It has now been modified
     # to do basic agggregating by meter, ignoring inferred occupancy and augmentation.
     
@@ -1112,7 +1112,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
         stats_rows[zone]['Payments'] = float(round_to_cent(stats_rows[zone]['Payments']))
     #####
 
-    if aggregate_by == 'meter':
+    if space_aggregate_by == 'meter':
         list_of_dicts = []
         augmented = []
         
@@ -1133,7 +1133,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
             else: # This part is only necessary for the augmented list (which should
             # have inferred occupancy for each zone for each slot (even if there were
             # no transactions during that slot), unlike list_of_dicts).
-                d = initialize_zone_stats(slot_start,slot_end,aggregate_by,tz)
+                d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,tz)
             d['Zone'] = zone
             if zone in stats_rows.keys():
                 list_of_dicts.append(d)
@@ -1202,7 +1202,7 @@ def main(*args, **kwargs):
     timechunk = kwargs.get('timechunk',DEFAULT_TIMECHUNK)
   #  timechunk = timedelta(seconds=1)
     #######
-    # aggregate_by is a parameter used to tell distill_stats how to spatially aggregate
+    # space_aggregate_by is a parameter used to tell distill_stats how to spatially aggregate
     # data (by zone, ad hoc zone, or meter GUID). We need a different parameter to choose
     # among spatiotemporal aggregations, including: 
     # 1) default: by 10-minute interval and zone/ad hoc zone (TIMECHUNK = 10 minutes)
@@ -1349,7 +1349,7 @@ def main(*args, **kwargs):
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
 
-    dkeys, augmented_dkeys, ad_hoc_keys = build_keys(space_aggregation, time_aggregation)
+    dkeys, augmented_dkeys, ad_hoc_dkeys = build_keys(space_aggregation, time_aggregation)
     
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
@@ -1424,10 +1424,10 @@ def main(*args, **kwargs):
             t2 = time.time()
 
             # Condense to key statistics (including duration counts).
-            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, [], tz=pgh)
+            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
             if time_aggregation is None and space_aggregation == 'zone':  
-                ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
+                ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', time_aggregation, parent_zones, tz=pgh)
 
             t3 = time.time()
             if time_aggregation is None and space_aggregation == 'zone':  
