@@ -593,10 +593,6 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                         stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,tz=pytz.timezone('US/Eastern'))
                     if space_aggregate_by == 'ad hoc zone':
                         if 'Parent Zone' in stats_by[a_key]:
-                            #stats_by[zone]['Parent Zone'] = '|'.join(parent_zones[zone])
-                            #if len(space_aggregation_keys) != 1:
-                            #    print("space_keys = {}".format(space_aggregation_keys))
-                            #    raise ValueError("The following code assumes that a single zone can be extracted from the space_aggregation_keys list, but the length of that list is not 1, so this script is raising an error and halting before catching fire.")
                             #for zone in space_aggregation_keys:
                             # There are now cases where getting the zone from space_aggregation_keys
                             # for space_aggregate_by == 'ad hoc zone' results in multiple zones
@@ -610,8 +606,9 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                             # transactions to both ad hoc zones.
                             # This should actually happen naturally if the space part of the 
                             # aggregation key could be pulled off and used as the zone in 
-                            # each case, which is what I'm going to try to do.
-                            #zone = space_aggregation_keys[0]
+                            # each case, which is what I've done. 
+                            # This output seems to be the same as before space-time aggregation
+                            # was added.
                             zone = a_key.split('|')[0]
                             stats_by[a_key]['Zone'] = zone
                             stats_by[a_key]['Parent Zone'] = '|'.join(parent_zones[zone])
