@@ -579,8 +579,6 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                 # make it GUID (as it will not change), but store meter ID as
                 # an additional field.
 
-        print("space_aggregate_by = {}, zone = {}, len(rps) = {}".format(space_aggregate_by, zone, len(rps)))
-        pprint.pprint(rps)
         if space_aggregation_keys != []:
             if time_aggregate_by is None:
                 aggregation_keys = space_aggregation_keys
@@ -596,12 +594,30 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                     if space_aggregate_by == 'ad hoc zone':
                         if 'Parent Zone' in stats_by[a_key]:
                             #stats_by[zone]['Parent Zone'] = '|'.join(parent_zones[zone])
-                            if len(space_aggregation_keys) != 1:
-                                print("space_keys = {}".format(space_aggregation_keys))
-                                raise ValueError("The following code assumes that a single zone can be extracted from the space_aggregation_keys list, but the length of that list is not 1, so this script is raising an error and halting before catching fire.")
-                            zone = space_aggregation_keys[0]
+                            #if len(space_aggregation_keys) != 1:
+                            #    print("space_keys = {}".format(space_aggregation_keys))
+                            #    raise ValueError("The following code assumes that a single zone can be extracted from the space_aggregation_keys list, but the length of that list is not 1, so this script is raising an error and halting before catching fire.")
+                            #for zone in space_aggregation_keys:
+                            # There are now cases where getting the zone from space_aggregation_keys
+                            # for space_aggregate_by == 'ad hoc zone' results in multiple zones
+                            # since the value comes from rp['List_of_ad_hoc_groups']. Basically, 
+                            # a terminal group can be assigned to an arbitary number of Terminal
+                            # Groups, and we are getting the ones that are not ad hoc zones,
+                            # so one terminal can be both in 'CMU Study' and 'Marathon/CMU', for
+                            # instance. 
+                            #
+                            # It seems like the correct thing to do in this case is add the 
+                            # transactions to both ad hoc zones.
+                            # This should actually happen naturally if the space part of the 
+                            # aggregation key could be pulled off and used as the zone in 
+                            # each case, which is what I'm going to try to do.
+                            #zone = space_aggregation_keys[0]
+                            zone = a_key.split('|')[0]
                             stats_by[a_key]['Zone'] = zone
                             stats_by[a_key]['Parent Zone'] = '|'.join(parent_zones[zone])
+
+                            if len(aggregation_keys) > 1:
+                                print("space_keys = {}, a_keys = {}, zone = {}".format(space_aggregation_keys,aggregation_keys,zone))
 
                     elif space_aggregate_by == 'meter':
                         stats_by[a_key]['Meter GUID'] = t_guid
