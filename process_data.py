@@ -1104,7 +1104,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
     
 
     # Convert Durations (list of integers) and Payments to their final forms
-    # (Durations becoes a JSON dict and Payments becomes rounded to the nearest
+    # (Durations becomes a JSON dict and Payments becomes rounded to the nearest
     # cent. (moved from bottom of distill_stats)
     for zone in stats_rows.keys():
         counted = Counter(stats_rows[zone]['Durations'])
@@ -1116,10 +1116,11 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
         list_of_dicts = []
         augmented = []
         
-        mlist = sorted(list(set(stats_rows.keys())))
+        #mlist = sorted(list(set(stats_rows.keys()))) # This would be the list of Meter GUIDs
+        mlist = sorted(list(set([u['Meter ID'] for u in stats_rows.values()]))) # Meter IDs
         for meter in mlist:
             d = stats_rows[meter]
-            d['Meter'] = meter
+            d['Meter GUID'] = meter
             list_of_dicts.append(d)
     else:
         list_of_dicts = []
