@@ -1348,18 +1348,9 @@ def main(*args, **kwargs):
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
 
-    dkeys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-    # These are dictionary keys (for writing a bunch of dictionaries to a CSV file), NOT database keys.
-    augmented_dkeys = ['Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
-    ad_hoc_dkeys = ['Zone', 'Parent Zone', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-    # I just added 'UTC Start' to ad_hoc_dkeys on April 25, 2017.
-
+    dkeys, augmented_dkeys, ad_hoc_keys = build_keys(space_aggregation, time_aggregation)
+    
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
-    if space_aggregation == 'meter':
-        dkeys = ['Meter GUID', 'Meter ID', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
-        # These are dictionary keys (for writing a bunch of dictionaries to a CSV file), NOT database keys.
-        augmented_dkeys = ['Meter GUID', 'Meter ID', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
-        ad_hoc_dkeys = ['Meter GUID', 'Meter ID', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
 
 ###########################################
     stats_rows = {} # This is only needed for the extra time aggregation modes.

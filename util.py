@@ -206,6 +206,33 @@ def write_to_csv(filename,list_of_dicts,keys):
         dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
 
+def build_keys(space_aggregation,time_aggregation):
+    """Based on the types of spatial and temporal aggregation, synthesize and return
+    the dictionary keys (used for writing a bunch of dictionaries to a CSV file."""
+    # Given that these fields appear elsewhere in the process_data.py code, it might 
+    # be a good idea to refactor things some more so that there is one source for 
+    # these field names.
+
+
+    # I just added 'UTC Start' to ad_hoc_dkeys on April 25, 2017.
+    if space_aggregation == 'zone':
+        space_keys = ['Zone']
+    elif space_aggregation == 'meter':
+        space_keys = ['Meter GUID', 'Meter ID', 'Zone']
+
+    if time_aggregation is None:
+        time_keys = ['Start', 'End', 'UTC Start']
+    elif time_aggregation == 'month':
+        time_keys = ['Year', 'Month', 'Hour', 'UTC Hour']
+    base = ['Transactions', 'Car-minutes', 'Payments', 'Durations']
+    extras = ['Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
+
+    dkeys = space_keys + time_keys + base
+    augmented_dkeys = dkeys + extras
+    ad_hoc_dkeys = space_keys + ['Parent Zone'] + time_keys + base
+    return dkeys, augmented_dkeys, ad_hoc_keys
+
+
 def unique_values(xs,field):
     return { x[field] if field in x else None for x in to_dict(xs) }
     # But sometimes we would like to do this
