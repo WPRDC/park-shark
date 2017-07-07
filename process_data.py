@@ -551,7 +551,9 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
         t_guid = rp['TerminalGUID']
         t_id = rp['TerminalID']
         zone = None
-        zones = []
+        space_aggregation_keys = []
+        aggregation_keys = []
+
         if space_aggregate_by == 'zone':
             if zone_kind == 'new':
                 zone = numbered_zone(t_id)
@@ -567,31 +569,48 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                     zone = corrected_zone_name(None,t_ids,rp['TerminalID'])
 
             if zone is not None:
-                zones = [zone]
+                space_aggregation_keys = [zone]
         elif space_aggregate_by == 'ad hoc zone':
             if 'List_of_ad_hoc_groups' in rp and rp['List_of_ad_hoc_groups'] != []:
-                zones = rp['List_of_ad_hoc_groups']
+                space_aggregation_keys = rp['List_of_ad_hoc_groups']
 # The problem with this is that a given purchase is associated with a terminal which may have MULTIPLE ad hoc zones. Therefore, each ad hoc zone must have its own parent zone(s).
         elif space_aggregate_by == 'meter':
-            zones = [t_guid] # [X] Should this be GUID or just ID? ... Let's
+            space_aggregation_keys = [t_guid] # [X] Should this be GUID or just ID? ... Let's
                 # make it GUID (as it will not change), but store meter ID as
                 # an additional field.
 
+        print("space_aggregate_by = {}, zone = {}, len(rps) = {}".format(space_aggregate_by, zone, len(rps)))
+        pprint.pprint(rps)
+        if space_aggregation_keys != []:
+            if time_aggregate_by is None:
+                aggregation_keys = space_aggregation_keys
+            elif time_aggregate_by == 'month':
+                time_key = start_time.strftime("%Y/%m %H")
+                aggregation_keys = [s_a_k + "|" + time_key for s_a_k in space_aggregation_keys]
+
             # The above could really stand to be refactored.
-        if zones != []:
-            for zone in censor(zones):
-                if zone not in stats_by:
-                    stats_by[zone] = initialize_zone_stats(start_time,end_time,space_aggregate_by,tz=pytz.timezone('US/Eastern'))
-                if space_aggregate_by == 'ad hoc zone':
-                    if 'Parent Zone' in stats_by[zone]:
-                        stats_by[zone]['Parent Zone'] = '|'.join(parent_zones[zone])
-                elif space_aggregate_by == 'meter':
-                    stats_by[zone]['Meter ID'] = t_id
-                    stats_by[zone]['Zone'] = numbered_zone(t_id)
-                stats_by[zone]['Transactions'] += 1
-                stats_by[zone]['Car-minutes'] += rp['Duration']
-                stats_by[zone]['Payments'] += rp['Amount']
-                stats_by[zone]['Durations'].append(rp['Duration'])
+            if aggregation_keys != []:
+                for a_key in censor(aggregation_keys):
+                    if a_key not in stats_by:
+                        stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,tz=pytz.timezone('US/Eastern'))
+                    if space_aggregate_by == 'ad hoc zone':
+                        if 'Parent Zone' in stats_by[a_key]:
+                            #stats_by[zone]['Parent Zone'] = '|'.join(parent_zones[zone])
+                            if len(space_aggregation_keys) != 1:
+                                print("space_keys = {}".format(space_aggregation_keys))
+                                raise ValueError("The following code assumes that a single zone can be extracted from the space_aggregation_keys list, but the length of that list is not 1, so this script is raising an error and halting before catching fire.")
+                            zone = space_aggregation_keys[0]
+                            stats_by[a_key]['Zone'] = zone
+                            stats_by[a_key]['Parent Zone'] = '|'.join(parent_zones[zone])
+
+                    elif space_aggregate_by == 'meter':
+                        stats_by[a_key]['Meter GUID'] = t_guid
+                        stats_by[a_key]['Meter ID'] = t_id
+                        stats_by[a_key]['Zone'] = numbered_zone(t_id)
+                    stats_by[a_key]['Transactions'] += 1
+                    stats_by[a_key]['Car-minutes'] += rp['Duration']
+                    stats_by[a_key]['Payments'] += rp['Amount']
+                    stats_by[a_key]['Durations'].append(rp['Duration'])
 
     return stats_by
 
@@ -1106,10 +1125,10 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
     # Convert Durations (list of integers) and Payments to their final forms
     # (Durations becomes a JSON dict and Payments becomes rounded to the nearest
     # cent. (moved from bottom of distill_stats)
-    for zone in stats_rows.keys():
-        counted = Counter(stats_rows[zone]['Durations'])
-        stats_rows[zone]['Durations'] = json.dumps(counted, sort_keys=True)
-        stats_rows[zone]['Payments'] = float(round_to_cent(stats_rows[zone]['Payments']))
+    for aggregation_key in stats_rows.keys():
+        counted = Counter(stats_rows[aggregation_key]['Durations'])
+        stats_rows[aggregation_key]['Durations'] = json.dumps(counted, sort_keys=True)
+        stats_rows[aggregation_key]['Payments'] = float(round_to_cent(stats_rows[aggregation_key]['Payments']))
     #####
 
     if space_aggregate_by == 'meter':
@@ -1120,21 +1139,24 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
         mlist = sorted(list(set([u['Meter ID'] for u in stats_rows.values()]))) # Meter IDs
         for meter in mlist:
             d = stats_rows[meter]
-            d['Meter GUID'] = meter
+            #d['Meter GUID'] = meter # This is no longer necessary.
             list_of_dicts.append(d)
-    else:
+    else: # Implicitly, spacetime == 'zone' here.
         list_of_dicts = []
         augmented = []
+        # Eventually zlist should be formed like mlist is being formed, in case other kinds of 
+        # spacetime aggregation are used::
+        #       mlist = sorted(list(set([u['Meter ID'] for u in stats_rows.values()]))) # Meter IDs
         zlist = sorted(list(set(sorted(stats_rows.keys())+zonelist))) # I think that the inner "sorted" function can be removed here.
 
         for zone in zlist:
-            if zone in stats_rows.keys():
+            if zone in stats_rows.keys(): # For spacetime == 'zone', the aggregation keys are still zone values for now.
                 d = stats_rows[zone]
             else: # This part is only necessary for the augmented list (which should
             # have inferred occupancy for each zone for each slot (even if there were
             # no transactions during that slot), unlike list_of_dicts).
                 d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,tz)
-            d['Zone'] = zone
+            #d['Zone'] = zone # This is no longer necessary.
             if zone in stats_rows.keys():
                 list_of_dicts.append(d)
             if inferred_occupancy is not None:
@@ -1149,7 +1171,8 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
                 d['Zone type'] = extra['Type']
                 #augmented.append(d)
                 if augment:
-                    if d['Inferred occupancy'] > 0 or zone in stats_rows.keys():
+                    if d['Inferred occupancy'] > 0 or zone in stats_rows.keys(): # stats_rows.keys() cannot be simply replaced with zlist.
+                    # Rather, it must be just the set of zones extracted from the stats_rows field 'Zone'.
                         augmented.append(d)
 
     #        elif zone in stats_rows.keys(): # Allentown is missing, but since all those terminals
