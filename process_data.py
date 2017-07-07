@@ -299,6 +299,9 @@ def roundTime(dt=None, roundTo=60):
    rounding = (seconds+roundTo/2) // roundTo * roundTo
    return dt + timedelta(0,rounding-seconds,-dt.microsecond)
 
+def is_very_beginning_of_the_month(dt): 
+   return dt.day == 1 and dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0
+
 def beginning_of_day(dt=None):
     # Takes a datetime and returns the first datetime before
     # that that corresponds to LOCAL midnight (00:00).
@@ -485,7 +488,9 @@ def find_biggest_value(d_of_ds,field='Transactions'):
 def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
     delta_minutes = timechunk.total_seconds()/60.0
     for zone in stats_by_zone:
-        durations = json.loads(stats_by_zone[zone]['Durations'])
+        #durations = json.loads(stats_by_zone[zone]['Durations']) # No longer necessary 
+        # since this field is going to be a list of integers until package_for_output
+        # is called.
 #        if len(durations) > 0:
 #            print "\ndurations for zone {} = ".format(zone)
 #            pprint.pprint(durations)
@@ -507,6 +512,11 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
 
 def initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/Eastern')):
     stats = {}
+
+    # This is where it would be nice to maybe do some different formatting based on the 
+    # time_aggregation parameter (since now a bin is not defined just by Start and End
+    # but also by year-month. The other possibility would be to do it when the month
+    # is archived (from the loop in main()).
     start_time_pgh = start_time.astimezone(tz)
     stats['Start'] = datetime.strftime(start_time_pgh,"%Y-%m-%d %H:%M:%S")
     # [ ] Is this the correct start time?
@@ -527,7 +537,7 @@ def initialize_zone_stats(start_time,end_time,aggregate_by,tz=pytz.timezone('US/
         stats['Parent Zone'] = None
     return stats
 
-def distill_stats(stats_by={},rps,terminals,t_guids,t_ids, start_time,end_time, zone_kind='old', aggregate_by='zone', parent_zones=[], tz=pytz.timezone('US/Eastern')):
+def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},zone_kind='old', aggregate_by='zone', parent_zones=[], tz=pytz.timezone('US/Eastern')):
     # Originally this function just aggregated information
     # between start_time and end_time to the zone level.
 
@@ -576,16 +586,12 @@ def distill_stats(stats_by={},rps,terminals,t_guids,t_ids, start_time,end_time, 
                     if 'Parent Zone' in stats_by[zone]:
                         stats_by[zone]['Parent Zone'] = '|'.join(parent_zones[zone])
                 elif aggregate_by == 'meter':
-                    stats_by[zone]['Meter ID'] += rp['TerminalID']
+                    stats_by[zone]['Meter ID'] = t_id
+                    stats_by[zone]['Zone'] = numbered_zone(t_id)
                 stats_by[zone]['Transactions'] += 1
                 stats_by[zone]['Car-minutes'] += rp['Duration']
                 stats_by[zone]['Payments'] += rp['Amount']
                 stats_by[zone]['Durations'].append(rp['Duration'])
-
-    for zone in stats_by.keys():
-        counted = Counter(stats_by[zone]['Durations'])
-        stats_by[zone]['Durations'] = json.dumps(counted, sort_keys=True)
-        stats_by[zone]['Payments'] = float(round_to_cent(stats_by[zone]['Payments']))
 
     return stats_by
 
@@ -1093,38 +1099,63 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,aggregate_by,augment):
-    list_of_dicts = []
-    augmented = []
-    zlist = sorted(list(set(sorted(stats_rows.keys())+zonelist)))
+    # This function works for zones and ad hoc zones. It has now been modified
+    # to do basic agggregating by meter, ignoring inferred occupancy and augmentation.
+    
 
-    for zone in zlist:
-        if zone in stats_rows.keys():
-            d = stats_rows[zone]
-        else:
-            d = initialize_zone_stats(slot_start,slot_end,aggregate_by,tz)
-        d['Zone'] = zone
-        if zone in stats_rows.keys():
+    # Convert Durations (list of integers) and Payments to their final forms
+    # (Durations becoes a JSON dict and Payments becomes rounded to the nearest
+    # cent. (moved from bottom of distill_stats)
+    for zone in stats_rows.keys():
+        counted = Counter(stats_rows[zone]['Durations'])
+        stats_rows[zone]['Durations'] = json.dumps(counted, sort_keys=True)
+        stats_rows[zone]['Payments'] = float(round_to_cent(stats_rows[zone]['Payments']))
+    #####
+
+    if aggregate_by == 'meter':
+        list_of_dicts = []
+        augmented = []
+        
+        mlist = sorted(list(set(stats_rows.keys())))
+        for meter in mlist:
+            d = stats_rows[meter]
+            d['Meter'] = meter
             list_of_dicts.append(d)
-        if inferred_occupancy is not None:
-            d['Inferred occupancy'] = inferred_occupancy[slot_start][zone]
-    #            if d['Inferred occupancy'] > 0:
-    #                print "Inferred occupancy:", slot_start,zone,d['Inferred occupancy']
-        if zone in temp_zone_info:
-            extra = temp_zone_info[zone]
-            d['Latitude'] = extra['Latitude']
-            d['Longitude'] = extra['Longitude']
-            d['Meter count'] = extra['MeterCount']
-            d['Zone type'] = extra['Type']
-            #augmented.append(d)
-            if augment:
-                if d['Inferred occupancy'] > 0 or zone in stats_rows.keys():
-                    augmented.append(d)
+    else:
+        list_of_dicts = []
+        augmented = []
+        zlist = sorted(list(set(sorted(stats_rows.keys())+zonelist))) # I think that the inner "sorted" function can be removed here.
 
-#        elif zone in stats_rows.keys(): # Allentown is missing, but since all those terminals
-        # are listed as inactive, this branch should never get called
-        # unless someone (maybe the ParkMobile user entering a code)
-        # makes an error.
-#            print("Found a zone not listed in temp_zone_info: {}".format(zone))
+        for zone in zlist:
+            if zone in stats_rows.keys():
+                d = stats_rows[zone]
+            else: # This part is only necessary for the augmented list (which should
+            # have inferred occupancy for each zone for each slot (even if there were
+            # no transactions during that slot), unlike list_of_dicts).
+                d = initialize_zone_stats(slot_start,slot_end,aggregate_by,tz)
+            d['Zone'] = zone
+            if zone in stats_rows.keys():
+                list_of_dicts.append(d)
+            if inferred_occupancy is not None:
+                d['Inferred occupancy'] = inferred_occupancy[slot_start][zone]
+        #            if d['Inferred occupancy'] > 0:
+        #                print "Inferred occupancy:", slot_start,zone,d['Inferred occupancy']
+            if zone in temp_zone_info:
+                extra = temp_zone_info[zone]
+                d['Latitude'] = extra['Latitude']
+                d['Longitude'] = extra['Longitude']
+                d['Meter count'] = extra['MeterCount']
+                d['Zone type'] = extra['Type']
+                #augmented.append(d)
+                if augment:
+                    if d['Inferred occupancy'] > 0 or zone in stats_rows.keys():
+                        augmented.append(d)
+
+    #        elif zone in stats_rows.keys(): # Allentown is missing, but since all those terminals
+            # are listed as inactive, this branch should never get called
+            # unless someone (maybe the ParkMobile user entering a code)
+            # makes an error.
+    #            print("Found a zone not listed in temp_zone_info: {}".format(zone))
     return list_of_dicts, augmented
 
 def main(*args, **kwargs):
@@ -1167,19 +1198,38 @@ def main(*args, **kwargs):
     else:
         zonelist = numbered_reporting_zones_list
 
+    timechunk = kwargs.get('timechunk',DEFAULT_TIMECHUNK)
+  #  timechunk = timedelta(seconds=1)
+    #######
+    # aggregate_by is a parameter used to tell distill_stats how to spatially aggregate
+    # data (by zone, ad hoc zone, or meter GUID). We need a different parameter to choose
+    # among spatiotemporal aggregations, including: 
+    # 1) default: by 10-minute interval and zone/ad hoc zone (TIMECHUNK = 10 minutes)
+    # 2) alternative: by 1-hour intervals and meter, but also summed over every day in a
+    # month (the timechunk will be separately controlled by the 'timechunk' parameter).
+
+    # spacetime = 'zone' for case 1 and 'meter,month' for case 2
+    spacetime = kwargs.get('spacetime','zone') # This is the spatiotemporal aggregation mode.
+    if spacetime == 'zone':
+        space_aggregation = 'zone'
+        time_aggregation = None # So, there are really two different time aggregations going
+        # on. Fine-grained aggregation into bins of duration timechunk (10 minutes) by default
+        # and then this extra optional time_aggregation, which is by month for 'meter,month'
+        # aggregation (where timechunk is switched to one hour) or else none at all in the 
+        # default case.
+    elif spacetime == 'meter,month':
+        space_aggregation = 'meter'
+        time_aggregation = 'month'
+        timechunk = timedelta(hours=1)
+
     pgh = pytz.timezone('US/Eastern')
     use_cache = kwargs.get('use_cache', False)
-
-    #use_cache = True
     terminals = get_terminals(use_cache)
 
     t_ids = [t['@Id'] for t in terminals]
     t_guids = [t['@Guid'] for t in terminals]
 
 
-    timechunk = kwargs.get('timechunk',DEFAULT_TIMECHUNK)
-
-  #  timechunk = timedelta(seconds=1)
     if skip_processing:
         timechunk = timedelta(hours=24)
 
@@ -1206,6 +1256,11 @@ def main(*args, **kwargs):
     #halting_time = pgh.localize(datetime(2017,3,2,0,0)) # Set halting time
     halting_time = kwargs.get('halting_time',halting_time)
 
+    if time_aggregation == 'month':
+        # Round to the beginning and end of the months of the respective starting and ending datetimes:
+        slot_start = slot_start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        next_month = (halting_time.month + 1 - 1) % 12 + 1
+        halting_time = halting_time.replace(month=next_month, day=1, hour=0, minute=0, second=0, microsecond=0)
 
     # Setting slot_start and halting_time to UTC has no effect on 
     # getting_ps_from_somewhere, but totally screws up get_batch_parking
@@ -1300,7 +1355,16 @@ def main(*args, **kwargs):
     # I just added 'UTC Start' to ad_hoc_dkeys on April 25, 2017.
 
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
+    if space_aggregation == 'meter':
+        dkeys = ['Meter GUID', 'Meter ID', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
+        # These are dictionary keys (for writing a bunch of dictionaries to a CSV file), NOT database keys.
+        augmented_dkeys = ['Meter GUID', 'Meter ID', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations', 'Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
+        ad_hoc_dkeys = ['Meter GUID', 'Meter ID', 'Start', 'End', 'UTC Start', 'Transactions', 'Car-minutes', 'Payments', 'Durations']
 
+###########################################
+    stats_rows = {} # This is only needed for the extra time aggregation modes.
+
+    print("time_aggregation = {}, space_aggregation = {}, spacetime = {}".format(time_aggregation, space_aggregation, spacetime))
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
 
         t0 = time.time()
@@ -1340,79 +1404,114 @@ def main(*args, **kwargs):
             #            print("Found group {}".format(code_group))
             #            virtual_zone_checked.append(code)
 
+            if time_aggregation == 'month': 
+                if is_very_beginning_of_the_month(slot_start): # Store the old stats_rows and then reset stats_rows
+                    print("Found the very beginning of the month")
+                    # Store old stats_rows
+                    list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,space_aggregation,augment)
+                    if output_to_csv: 
+                        write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
+                    if push_to_CKAN:
+                        # server and resource_id parameters are imported from remote_parameters.py
+                        filtered_list_of_dicts = only_these_fields(list_of_dicts,dkeys)
+                        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
+
+                        #success = pipe_data_to_ckan(server, resource_id, cumulated_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                        success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                        print("success = {}".format(success))
+
+                    if (push_to_CKAN and success) or not push_to_CKAN: 
+                        stats_rows = {}
+                    if (push_to_CKAN and success) and output_to_CSV: 
+                        raise ValueError("stats_rows was not cleared because of failure to write to CKAN, but this would cause data to be double-written to the CSV file. No code exists to resolve this conflict, so this script is throwing its digital hands up to avoid making a mess.")
+
+            elif time_aggregation is None:
+                stats_rows = {}
+                        
             t2 = time.time()
 
             # Condense to key statistics (including duration counts).
-            stats_rows = distill_stats({},reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end, zone_kind, 'zone', [], tz=pgh)
+            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
-            
-            ad_hoc_stats_rows = distill_stats({},reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
+            if time_aggregation is None and space_aggregation == 'zone':  
+                ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', parent_zones, tz=pgh)
 
             t3 = time.time()
-            if not turbo_mode and augment:
-                inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
-            # We may eventually need to compute ad_hoc_inferred_occupancy.
+            if time_aggregation is None and space_aggregation == 'zone':  
+                if not turbo_mode and augment:
+                    inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
+                # We may eventually need to compute ad_hoc_inferred_occupancy.
             t4 = time.time()
 
-            if len(stats_rows) == 0:
-                print
-            else:
-                print("({})".format(find_biggest_value(stats_rows,'Transactions')))
-            #pprint.pprint(stats_rows)
-            # Return list of OrderedDicts where each OrderedDict
-            # represents a row for a parking zone (or lot) and time slot.
+            #if len(stats_rows) == 0:
+            #    print
+            #else:
+            #    print("({})".format(find_biggest_value(stats_rows,'Transactions')))
 
-            list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone',augment)
-            
-            if output_to_csv and len(list_of_dicts) > 0: # Write to files as
-            # often as necessary, since the associated delay is not as great as
-            # for pushing data to CKAN.
-                write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
-                if not turbo_mode and augment:
-                    write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_dkeys,overwrite)
+            if spacetime == 'zone': # The original idea for these clauses was to make them all
+            # like 
+            #       if time_aggregation == 'month'
+            # or
+            #       if time_aggregation is None
+            # but there's a parameter in package_for_output which is sometimes 'meter' and sometimes 'zone'
+            # suggesting that it should be replaced with space_aggregation, but sometimes it's 'ad_hoc_zone'
+            # because of the ad hoc weirdness, which I am leaving out of meter-month aggregation, so for 
+            # now, this clause is being governed by the value of spacetime.
 
-            cumulated_dicts += list_of_dicts
-            if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
-                print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
-                # server and resource_id parameters are imported from remote_parameters.py
-                filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
-                filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
+                list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone',augment)
 
-                #success = pipe_data_to_ckan(server, resource_id, cumulated_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-                success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-                print("success = {}".format(success))
-                if success:
-                    cumulated_dicts = []
+                if output_to_csv and len(list_of_dicts) > 0: # Write to files as
+                # often as necessary, since the associated delay is not as great as
+                # for pushing data to CKAN.
+                    write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
+                    if not turbo_mode and augment:
+                        write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_dkeys,overwrite)
 
-            ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',augment)
-            # Between the passed use_ad_hoc_zones boolean and other parameters, more
-            # information is being passed than necessary to distinguish between
-            # ad hoc zones and regular zones.
+                cumulated_dicts += list_of_dicts
+                if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
+                    print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
+                    # server and resource_id parameters are imported from remote_parameters.py
+                    filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
+                    filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
 
-            if output_to_csv and len(ad_hoc_list_of_dicts) > 0:
-                write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys,overwrite)
-                #print("Wrote some ad hoc data to a CSV file")
+                    #success = pipe_data_to_ckan(server, resource_id, cumulated_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                    success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                    print("success = {}".format(success))
+                    if success:
+                        cumulated_dicts = []
 
-            cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
-            if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
-                filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
-                filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
-                success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-                if success_a:
-                    cumulated_ad_hoc_dicts = []
+                ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',augment)
+                # Between the passed use_ad_hoc_zones boolean and other parameters, more
+                # information is being passed than necessary to distinguish between
+                # ad hoc zones and regular zones.
 
-            del inferred_occupancy[slot_start]
+                if output_to_csv and len(ad_hoc_list_of_dicts) > 0:
+                    write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys,overwrite)
+                    #print("Wrote some ad hoc data to a CSV file")
+
+                cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
+                if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
+                    filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
+                    filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
+                    success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                    if success_a:
+                        cumulated_ad_hoc_dicts = []
+
+            if spacetime != 'meter,month':
+                if slot_start in inferred_occupancy:
+                    del inferred_occupancy[slot_start]
 
         slot_start += timechunk
         slot_end = slot_start + timechunk
         t8 = time.time()
-        if not skip_processing:
-            if len(reframed_ps) > 0:
-                print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.  (t8-t0)/len(rps) = {:1.1e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t8-t0)/len(reframed_ps)))
-            else:
-                print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
-    print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
+        #if not skip_processing:
+        #    if len(reframed_ps) > 0:
+        #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.  (t8-t0)/len(rps) = {:1.1e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t8-t0)/len(reframed_ps)))
+        #    else:
+        #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
+    if spacetime == 'zone':
+        print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
   
     if caching_mode == 'db_caching':
         cached_dates,_ = get_tables_from_db(db)
@@ -1421,23 +1520,38 @@ def main(*args, **kwargs):
     t_end = time.time()
     print("Run time = {}".format(t_end-t_begin))
 
+
+    if spacetime == 'meter,month' and output_to_csv:
+        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,space_aggregation,augment)
+        print("len(list_of_dicts) = {}".format(len(list_of_dicts)))
+        write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
+
     if push_to_CKAN: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
-        filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
+        if spacetime == 'zone':
+            filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
+        else:
+            filtered_list_of_dicts = only_these_fields(list_of_dicts,dkeys)
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields)
         success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         #success = pipe_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
         if success:
-            cumulated_dicts = []
+            if spacetime == 'zone':
+                cumulated_dicts = []
             print("Pushed the last batch of transactions to {}".format(resource_id))
-        filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
-        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
-        success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-        if success_a:
-            cumulated_ad_hoc_dicts = []
-            print("Pushed the last batch of ad hoc transactions to {}".format(ad_hoc_resource_id))
+        if spacetime == 'zone':
+            filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
+            filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
+            success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+            if success_a:
+                cumulated_ad_hoc_dicts = []
+                print("Pushed the last batch of ad hoc transactions to {}".format(ad_hoc_resource_id))
+            return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
+        else:
+            return success
 
-        return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
+
+
         # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
         # the whole process succeeded).
 
