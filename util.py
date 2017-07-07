@@ -230,7 +230,7 @@ def build_keys(space_aggregation,time_aggregation):
     dkeys = space_keys + time_keys + base
     augmented_dkeys = dkeys + extras
     ad_hoc_dkeys = space_keys + ['Parent Zone'] + time_keys + base
-    return dkeys, augmented_dkeys, ad_hoc_keys
+    return dkeys, augmented_dkeys, ad_hoc_dkeys
 
 
 def unique_values(xs,field):
