@@ -1171,7 +1171,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
         augmented = []
         
         #mlist = sorted(list(set(stats_rows.keys()))) # This would be the list of Meter GUIDs
-        mlist = sorted(list(set([u['Meter GUID'] for u in stats_rows.values()]))) # Meter GUIDs
+        #mlist = sorted(list(set([u['Meter GUID'] for u in stats_rows.values()]))) # Meter GUIDs
         # For meter-month-hour aggregation, we want to sort by year, month, hour, and then 
         # meter ID. By construction, package_for_output should only be called for the same
         # year and month values, so we sort by hour (maybe sorting by local hour and then
@@ -1190,7 +1190,11 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
 
 
         # This approach works, but it would be nicer to sort by meter ID, though using meter GUID
-        # as the key... 
+        # as the key seems like it might be slightly more robust (though it's actually unclear
+        # how best to handle situations where the meter ID shifts). 
+
+        # Perhaps that could be done this way:
+        # better_order = sorted(stats_rows, key=lambda x: (x['Year'], x['Month'], x['Hour'], x['Meter ID']))
         for a_key in sorted(list(stats_rows.keys())):
             dt_string, meter_guid = a_key.split('|')
             year_month, hour_string = dt_string.split(' ')
