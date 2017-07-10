@@ -317,7 +317,12 @@ def p_hash(p,t):
     # and the parking zone that it happened in as a unique identifier
     # to link transactions that are extensions of an original parking
     # purchase back to that first purchase.
-    return "{}|{}".format(p['@PurchaseDateLocal'],numbered_zone(t['@Id']))
+    #return "{}|{}|{}".format(p['@PurchaseDateLocal'],numbered_zone(t['@Id']))
+    # Examining this again in July of 2017 suggests that PurchaseDateLocal is not the
+    # correct field to use (maybe because I switched to using StartDateUtc for
+    # other things).
+    return "{}|{}".format(p['@StartDateUtc'],numbered_zone(t['@Id']))
+
 
 def is_original(p,t,p_history,previous_history):
     # This function does an initial check to see if a particular
@@ -631,9 +636,6 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                             # This output seems to be the same as before space-time aggregation
                             # was added.
                             stats_by[a_key]['Parent Zone'] = '|'.join(parent_zones[zone])
-
-                            if len(aggregation_keys) > 1:
-                                print("space_keys = {}, a_keys = {}, zone = {}".format(space_aggregation_keys,aggregation_keys,zone))
 
                     elif space_aggregate_by == 'meter':
                         stats_by[a_key]['Meter GUID'] = t_guid
@@ -1345,6 +1347,7 @@ def main(*args, **kwargs):
         next_month = (halting_time.month + 1 - 1) % 12 + 1
         #next_month -=1
         halting_time = halting_time.replace(month=next_month, day=1, hour=0, minute=0, second=0, microsecond=0)
+        print("halting_time = {}".format(halting_time))
 
     # Setting slot_start and halting_time to UTC has no effect on 
     # getting_ps_from_somewhere, but totally screws up get_batch_parking
