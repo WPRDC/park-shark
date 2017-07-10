@@ -510,7 +510,11 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
 #                print t, to_dict(inferred_occupancy[t])
     return inferred_occupancy
 
-def initialize_zone_stats(start_time,end_time,space_aggregate_by,tz=pytz.timezone('US/Eastern')):
+def format_a_key(meter_guid,year,month,hour):
+#    return "{}|{}/{} {:02d}".format(meter_guid,year,month,hour)
+    return "{}/{} {:02d}|{}".format(year,month,hour,meter_guid)
+
+def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,tz=pytz.timezone('US/Eastern')):
     stats = {}
 
     # This is where it would be nice to maybe do some different formatting based on the 
@@ -535,6 +539,11 @@ def initialize_zone_stats(start_time,end_time,space_aggregate_by,tz=pytz.timezon
     # Durations dictionary should equal the value in the Car-minutes field.
     if space_aggregate_by == 'ad hoc zone':
         stats['Parent Zone'] = None
+    if time_aggregate_by == 'month':
+        stats['Year'] = start_time.astimezone(tz).strftime("%Y")
+        stats['Month'] = start_time.astimezone(tz).strftime("%m")
+        stats['Hour'] = start_time.astimezone(tz).strftime("%-H")
+        stats['UTC Hour'] = start_time.astimezone(pytz.utc).strftime("%-H")
     return stats
 
 def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},zone_kind='old', space_aggregate_by='zone', time_aggregate_by=None, parent_zones=[], tz=pytz.timezone('US/Eastern')):
@@ -580,17 +589,29 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                 # an additional field.
 
         if space_aggregation_keys != []:
+            space_aggregation_keys = censor(space_aggregation_keys)
             if time_aggregate_by is None:
                 aggregation_keys = space_aggregation_keys
             elif time_aggregate_by == 'month':
-                time_key = start_time.strftime("%Y/%m %H")
-                aggregation_keys = [s_a_k + "|" + time_key for s_a_k in space_aggregation_keys]
-
+                time_key = start_time.astimezone(tz).strftime("%Y/%m %H") #+ "-"+ start_time.astimezone(pytz.utc).strftime("%H")
+                # [X] Actually, do we really need to distinguish between the two 1-2am slots on the one day of the year when
+                # the clocks shift back? Maybe we can just combine those together.
+                year = start_time.astimezone(tz).strftime("%Y")
+                month = start_time.astimezone(tz).strftime("%m")
+                hour = int(start_time.astimezone(tz).strftime("%H"))
+                #aggregation_keys = [s_a_k + "|" + time_key for s_a_k in space_aggregation_keys]
+                aggregation_keys = [format_a_key(s_a_k,year,month,hour) for s_a_k in space_aggregation_keys]
+                #time_key = start_time.astimezone(tz).strftime("%Y/%m %H") + "-"+ start_time.astimezone(pytz.utc).strftime("%H")
+                #aggregation_keys = [(s_a_k, time_key) for s_a_k in space_aggregation_keys if not_censored(s_a_k)]
             # The above could really stand to be refactored.
             if aggregation_keys != []:
-                for a_key in censor(aggregation_keys):
+                for a_key in aggregation_keys:
                     if a_key not in stats_by:
-                        stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,tz=pytz.timezone('US/Eastern'))
+                        stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,tz=pytz.timezone('US/Eastern'))
+
+                    zone = a_key.split('|')[0]
+                    stats_by[a_key]['Zone'] = zone
+
                     if space_aggregate_by == 'ad hoc zone':
                         if 'Parent Zone' in stats_by[a_key]:
                             #for zone in space_aggregation_keys:
@@ -609,8 +630,6 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                             # each case, which is what I've done. 
                             # This output seems to be the same as before space-time aggregation
                             # was added.
-                            zone = a_key.split('|')[0]
-                            stats_by[a_key]['Zone'] = zone
                             stats_by[a_key]['Parent Zone'] = '|'.join(parent_zones[zone])
 
                             if len(aggregation_keys) > 1:
@@ -620,6 +639,7 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                         stats_by[a_key]['Meter GUID'] = t_guid
                         stats_by[a_key]['Meter ID'] = t_id
                         stats_by[a_key]['Zone'] = numbered_zone(t_id)
+
                     stats_by[a_key]['Transactions'] += 1
                     stats_by[a_key]['Car-minutes'] += rp['Duration']
                     stats_by[a_key]['Payments'] += rp['Amount']
@@ -1130,7 +1150,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
-def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,space_aggregate_by,augment):
+def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,augment):
     # This function works for zones and ad hoc zones. It has now been modified
     # to do basic agggregating by meter, ignoring inferred occupancy and augmentation.
     
@@ -1144,16 +1164,38 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
         stats_rows[aggregation_key]['Payments'] = float(round_to_cent(stats_rows[aggregation_key]['Payments']))
     #####
 
+    print("space_aggregate_by = {}, time_aggregate_by = {}, len(stats_rows) = {}".format(space_aggregate_by,time_aggregate_by,len(stats_rows)))
     if space_aggregate_by == 'meter':
+        print("space-aggregating by meter.")
         list_of_dicts = []
         augmented = []
         
         #mlist = sorted(list(set(stats_rows.keys()))) # This would be the list of Meter GUIDs
-        mlist = sorted(list(set([u['Meter ID'] for u in stats_rows.values()]))) # Meter IDs
-        for meter in mlist:
-            d = stats_rows[meter]
-            #d['Meter GUID'] = meter # This is no longer necessary.
-            list_of_dicts.append(d)
+        mlist = sorted(list(set([u['Meter GUID'] for u in stats_rows.values()]))) # Meter GUIDs
+        # For meter-month-hour aggregation, we want to sort by year, month, hour, and then 
+        # meter ID. By construction, package_for_output should only be called for the same
+        # year and month values, so we sort by hour (maybe sorting by local hour and then
+        # using UTC hour as the tiebreaker) and then by meter ID.
+        #year_month = slot_start.astimezone(tz).strftime("%Y/%m")
+        #year = slot_start.astimezone(tz).strftime("%Y")
+        #month = slot_start.astimezone(tz).strftime("%m")
+        #for hour in range(0,24):
+        #    for meter in mlist:
+        #        a_key = "{}|{} {:02d}".format(meter,year_month,hour)
+        #        a_key = format_a_key(meter,year,month,hour)
+        #        if a_key in stats_rows:
+        #            print("{} is in stats_rows".format(a_key))
+        #            list_of_dicts.append(stats_rows[a_key])
+            #raise ValueError("Fill in the rest of this code and get rid of stats_rows[meter].")
+
+
+        # This approach works, but it would be nicer to sort by meter ID, though using meter GUID
+        # as the key... 
+        for a_key in sorted(list(stats_rows.keys())):
+            dt_string, meter_guid = a_key.split('|')
+            year_month, hour_string = dt_string.split(' ')
+            list_of_dicts.append(stats_rows[a_key])
+
     else: # Implicitly, spacetime == 'zone' here.
         list_of_dicts = []
         augmented = []
@@ -1168,7 +1210,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
             else: # This part is only necessary for the augmented list (which should
             # have inferred occupancy for each zone for each slot (even if there were
             # no transactions during that slot), unlike list_of_dicts).
-                d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,tz)
+                d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,time_aggregate_by,tz)
             #d['Zone'] = zone # This is no longer necessary.
             if zone in stats_rows.keys():
                 list_of_dicts.append(d)
@@ -1297,6 +1339,7 @@ def main(*args, **kwargs):
         # Round to the beginning and end of the months of the respective starting and ending datetimes:
         slot_start = slot_start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         next_month = (halting_time.month + 1 - 1) % 12 + 1
+        #next_month -=1
         halting_time = halting_time.replace(month=next_month, day=1, hour=0, minute=0, second=0, microsecond=0)
 
     # Setting slot_start and halting_time to UTC has no effect on 
@@ -1433,10 +1476,10 @@ def main(*args, **kwargs):
             #            virtual_zone_checked.append(code)
 
             if time_aggregation == 'month': 
-                if is_very_beginning_of_the_month(slot_start): # Store the old stats_rows and then reset stats_rows
+                if is_very_beginning_of_the_month(slot_start) and len(stats_rows) > 0: # Store the old stats_rows and then reset stats_rows
                     print("Found the very beginning of the month")
                     # Store old stats_rows
-                    list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,space_aggregation,augment)
+                    list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment)
                     if output_to_csv: 
                         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
@@ -1487,7 +1530,7 @@ def main(*args, **kwargs):
             # because of the ad hoc weirdness, which I am leaving out of meter-month aggregation, so for 
             # now, this clause is being governed by the value of spacetime.
 
-                list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone',augment)
+                list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone',None,augment)
 
                 if output_to_csv and len(list_of_dicts) > 0: # Write to files as
                 # often as necessary, since the associated delay is not as great as
@@ -1509,7 +1552,7 @@ def main(*args, **kwargs):
                     if success:
                         cumulated_dicts = []
 
-                ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',augment)
+                ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',None,augment)
                 # Between the passed use_ad_hoc_zones boolean and other parameters, more
                 # information is being passed than necessary to distinguish between
                 # ad hoc zones and regular zones.
@@ -1548,9 +1591,10 @@ def main(*args, **kwargs):
     t_end = time.time()
     print("Run time = {}".format(t_end-t_begin))
 
-
+    print("spacetime = {}".format(spacetime))
     if spacetime == 'meter,month' and output_to_csv:
-        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,space_aggregation,augment)
+        print("len(stats_rows) = {}".format(len(stats_rows)))
+        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment)
         print("len(list_of_dicts) = {}".format(len(list_of_dicts)))
         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 

@@ -242,12 +242,15 @@ def unique_values(xs,field):
 #>>> unique_values(purchases,'@PurchaseStateName')
 #set([u'Completed', u'Ongoing'])
 
+def censored(x):
+    return re.search("^TEST",x) is not None
+
 def censor(xs):
     # Eliminate all strings in the list xs that contain forbidden
     # patterns (e.g., those that start with "TEST").
     ys = []
     for x in xs:
-        if re.search("^TEST",x) is None:
+        if not censored(x):
             ys.append(x)
     return ys
 
