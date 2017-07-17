@@ -323,7 +323,6 @@ def p_hash(p,t):
     # other things).
     return "{}|{}".format(p['@StartDateUtc'],numbered_zone(t['@Id']))
 
-
 def is_original(p,t,p_history,previous_history):
     # This function does an initial check to see if a particular
     # transaction might be an extension/"TopUp" of a previous
@@ -346,9 +345,18 @@ def is_original(p,t,p_history,previous_history):
     #else:
     #    t = None
     p_key = p_hash(p,t)
-    return ((p_key not in p_history) and (p_key not in previous_history))
+    probably_original = ((p_key not in p_history) and (p_key not in previous_history))
+    return probably_original
 
 def find_predecessors(p,t,t_guids,terminals,p_history,previous_history):
+    """This function returns a list of all the suspected predecessor 
+    transactions in a chain leading to the purchase p.
+
+    Importantly, this function now looks at the rates for the previous
+    transaction (the last one in the chain) and compares its inferred
+    rate to what one would get if the purchase p were an extension 
+    of that previous transaction's session."""
+
     if previous_history != {}:
         predecessors = p_history[p_hash(p,t)] + previous_history[p_hash(p,t)]
     else:
@@ -366,19 +374,83 @@ def find_predecessors(p,t,t_guids,terminals,p_history,previous_history):
     # Use some sanity checks to filter out transactions that are not actually
     # related to the purchase p (that is, they're for other cars).
     if len(sps) > 0:
+        new_sps = []
         for sp in sps: # Check that payments are all either physical or virtual.
-            if is_virtual(t) != is_virtual(terminal_of(sp,t_guids,terminals)):
-                sps.remove(sp)
+            if is_virtual(t) == is_virtual(terminal_of(sp,t_guids,terminals)):
+                new_sps.append(sp)
+        sps = new_sps
     if len(sps) > 0:
+        new_sps = []
         latest = p
         # Eliminate earlier purchases that already have more paid-for
         # minutes (represented by the field @Units) than the purchase p.
-        for sp in sps[1::-1]:
-            if int(sp['@Units']) >= int(latest['@Units']):
-                sps.remove(sp)
-            else:
+        for sp in sps[1::-1]: #<<<<<<< Why does this skip the first one?
+            # Is the assumption that the first one IS p?
+            if int(sp['@Units']) < int(latest['@Units']):
+                # Found another transaction that has a number of 
+                # cumulative minutes that fits in the monotonically
+                # decreasing sequence.
+                new_sps.append(sp)
                 latest = sp
-    return sps
+            # Shouldn't this go all the way back to index 0?
+
+        sps = new_sps
+    if len(sps) > 0:
+        new_sps = []
+        #rad.append(
+        # To filter out transactions that have a matching StartDateUtc and numbered parking
+        # zone but still do not combine with the transaction in question (p) to form 
+        # a consistent parking session, we have to look at the payments and the 
+        # cumulative minutes for each transaction to see if the math works out.
+
+        # Search through the candidate predecessors for the one with the best match
+        # (based on the normalized difference between the corrected rate and the 
+        # [presumably] original rate obtained from the predecessor's Duration field)
+        # but also throw out any predecessors that have a worse corrected rate than
+        # the uncorrected rate.
+        best_difference = None
+        for k,sp in enumerate(sps):
+            include = True
+            rate_i = float(sp['@Amount'])/float(sp['Duration'])
+            cumulative_minutes = float(sp['@Units'])
+            latest_amount = float(p['@Amount'])
+            latest_minutes = float(p['@Units'])
+            uncorrected_rate = latest_amount/latest_minutes
+            corrected_rate = latest_amount/(latest_minutes - cumulative_minutes)
+            difference = abs(corrected_rate - rate_i)/rate_i
+            uncorrected_difference = abs(uncorrected_rate - rate_i)/rate_i
+            if difference > 0.1 and uncorrected_difference > 0.1:
+                print("Candidates for transactions prior to p = ")
+                pprint.pprint(p)
+                print(" are...")
+                pprint.pprint(sps)
+
+                print("rate_i = {}, corrected_rate = {}, uncorrected_rate = {}, difference = {}, uncorrected_difference = {}".format(rate_i, corrected_rate, uncorrected_rate, difference, uncorrected_difference))
+
+            if best_difference is not None and difference > best_difference:
+                #print("Removing predecessor with Amount/Units = {},{}".format(sp['@Amount'],sp['@Units']))
+                #print("  * rate_i = {}, corrected_rate = {}, uncorrected_rate = {}, difference = {}, uncorrected_difference = {}, best_difference = {}".format(rate_i, corrected_rate, uncorrected_rate, difference, uncorrected_difference, best_difference))
+                include = False #sps.remove(sp)
+            elif best_difference is None or difference <= best_difference:
+                best_difference = difference
+                #print("best difference is now {}".format(best_difference))
+
+            if include and difference > 0.05:
+                include = False #sps.remove(sp)
+                #print("difference = {}: Throwing out a candidate predecessor.".format(difference))
+            elif include and difference > uncorrected_difference:
+                include = False #sps.remove(sp)
+                print("Throwing out a candidate predecessor because the corrected rate is farther off than the uncorrected rate.")
+            if include:
+                new_sps.append(sp)
+        if len(new_sps) > 0:    
+            print("best_difference = {}, uncorrected_difference = {}, len(new_sps) = {}, new_sps[-1]['@Units'] = {}, new_sps[-1]['Duration'] = {}".format(best_difference, uncorrected_difference, len(new_sps), new_sps[-1]['@Units'], new_sps[-1]['Duration']))
+        else:
+            print("best_difference = {}, uncorrected_difference = {}".format(best_difference, uncorrected_difference))
+   
+
+    # Maybe consider highlighting transactions with anomalous rates as missing matching transactions... 
+    return new_sps
 
 def add_to_dict(p,p_dict,terminals,t_guids):
     t = terminals[t_guids.index(p['@TerminalGuid'])]
@@ -416,7 +488,8 @@ def reframe(p,terminals,t_guids,p_history,previous_history,turbo_mode):
 # DATA STRUCTURE
 
     t_B = time.time()
-    if not turbo_mode and not is_original(p,t,p_history,previous_history): # This is an initial test, but
+    if not turbo_mode and not is_original(p,t,p_history,previous_history): 
+    # This is an initial test, but
     # some of the hits that it can return may still be rejected
     # by the find_predecessors function.
         t_C = time.time()
@@ -425,12 +498,6 @@ def reframe(p,terminals,t_guids,p_history,previous_history,turbo_mode):
     # [ ] Another option would be just to eliminate the is_original
     # function and replace it entirely with find_predecessors.
         predecessors = find_predecessors(p,t,t_guids,terminals,p_history,previous_history)
-        #print("--------------------")
-        #pprint.pprint(p)
-        #print("---")
-        #pprint.pprint(predecessors)
-        #if len(predecessors) > 0:
-        #    print("last predecessor = {} ".format(predecessors[-1]))
         print("durations = {}".format([int(x['@Units']) for x in predecessors + [p]]))
         #        print("We need to subtract the durations of the previous payments.")
         # Often only one value is printed to the console for a given purchase:
@@ -443,12 +510,19 @@ def reframe(p,terminals,t_guids,p_history,previous_history,turbo_mode):
 
         if len(predecessors) > 0:
             # Subtract off the cumulative minutes purchased by the most recent
-            # predecssor, so that the Duration field represents just the Duration
-            # of this transaction.
+            # predecessor, so that the Duration field represents just the Duration
+            # of this transaction. (Duration is the incremental number of minutes
+            # purchased, while the '@Units' field is the CUMULATIVE number of 
+            # minutes.
             row['Duration'] -= int(predecessors[-1]['@Units'])
+            #print("Correcting duration to {}".format(row['Duration']))
 
 
-     
+    p['Duration'] = row['Duration'] # A sneaky way to sneak the Duration value
+    # from the reframed purchase back into the original purchase dictionary
+    # (exclusively for filtering by rate in find_predecessors).
+
+
     #row['Extension'] = a Boolean that indicates whether this purchase is
     # an extension of a previous purchase.
     # Options for keeping statistics on such extensions:
@@ -1166,9 +1240,8 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
         stats_rows[aggregation_key]['Payments'] = float(round_to_cent(stats_rows[aggregation_key]['Payments']))
     #####
 
-    print("space_aggregate_by = {}, time_aggregate_by = {}, len(stats_rows) = {}".format(space_aggregate_by,time_aggregate_by,len(stats_rows)))
+    #print("space_aggregate_by = {}, time_aggregate_by = {}, len(stats_rows) = {}".format(space_aggregate_by,time_aggregate_by,len(stats_rows)))
     if space_aggregate_by == 'meter':
-        print("space-aggregating by meter.")
         list_of_dicts = []
         augmented = []
         
