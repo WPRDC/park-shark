@@ -297,13 +297,27 @@ def all_groups(t):
             return all_group_names
     return []
 
+def is_three_digits(s):
+    return (re.match("\d\d\d", s) is not None)
+
+def numbered_reporting_groups(t):
+    if 'TerminalGroups' in t:
+        if 'TerminalGroup' in t['TerminalGroups']:
+            group_list = t['TerminalGroups']['TerminalGroup']
+            if type(group_list) == type(OrderedDict()) and group_list['@TerminalGroupTypeName'] == 'Reporting' and is_three_digits(group_list['@TerminalGroupName'][:3]):
+                reporting_group_names = [group_list['@TerminalGroupName']]
+            else:
+                reporting_group_names = [g['@TerminalGroupName'] for g in group_list if g['@TerminalGroupTypeName'] == 'Reporting' and is_three_digits(g['@TerminalGroupName'][:3])]
+            return reporting_group_names
+    return []
+
 def ad_hoc_groups(t):
     non_ad_hoc_zones = lot_list + pure_zones_list + numbered_reporting_zones_list
     all_group_names = all_groups(t)
     sgs = [name for name in all_group_names if name not in non_ad_hoc_zones]
     return sgs
 
-def group_by_code(code):
+def group_by_code(code,t=None):
     # Here 'code' is a string which may look like '310' or '402' or
     # (in the worst case scenario) '355-2'.
 
@@ -375,6 +389,7 @@ def group_by_code(code):
                     '407': '407 - Oakland 1',
                     '408': '408 - Oakland 2',
                     '409': '409 - Oakland 3',
+                    '409-2': '409 - Oakland 3', # This is apparently an inactive virtual zone.
                     '410': '410 - Oakland 4',
                     '410-1': '410 - Oakland 4', #W.CIRC.DR
                     '411-1': '411 - Shadyside', #SHADYSIDE1
@@ -398,7 +413,7 @@ def group_by_code(code):
                     '425': '425 - Bakery Sq'
     }
     if code in group_lookup:
-        return group_lookup[code], True
+        return group_lookup[code], True, None, None
 
     # Handle cases where something like a 403-4 code has been invented.
     candidate_groups = set()
@@ -406,26 +421,59 @@ def group_by_code(code):
         if keycode[:3] == code[:3]:
             candidate_groups.add(group_lookup[keycode])
 
-    if len(candidate_groups) == 1:
-        return list(candidate_groups)[0], True
+    if len(set(candidate_groups)) == 1:
+        return list(candidate_groups)[0], True, None, None
     if len(candidate_groups) == 0:
-        raise ValueError('No group found for code {}'.format(code))
-        # An option at this point would be to use other information
-        # in the terminal record to infer the group (particularly
-        # the enforcement zone, which could easily be used in most
-        # cases, but this approach is not futureproof and could
-        # easily break).
+        if t is None:
+            raise ValueError('No group found for code {}'.format(code))
+        else:
+            # An option at this point would be to use other information
+            # in the terminal record to infer the group, matching the code
+            # to the numbered reporting zone, but this approach is not 
+            # futureproof and could break.
 
+            pprint.pprint(t)
+            nrgs = numbered_reporting_groups(t)
+            print(nrgs)
+            if len(nrgs) == 0:
+                print("Fire off notification. This is an anomalous case.")
+                raise ValueError('No group found for code {}'.format(code))
+            else:
+                # Winnow by the code
+                matches = [nrg for nrg in nrgs if nrg[:3] == code[:3]]
+                if len(matches) > 1:
+                    print("Fire off notification. Too many numbered zones to discern the true/best one.")
+                    raise ValueError('No group found for code {}'.format(code))
+                elif len(matches) == 0:
+                    print("Fire off notification. Unable to identify a valid numbered zone.")
+                    raise ValueError('No group found for code {}'.format(code))
+                else:
+                    print("Fire off notification. Found a new group.")
+                    new_numbered_zone = matches[0]
+                    new_parent_terminal_structure = t['ParentTerminalStructure']['@Name']
+                    t_groups = t['TerminalGroups']['TerminalGroup']
+                    if type(t_groups) != list:
+                        t_groups = [t_groups]
+                    new_enforcement_zones = list({g['@TerminalGroupName'] for g in t_groups if g['@TerminalGroupTypeName'] == 'Enforcement'})
+                    print("new_enforcement_zones = {}".format(new_enforcement_zones))
+                    if len(new_enforcement_zones) == 0:
+                        raise ValueError("No enforcement zone found for the new numbered zone {}".format(new_numbered_zone))
+                    elif len(new_enforcement_zones) > 1:
+                        raise ValueError("More than one enforcement zone found for the new numbered zone {}".format(new_numbered_zone))
+                    else:
+                        new_enforcement_zone = new_enforcement_zones[0]
+                    return matches[0], True, new_numbered_zone, new_enforcement_zone
+ 
     raise ValueError('Too many candidate groups found for code {}'.format(code))
 
     # [ ] Eventually replace these exceptions with notifications to
     # administrators and a reasonable default value (like the original
     # code.
 
-    return code, False
+    return code, False, None, None
 
 
-def infer_group(t,t_id=None):
+def infer_group(t=None,t_id=None):
     # This function only works for virtual groups.
     if t_id is None:
         t_id = t['@Id']
@@ -433,29 +481,29 @@ def infer_group(t,t_id=None):
         return None
     code = t_id[3:] # Split off the part after 'PBP' (Pay By Phone?).
     # The above code could be factored out into part of an infer_code() function.
-    group, matched = group_by_code(code)
-    return group
+    group, matched, new_numbered_zone, new_old_zone = group_by_code(code,t)
+    return group, new_numbered_zone, new_old_zone
 
-def numbered_zone(t_id):
+def numbered_zone(t_id,t=None):
     # This is the new slimmed-down approach to determining the numbered
     # reporting zone for the meter purely from the meter ID.
     num_zone = None
     if t_id[:3] == 'PBP': #is_virtual(t)
-        num_zone = infer_group(None,t_id)
+        num_zone, new_num_zone, new_old_zone = infer_group(t,t_id)
     else:
         try:
-            zone_in_ID, matched = group_by_code(t_id[:3])
+            zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3],t)
         except:
             if t_id == "B0010X00786401372-STANWX0601":
                 # Workaround for weird terminal ID spotted in
                 # November 8th, 2012 data.
-                zone_in_ID, matched = '401 - Downtown 1', True
+                zone_in_ID, matched, new_num_zone, new_old_zone = '401 - Downtown 1', True, None, None
             else:
                 raise ValueError("Unable to find a numbered zone for terminal ID {}".format(t_id))
 
         if matched:
             num_zone = zone_in_ID
-    return num_zone
+    return num_zone, new_num_zone, new_old_zone
 
 def sort_dict(d):
     return sorted(d.items(), key=operator.itemgetter(1))
@@ -486,6 +534,9 @@ def zone_name(t):
     # total available parking.
     # Superzone? Zone w/lots? (This still ignores garages.)
 
+
+    # One problem with this is that the new Hill District meter has an Enforcement Zone name 
+    # (Hill District) that differs from its Parent Terminal Structure (HILL-DIST).
     return code
 
 def corrected_zone_name(t,t_ids=[],t_id=None):
@@ -497,6 +548,9 @@ def corrected_zone_name(t,t_ids=[],t_id=None):
     '421081-ARCHST1301': 'NORTHSIDE',
     '421079-ARCHST1302': 'NORTHSIDE',
     '421080-ARCHST1304': 'NORTHSIDE',
+    #'409342-BIGELO3801': 'OAKLAND3', # This is a best guess based on location and meter ID.
+    #'409344-BIGELO3804': 'OAKLAND3', # This is a best guess based on location and meter ID.
+    #'409346-BIGELO3902': 'OAKLAND3', # This is a best guess based on location and meter ID.
     '419019-BROOKL0702': 'BROOKLINE',
     '403321-CENTRE3002': 'OAKLAND1',
     '403322-CENTRE3101': 'OAKLAND1',
@@ -570,16 +624,22 @@ def corrected_zone_name(t,t_ids=[],t_id=None):
                 if terminalgroup['@TerminalGroupTypeName'] == 'Enforcement':
                     zn = terminalgroup['@TerminalGroupName']
             if zn == "Z - Inactive/Removed Terminals":
-                # Handle cases where there's a Reporting group but no
-                # Enforcement group.
                 #print("\nGrody terminal listed with zone_name 'Z - Inactive/Removed Terminals':")
                 #pprint.pprint(to_dict(t))
-                zn = convert_group_to_zone(t,numbered_zone(t['@Id']))
+                num_zone, new_num_zone, new_old_zone = numbered_zone(t['@Id'],t)
+                zn = convert_group_to_zone(t,num_zone)
+                if zn is None:
+                    if new_old_zone is not None:
+                        zn = new_old_zone
+                # [ ] Handle cases where there's a Reporting group but no
+                # Enforcement group.
         if zn is None or zn == "Z - Inactive/Removed Terminals":
             if t['@Id'] in lost_zone_names.keys():
                 zn = lost_zone_names[t['@Id']]
             else:
-                print("corrected_zone_name: No zone name found or inferred for {}".format(t['@Id']))
+                print("corrected_zone_name: No zone name found or inferred for {} (which may mean that it is inactive/removed).".format(t['@Id']))
+                # I think it doesn't matter if we can't map inactive meters back to enforcement zones.
+                # It might even be OK to remove the "lost_zone_names" corrections.
     return zn
 
 

@@ -122,6 +122,8 @@ def pull_terminals(*args, **kwargs):
     zone_type = {}
     list_of_dicts = []
     set_of_all_groups = set()
+    uncharted_numbered_zones = []
+    uncharted_enforcement_zones = []
     for k,t in enumerate(terminals):
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
@@ -143,7 +145,12 @@ def pull_terminals(*args, **kwargs):
             new_entry['LocationType'] = "Lot"
         elif is_a_virtual_zone(t):
             new_entry['LocationType'] = "Virtual Zone"
-        new_entry['Zone'] = numbered_zone(t['@Id'])
+        new_entry['Zone'], new_numbered_zone, new_enforcement_zone  = numbered_zone(t['@Id'],t)
+        if new_numbered_zone is not None:
+            uncharted_numbered_zones.append(new_numbered_zone)
+            if new_enforcement_zone is not None:
+                uncharted_enforcement_zones.append(new_enforcement_zone)
+
         #print('{}: ID = {}, new zone = {}'.format(k,t['@Id'],new_entry['Zone']))
         new_entry['AllGroups'] = char_delimit(all_groups(t),'|')
 
@@ -233,8 +240,8 @@ def pull_terminals(*args, **kwargs):
 
     excluded_zones = ['TEST - South Craig - Reporting']
     excluded_zones = []
-    print("Here is the list of all groups not already in lot_list or pure_zones_list or numbered_reporting_zones_list or exclude_zones (or those that start with 'TEST'):")
-    maybe_ad_hoc_zones = set_of_all_groups - set(lot_list) - set(pure_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones)
+    print("Here is the list of all groups not already in lot_list or pure_zones_list or numbered_reporting_zones_list or exclude_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
+    maybe_ad_hoc_zones = set_of_all_groups - set(lot_list) - set(pure_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
     ad_hoc_zones = censor(maybe_ad_hoc_zones)
     pprint.pprint(ad_hoc_zones)
 
@@ -244,7 +251,7 @@ def pull_terminals(*args, **kwargs):
             parent_zones[ahz] = []
         for t in terminals:
             if ahz in all_groups(t):
-                parent = numbered_zone(t['@Id'])
+                parent, _, _ = numbered_zone(t['@Id'])
                 if parent not in parent_zones[ahz]:
                     parent_zones[ahz].append(parent)
 

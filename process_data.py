@@ -321,7 +321,8 @@ def p_hash(p,t):
     # Examining this again in July of 2017 suggests that PurchaseDateLocal is not the
     # correct field to use (maybe because I switched to using StartDateUtc for
     # other things).
-    return "{}|{}".format(p['@StartDateUtc'],numbered_zone(t['@Id']))
+    z, _, _ = numbered_zone(t['@Id'])
+    return "{}|{}".format(p['@StartDateUtc'],z)
 
 def is_original(p,t,p_history,previous_history):
     # This function does an initial check to see if a particular
@@ -644,7 +645,7 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
 
         if space_aggregate_by == 'zone':
             if zone_kind == 'new':
-                zone = numbered_zone(t_id)
+                zone, _, _ = numbered_zone(t_id)
             elif t_guid in t_guids:
                 t = terminals[t_guids.index(t_guid)]
                 if zone_kind == 'old':
@@ -714,7 +715,8 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                     elif space_aggregate_by == 'meter':
                         stats_by[a_key]['Meter GUID'] = t_guid
                         stats_by[a_key]['Meter ID'] = t_id
-                        stats_by[a_key]['Zone'] = numbered_zone(t_id)
+                        nz, _, _ = numbered_zone(t_id)
+                        stats_by[a_key]['Zone'] = nz
 
                     stats_by[a_key]['Transactions'] += 1
                     stats_by[a_key]['Car-minutes'] += rp['Duration']
@@ -1551,7 +1553,7 @@ def main(*args, **kwargs):
             #        code = rp['TerminalID'][3:]
             #        if code not in virtual_zone_checked:
             #            print("\nVerifying group code {} for a purchase at terminal {}".format(code,rp['TerminalGUID']))
-            #            code_group = group_by_code(code)
+            #            code_group, _, _ = group_by_code(code)
             #            print("Found group {}".format(code_group))
             #            virtual_zone_checked.append(code)
 
