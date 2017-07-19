@@ -300,6 +300,19 @@ def all_groups(t):
 def is_three_digits(s):
     return (re.match("\d\d\d", s) is not None)
 
+def groups_of_type(group_type,t):
+"""A general function that can either retrieve all TerminalGroups associated 
+with a meter that are of type 'Reporting' or all of type 'Enforcement',
+depending on the passed group_type parameter."""
+    if 'TerminalGroups' in t:
+        if 'TerminalGroup' in t['TerminalGroups']:
+            group_list = t['TerminalGroups']['TerminalGroup']
+            if type(group_list) == type(OrderedDict()):
+                group_list = [group_list]
+            reporting_group_names = [g['@TerminalGroupName'] for g in group_list if g['@TerminalGroupTypeName'] == group_type]
+            return reporting_group_names
+    return []
+
 def numbered_reporting_groups(t):
     if 'TerminalGroups' in t:
         if 'TerminalGroup' in t['TerminalGroups']:
