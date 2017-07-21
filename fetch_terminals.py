@@ -64,6 +64,13 @@ def pull_terminals(*args, **kwargs):
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
+    # [ ] Note that cached mode could break if a new parking zone is
+    # created and is therefore a) not in the cached_terminals.xml 
+    # file (used by the get_terminals function) and b) not entered 
+    # into the hard-coded extra zones below.
+    #
+    # Indeed, no thought has been given yet to incorporating new
+    # zones into corresponding extra zones.
     if use_cache:
         if return_extra_zones:
             return ([u'CMU Study',
@@ -258,7 +265,7 @@ def pull_terminals(*args, **kwargs):
     pprint.pprint(parent_zones)
 
     if return_extra_zones:
-        return list(ad_hoc_zones), parent_zones
+        return list(ad_hoc_zones), parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones
     else:
         return list_of_dicts, keys # The data that was previously written to the payment_points.csv file.
 ############
