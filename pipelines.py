@@ -83,7 +83,8 @@ def move_to_front(f,f_ts):
 
 yesterday = datetime.date.today() - datetime.timedelta(days=1)
 
-package_id = '530f334b-4d7c-40c5-bf50-ba55645bb8b3' # "Testy" test package
+#package_id = '530f334b-4d7c-40c5-bf50-ba55645bb8b3' # "Testy" test package
+package_id = '4ec3583a-b6e8-4a4e-bfb2-7609bee33cea' # Test Meters package under PPA organization
 
 monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
 current_resource_name = 'Current Payment Points'
@@ -119,7 +120,7 @@ current_resource_name = 'Current Payment Points'
 
 # Run the pull_terminals function to get the tabular data on parking
 # meter parameters, and also output that data to a CSV file.
-unfixed_list_of_dicts, unfixed_keys = pull_terminals(output_to_csv=True)
+unfixed_list_of_dicts, unfixed_keys = pull_terminals(output_to_csv=True,return_extra_zones=False)
 
 csv_path = csv_file_path()
 
