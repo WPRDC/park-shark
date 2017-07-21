@@ -267,7 +267,7 @@ def pull_terminals(*args, **kwargs):
     if return_extra_zones:
         return list(ad_hoc_zones), parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones
     else:
-        return list_of_dicts, keys # The data that was previously written to the payment_points.csv file.
+        return list_of_dicts, dkeys # The data that was previously written to the payment_points.csv file.
 ############
 
 # At present, the default when running this script (or the pull_terminals function) is not to output the results to 
