@@ -156,7 +156,7 @@ kwdict = {'return_extra_zones': False,
 
 
 schema = MetersSchema
-key_fields = ['id']#['id','guid']
+key_fields = ['id','guid']#['id']
 shoving_method = 'upsert'
 
 current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
@@ -180,7 +180,7 @@ check_and_run_pipeline(current_meters_pipeline,key_fields,schema,package_id,curr
 cumulative_resource_name = 'Payment Points (Monthly Archives)'
 
 schema = CumulativeMetersSchema
-key_fields = ['id','year_month'] 
+key_fields = ['id','year_month','guid'] 
 shoving_method = 'upsert' # Here upserting means that every time we run this
 # script, we update that month's values with the freshest values. Since we 
 # are running this script every day, by the end of the month, it should have 
@@ -189,6 +189,7 @@ shoving_method = 'upsert' # Here upserting means that every time we run this
 # values).
 
 reordered_fields_and_types = move_to_front('year_month',schema().serialize_to_ckan_fields())
+
 print(reordered_fields_and_types)
 cumulative_meters_pipeline = pl.Pipeline('cumulative_meters_pipeline', 
                                       'Cumulative Meters Pipeline', 
