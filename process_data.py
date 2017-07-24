@@ -468,7 +468,7 @@ def add_to_dict(p,p_dict,terminals,t_guids,group_lookup_a):
     p_dict[p_hash(p,t,group_lookup_a)].append(p)
     return p_dict
 
-def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,uncharted_e_zones,group_lookup_a,turbo_mode):
+def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,uncharted_e_zones,group_lookup_a,turbo_mode,raw_only):
     # Take a dictionary and generate a new dictionary from it that samples
     # the appropriate keys and renames and transforms as desired.
     t_A = time.time()
@@ -492,8 +492,11 @@ def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,unc
 
     row['Amount'] = float(p['@Amount'])
     t = terminals[t_guids.index(p['@TerminalGuid'])]
-
-    row['Duration'] = int(p['@Units']) # in minutes
+    
+    if raw_only:
+        row['Duration'] = None # in minutes
+    else:
+        row['Duration'] = int(p['@Units']) # in minutes
 # THIS ASSUMES THAT DURATIONS WILL ALWAYS BE IN MINUTES.
 # IT WOULD BE NICE FOR THEM TO BE SO TO SIMPLIFY THE COUNTS
 # DATA STRUCTURE
@@ -529,7 +532,8 @@ def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,unc
             #print("Correcting duration to {}".format(row['Duration']))
 
 
-    p['Duration'] = row['Duration'] # A sneaky way to sneak the Duration value
+    if not raw_only:
+        p['Duration'] = row['Duration'] # A sneaky way to sneak the Duration value
     # from the reframed purchase back into the original purchase dictionary
     # (exclusively for filtering by rate in find_predecessors).
 
@@ -729,9 +733,10 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                         stats_by[a_key]['Zone'] = nz
 
                     stats_by[a_key]['Transactions'] += 1
-                    stats_by[a_key]['Car-minutes'] += rp['Duration']
+                    if rp['Duration'] is not None:
+                        stats_by[a_key]['Car-minutes'] += rp['Duration']
+                        stats_by[a_key]['Durations'].append(rp['Duration'])
                     stats_by[a_key]['Payments'] += rp['Amount']
-                    stats_by[a_key]['Durations'].append(rp['Duration'])
 
     return stats_by
 
@@ -1345,6 +1350,11 @@ def main(*args, **kwargs):
     turbo_mode = kwargs.get('turbo_mode',False)
     # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
+    raw_only = kwargs.get('raw_only', False)
+    # When raw_only is True, calculated columns like Durations
+    # and Car-minutes should contain null values.
+    if raw_only:
+        turbo_mode = True
     skip_processing = kwargs.get('skip_processing',False)
     caching_mode = kwargs.get('caching_mode','utc_json')
 
@@ -1512,10 +1522,11 @@ def main(*args, **kwargs):
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
         purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False,caching_mode)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-            reframe(p,terminals,t_guids,ps_dict,{},uncharted_numbered_zones,uncharted_enforcement_zones,group_lookup_addendum,turbo_mode)
-            ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids,group_lookup_addendum) # ps_dict is intended to
-            # be a way to look up recent transactions that might be part of the same 
-            # session as a particular transaction. Here it is being seeded.
+            reframe(p,terminals,t_guids,ps_dict,{},uncharted_numbered_zones,uncharted_enforcement_zones,group_lookup_addendum,turbo_mode,raw_only)
+            if not turbo_mode and not skip_processing:
+                ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids,group_lookup_addendum) # ps_dict is intended to
+                # be a way to look up recent transactions that might be part of the same 
+                # session as a particular transaction. Here it is being seeded.
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
@@ -1548,15 +1559,16 @@ def main(*args, **kwargs):
             reframed_ps = []
 
             for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-                reframed_ps.append(reframe(p,terminals,t_guids,ps_dict,previous_ps_dict,uncharted_numbered_zones,uncharted_enforcement_zones,group_lookup_addendum,turbo_mode))
+                reframed_ps.append(reframe(p,terminals,t_guids,ps_dict,previous_ps_dict,uncharted_numbered_zones,uncharted_enforcement_zones,group_lookup_addendum,turbo_mode,raw_only))
 
-                if slot_start.date() == current_day: # Keep a running history of all
-                    ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids,group_lookup_addendum) # purchases for a given day.
-                else:
-                    print("Moving ps_dict to previous_ps_dict at {}. (Should ps_dict be generated before the reframing loop for better efficiency? Would that screw up durations computations?)".format(slot_start))
-                    current_day = slot_start.date()
-                    previous_ps_dict = ps_dict
-                    ps_dict = defaultdict(list) # And restart that history when a new day is encountered.
+                if not turbo_mode:
+                    if slot_start.date() == current_day: # Keep a running history of all
+                        ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids,group_lookup_addendum) # purchases for a given day.
+                    else:
+                        print("Moving ps_dict to previous_ps_dict at {}. (Should ps_dict be generated before the reframing loop for better efficiency? Would that screw up durations computations?)".format(slot_start))
+                        current_day = slot_start.date()
+                        previous_ps_dict = ps_dict
+                        ps_dict = defaultdict(list) # And restart that history when a new day is encountered.
             # Temporary for loop to check for unconsidered virtual zone codes.
             #for rp in reframed_ps:
             #    if rp['TerminalID'][:3] == "PBP":
@@ -1668,11 +1680,11 @@ def main(*args, **kwargs):
         slot_start += timechunk
         slot_end = slot_start + timechunk
         t8 = time.time()
-        #if not skip_processing:
-        #    if len(reframed_ps) > 0:
-        #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.  (t8-t0)/len(rps) = {:1.1e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t8-t0)/len(reframed_ps)))
-        #    else:
-        #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
+        if not skip_processing:
+            if len(reframed_ps) > 0:
+                print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.  (t8-t0)/len(rps) = {:1.1e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t8-t0)/len(reframed_ps)))
+            else:
+                print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
     if spacetime == 'zone':
         print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
   
