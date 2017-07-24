@@ -218,7 +218,7 @@ def build_keys(space_aggregation,time_aggregation):
     if space_aggregation == 'zone':
         space_keys = ['Zone']
     elif space_aggregation == 'meter':
-        space_keys = ['Meter GUID', 'Meter ID', 'Zone']
+        space_keys = ['Meter ID', 'Meter GUID', 'Zone']
 
     if time_aggregation is None:
         time_keys = ['Start', 'End', 'UTC Start']
