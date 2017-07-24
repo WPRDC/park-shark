@@ -301,9 +301,9 @@ def is_three_digits(s):
     return (re.match("\d\d\d", s) is not None)
 
 def groups_of_type(group_type,t):
-"""A general function that can either retrieve all TerminalGroups associated 
-with a meter that are of type 'Reporting' or all of type 'Enforcement',
-depending on the passed group_type parameter."""
+    """A general function that can either retrieve all TerminalGroups associated
+    with a meter that are of type 'Reporting' or all of type 'Enforcement',
+    depending on the passed group_type parameter."""
     if 'TerminalGroups' in t:
         if 'TerminalGroup' in t['TerminalGroups']:
             group_list = t['TerminalGroups']['TerminalGroup']
@@ -314,6 +314,8 @@ depending on the passed group_type parameter."""
     return []
 
 def numbered_reporting_groups(t):
+    # This function could be refactored to get groups_of_type('Reporting',t)
+    # and then filter out the ones that don't start with three digits.
     if 'TerminalGroups' in t:
         if 'TerminalGroup' in t['TerminalGroups']:
             group_list = t['TerminalGroups']['TerminalGroup']
@@ -324,13 +326,13 @@ def numbered_reporting_groups(t):
             return reporting_group_names
     return []
 
-def ad_hoc_groups(t):
-    non_ad_hoc_zones = lot_list + pure_zones_list + numbered_reporting_zones_list
+def ad_hoc_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
+    non_ad_hoc_zones = lot_list + pure_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
     all_group_names = all_groups(t)
     sgs = [name for name in all_group_names if name not in non_ad_hoc_zones]
     return sgs
 
-def group_by_code(code,t=None):
+def group_by_code(code,t=None,group_lookup_addendum={}):
     # Here 'code' is a string which may look like '310' or '402' or
     # (in the worst case scenario) '355-2'.
 
@@ -356,86 +358,92 @@ def group_by_code(code,t=None):
     # (Maybe a human-readable name would be in there as well.)
 
 
-    group_lookup = {'301': '301 - Sheridan Harvard Lot',
-                    '302': '302 - Sheridan Kirkwood Lot',
-                    '304': '304 - Tamello Beatty Lot',
-                    '307': '307 - Eva Beatty Lot',
-                    '308': '308 - Harvard Beatty Lot',
-                    '311': '311 - Ansley Beatty Lot',
-                    '314': '314 - Penn Circle NW Lot',
-                    '321': '321 - Beacon Bartlett Lot',
-                    '322': '322 - Forbes Shady Lot',
-                    '323': '323 - Douglas Phillips Lot',
-                    '324': '324 - Forbes Murray Lot',
-                    '325': '325 - JCC/Forbes Lot',
-                    '328': '328 - Ivy Bellefonte Lot',
-                    '329': '329 - Centre Craig', # The process for finding this was
-                    # to look up PBP329, find its zone, and then find other terminals
-                    # with the same zone and skim off the appropriate terminal group.
-                    '331': '331 - Homewood Zenith Lot',
-                    '334': '334 - Taylor Street Lot',
-                    '335': '335 - Friendship Cedarville Lot',
-                    '337': '337 - 52nd & Butler Lot',
-                    '338': '338 - 42nd & Butler Lot',
-                    '341': '341 - 18th & Sidney Lot',
-                    '342': '342 - East Carson Lot',
-                    '343': '343 - 19th & Carson Lot',
-                    '344': '344 - 18th & Carson Lot',
-                    '345': '345 - 20th & Sidney Lot',
-                    '351': '351 - Brownsville & Sandkey Lot',
-                    '354': '354 - Walter/Warrington Lot',
-                    '355': '355 - Asteroid Warrington Lot',
-                    '357': '357 - Shiloh Street Lot',
-                    '361': '361 - Brookline Lot',
-                    '363': '363 - Beechview Lot',
-                    '369': '369 - Main/Alexander Lot',
-                    '371': '371 - East Ohio Street Lot',
-                    '375': '375 - Oberservatory Hill Lot',
-                    '401': '401 - Downtown 1',
-                    '402': '402 - Downtown 2',
-                    '403-1': '403 - Uptown',
-                    '403-2': '403 - Uptown',
-                    '403-3': '403 - Uptown',
-                    '404': '404 - Strip Disctrict',
-                    '405': '405 - Lawrenceville',
-                    '406': '406 - Bloomfield (On-street)',
-                    '407': '407 - Oakland 1',
-                    '408': '408 - Oakland 2',
-                    '409': '409 - Oakland 3',
-                    '409-2': '409 - Oakland 3', # This is apparently an inactive virtual zone.
-                    '410': '410 - Oakland 4',
-                    '410-1': '410 - Oakland 4', #W.CIRC.DR
-                    '411-1': '411 - Shadyside', #SHADYSIDE1
-                    '411-2': '411 - Shadyside', #SHADYSIDE2
-                    '412': '412 - East Liberty',
-                    '413-1': '413 - Squirrel Hill', #SQ.HILL1
-                    '413-2': '413 - Squirrel Hill', #SQ.HILL2
-                    '414': '414 - Mellon Park',
-                    '415': '415 - SS & SSW',
-                    '416': '416 - Carrick',
-                    '355-2': '417 - Allentown', ### Really this is the biggest of anomalies.
-                    '417': '417 - Allentown', ## This seems like a
-                                            #### totally reasonable interpolation.
-                    '418': '418 - Beechview',
-                    '419': '419 - Brookline',
-                    '420': '420 - Mt. Washington',
-                    '421': '421 - NorthSide',
-                    '422': '422 - Northshore',
-                    '423': '423 - West End',
-                    '424': '424 - Technology Drive',
-                    '425': '425 - Bakery Sq'
+    group_lookup_base = {'301': '301 - Sheridan Harvard Lot',
+                        '302': '302 - Sheridan Kirkwood Lot',
+                        '304': '304 - Tamello Beatty Lot',
+                        '307': '307 - Eva Beatty Lot',
+                        '308': '308 - Harvard Beatty Lot',
+                        '311': '311 - Ansley Beatty Lot',
+                        '314': '314 - Penn Circle NW Lot',
+                        '321': '321 - Beacon Bartlett Lot',
+                        '322': '322 - Forbes Shady Lot',
+                        '323': '323 - Douglas Phillips Lot',
+                        '324': '324 - Forbes Murray Lot',
+                        '325': '325 - JCC/Forbes Lot',
+                        '328': '328 - Ivy Bellefonte Lot',
+                        '329': '329 - Centre Craig', # The process for finding this was
+                        # to look up PBP329, find its zone, and then find other terminals
+                        # with the same zone and skim off the appropriate terminal group.
+                        '331': '331 - Homewood Zenith Lot',
+                        '334': '334 - Taylor Street Lot',
+                        '335': '335 - Friendship Cedarville Lot',
+                        '337': '337 - 52nd & Butler Lot',
+                        '338': '338 - 42nd & Butler Lot',
+                        '341': '341 - 18th & Sidney Lot',
+                        '342': '342 - East Carson Lot',
+                        '343': '343 - 19th & Carson Lot',
+                        '344': '344 - 18th & Carson Lot',
+                        '345': '345 - 20th & Sidney Lot',
+                        '351': '351 - Brownsville & Sandkey Lot',
+                        '354': '354 - Walter/Warrington Lot',
+                        '355': '355 - Asteroid Warrington Lot',
+                        '357': '357 - Shiloh Street Lot',
+                        '361': '361 - Brookline Lot',
+                        '363': '363 - Beechview Lot',
+                        '369': '369 - Main/Alexander Lot',
+                        '371': '371 - East Ohio Street Lot',
+                        '375': '375 - Oberservatory Hill Lot',
+                        '401': '401 - Downtown 1',
+                        '402': '402 - Downtown 2',
+                        '403-1': '403 - Uptown',
+                        '403-2': '403 - Uptown',
+                        '403-3': '403 - Uptown',
+                        '404': '404 - Strip Disctrict',
+                        '405': '405 - Lawrenceville',
+                        '406': '406 - Bloomfield (On-street)',
+                        '407': '407 - Oakland 1',
+                        '408': '408 - Oakland 2',
+                        '409': '409 - Oakland 3',
+                        '409-2': '409 - Oakland 3', # This is apparently an inactive virtual zone.
+                        '410': '410 - Oakland 4',
+                        '410-1': '410 - Oakland 4', #W.CIRC.DR
+                        '411-1': '411 - Shadyside', #SHADYSIDE1
+                        '411-2': '411 - Shadyside', #SHADYSIDE2
+                        '412': '412 - East Liberty',
+                        '413-1': '413 - Squirrel Hill', #SQ.HILL1
+                        '413-2': '413 - Squirrel Hill', #SQ.HILL2
+                        '414': '414 - Mellon Park',
+                        '415': '415 - SS & SSW',
+                        '416': '416 - Carrick',
+                        '355-2': '417 - Allentown', ### Really this is the biggest of anomalies.
+                        '417': '417 - Allentown', ## This seems like a
+                                                #### totally reasonable interpolation.
+                        '418': '418 - Beechview',
+                        '419': '419 - Brookline',
+                        '420': '420 - Mt. Washington',
+                        '421': '421 - NorthSide',
+                        '422': '422 - Northshore',
+                        '423': '423 - West End',
+                        '424': '424 - Technology Drive',
+                        '425': '425 - Bakery Sq'
     }
+    group_lookup = {**group_lookup_addendum, **group_lookup_base} # This works in Python 3.5 and higher.
+    # Is the group already hard-coded in? If so, return it.
     if code in group_lookup:
         return group_lookup[code], True, None, None
 
     # Handle cases where something like a 403-4 code has been invented.
     candidate_groups = set()
+    # Maybe we can guess the group based on a very similar group code.
     for keycode in group_lookup.keys():
         if keycode[:3] == code[:3]:
             candidate_groups.add(group_lookup[keycode])
-
     if len(set(candidate_groups)) == 1:
         return list(candidate_groups)[0], True, None, None
+
+    # OK, that didn't work. Let's start looking through the numbered
+    # reporting groups for a match that we can identify as a new 
+    # numbered reporting group.
     if len(candidate_groups) == 0:
         if t is None:
             raise ValueError('No group found for code {}'.format(code))
@@ -486,7 +494,7 @@ def group_by_code(code,t=None):
     return code, False, None, None
 
 
-def infer_group(t=None,t_id=None):
+def infer_group(t=None,t_id=None,group_lookup_addendum={}):
     # This function only works for virtual groups.
     if t_id is None:
         t_id = t['@Id']
@@ -494,18 +502,18 @@ def infer_group(t=None,t_id=None):
         return None
     code = t_id[3:] # Split off the part after 'PBP' (Pay By Phone?).
     # The above code could be factored out into part of an infer_code() function.
-    group, matched, new_numbered_zone, new_old_zone = group_by_code(code,t)
+    group, matched, new_numbered_zone, new_old_zone = group_by_code(code,t,group_lookup_addendum)
     return group, new_numbered_zone, new_old_zone
 
-def numbered_zone(t_id,t=None):
+def numbered_zone(t_id,t=None,group_lookup_addendum={}):
     # This is the new slimmed-down approach to determining the numbered
     # reporting zone for the meter purely from the meter ID.
     num_zone = None
     if t_id[:3] == 'PBP': #is_virtual(t)
-        num_zone, new_num_zone, new_old_zone = infer_group(t,t_id)
+        num_zone, new_num_zone, new_old_zone = infer_group(t,t_id,group_lookup_addendum)
     else:
         try:
-            zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3],t)
+            zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3],t,group_lookup_addendum)
         except:
             if t_id == "B0010X00786401372-STANWX0601":
                 # Workaround for weird terminal ID spotted in
@@ -552,7 +560,7 @@ def zone_name(t):
     # (Hill District) that differs from its Parent Terminal Structure (HILL-DIST).
     return code
 
-def corrected_zone_name(t,t_ids=[],t_id=None):
+def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
     lost_zone_names = {'401354-OLIVER0301': 'DOWNTOWN1',# 401354-OLIVER0301
     # has no TerminalGroups, but clearly it should be in DOWNTOWN1
     '402384-1STAVE0404': 'DOWNTOWN2',
@@ -639,7 +647,7 @@ def corrected_zone_name(t,t_ids=[],t_id=None):
             if zn == "Z - Inactive/Removed Terminals":
                 #print("\nGrody terminal listed with zone_name 'Z - Inactive/Removed Terminals':")
                 #pprint.pprint(to_dict(t))
-                num_zone, new_num_zone, new_old_zone = numbered_zone(t['@Id'],t)
+                num_zone, new_num_zone, new_old_zone = numbered_zone(t['@Id'],t,group_lookup_addendum)
                 zn = convert_group_to_zone(t,num_zone)
                 if zn is None:
                     if new_old_zone is not None:
