@@ -418,6 +418,18 @@ def find_predecessors(p,t,t_guids,terminals,p_history,previous_history,group_loo
             latest_minutes = float(p['@Units'])
             uncorrected_rate = latest_amount/latest_minutes
             corrected_rate = latest_amount/(latest_minutes - cumulative_minutes)
+            if rate_i == 0: # Avoid dividing by zero. In this case, another normalization
+            # will be used. Rather than looking up the correct rate, for now just 
+            # arbitrarily normalize to $1/hour, since the actual cost per hour
+            # has no bearing on the effect of a $0 purchase.
+                arbitrary_normalization = 1.0
+                difference = abs(corrected_rate - rate_i)/arbitrary_normalization
+                uncorrected_difference = abs(uncorrected_rate - rate_i)/arbitrary_normalization
+            else:
+                difference = abs(corrected_rate - rate_i)/rate_i
+                    #pprint.pprint(to_dict(sp))
+                    #raise ValueError("sp['@Amount'] = {}, sp['Duration'] = {}".format(sp['@Amount'], sp['Duration']))
+                uncorrected_difference = abs(uncorrected_rate - rate_i)/rate_i
             if difference > 0.1 and uncorrected_difference > 0.1:
                 print("Candidates for transactions prior to p = ")
                 pprint.pprint(p)
