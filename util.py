@@ -330,10 +330,6 @@ def ad_hoc_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
     non_ad_hoc_zones = lot_list + pure_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
     all_group_names = all_groups(t)
     sgs = [name for name in all_group_names if name not in non_ad_hoc_zones]
-    if len(sgs) > 0:
-        if 'HILL-DIST' in sgs or 'Hill District' in sgs:
-            print("ad_hoc_groups(t_id = {}) = {}".format(t['@Id'],sgs)) 
-            raise ValueError("ad_hoc_groups(t_id = {}) = {}".format(t['@Id'],sgs)) 
     return sgs
 
 def group_by_code(code,t=None,group_lookup_addendum={}):
