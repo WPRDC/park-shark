@@ -330,6 +330,10 @@ def ad_hoc_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
     non_ad_hoc_zones = lot_list + pure_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
     all_group_names = all_groups(t)
     sgs = [name for name in all_group_names if name not in non_ad_hoc_zones]
+    if len(sgs) > 0:
+        if 'HILL-DIST' in sgs or 'Hill District' in sgs:
+            print("ad_hoc_groups(t_id = {}) = {}".format(t['@Id'],sgs)) 
+            raise ValueError("ad_hoc_groups(t_id = {}) = {}".format(t['@Id'],sgs)) 
     return sgs
 
 def group_by_code(code,t=None,group_lookup_addendum={}):
@@ -541,8 +545,9 @@ def zone_name(t):
     # the corrected_zone_name function is for, so perhaps this
     # should be more widely used in these scripts.
 
+    # The old way:
+    #code = t['ParentTerminalStructure']['@Name'] 
 
-    code = t['ParentTerminalStructure']['@Name']
     # This scheme maps virtual terminals that correspond to zones to the correct zones, though it also keeps lots and virtual lots separate:
     # UPTOWN2 			403372-5THAVE1402
     # UPTOWN2 			PBP403-3
@@ -558,6 +563,18 @@ def zone_name(t):
 
     # One problem with this is that the new Hill District meter has an Enforcement Zone name 
     # (Hill District) that differs from its Parent Terminal Structure (HILL-DIST).
+    # The new way:
+    enforcement_zones = groups_of_type('Enforcement',t)
+    if len(enforcement_zones) == 0:
+        return t['ParentTerminalStructure']['@Name'] # Fall back to this value for consistency
+        # since it seems like a really, really good way of recovering the enforcement zone
+        # when the meter has been removed (except in the new case of the Hill District and
+        # maybe a few others (I haven't checked for others that I can specifically recall)).
+
+        #raise ValueError("No enforcement zones found for terminal {}".format(t['@Id']))
+    elif len(enforcement_zones) > 1:
+        raise ValueError("{} enforcement zones found for terminal {}".format(len(enforcement_zones),t['@Id']))
+    code = enforcement_zones[0]
     return code
 
 def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
