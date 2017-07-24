@@ -604,9 +604,9 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
 #                print t, to_dict(inferred_occupancy[t])
     return inferred_occupancy
 
-def format_a_key(meter_guid,year,month,hour):
+def format_a_key(meter_id,year,month,hour):
 #    return "{}|{}/{} {:02d}".format(meter_guid,year,month,hour)
-    return "{}/{} {:02d}|{}".format(year,month,hour,meter_guid)
+    return "{}/{} {:02d}|{}".format(year,month,hour,meter_id)
 
 def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,tz=pytz.timezone('US/Eastern')):
     stats = {}
@@ -678,9 +678,15 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                 space_aggregation_keys = rp['List_of_ad_hoc_groups']
 # The problem with this is that a given purchase is associated with a terminal which may have MULTIPLE ad hoc zones. Therefore, each ad hoc zone must have its own parent zone(s).
         elif space_aggregate_by == 'meter':
-            space_aggregation_keys = [t_guid] # [X] Should this be GUID or just ID? ... Let's
+            space_aggregation_keys = [t_id] # Should this be GUID or just ID? ... Let's
                 # make it GUID (as it will not change), but store meter ID as
-                # an additional field.
+                # an additional field   
+                #       I've decided to switch to ID for nicer sorting, and because
+                # maybe it actually makes a little more sense to highlight the changes
+                # associated with an ID change. (Sometimes this is fixing a typo or 
+                # a small change but it might be a larger change. In any event, 
+                # the user would have both ID and GUID in this meter-month-hour
+                # aggregation mode.
 
         if space_aggregation_keys != []:
             space_aggregation_keys = censor(space_aggregation_keys)
