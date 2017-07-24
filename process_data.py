@@ -312,7 +312,7 @@ def terminal_of(p,t_guids,terminals):
     t = terminals[t_guids.index(p['@TerminalGuid'])]
     return t
 
-def p_hash(p,t):
+def p_hash(p,t,group_lookup_addendum):
     # Use the combination of the original purchase date for the session
     # and the parking zone that it happened in as a unique identifier
     # to link transactions that are extensions of an original parking
@@ -321,10 +321,10 @@ def p_hash(p,t):
     # Examining this again in July of 2017 suggests that PurchaseDateLocal is not the
     # correct field to use (maybe because I switched to using StartDateUtc for
     # other things).
-    z, _, _ = numbered_zone(t['@Id'])
+    z, _, _ = numbered_zone(t['@Id'],None,group_lookup_addendum)
     return "{}|{}".format(p['@StartDateUtc'],z)
 
-def is_original(p,t,p_history,previous_history):
+def is_original(p,t,p_history,previous_history,group_lookup_addendum):
     # This function does an initial check to see if a particular
     # transaction might be an extension/"TopUp" of a previous
     # purchase.
@@ -345,11 +345,11 @@ def is_original(p,t,p_history,previous_history):
     #    t = terminals[t_guids.index(p['@TerminalGuid'])]
     #else:
     #    t = None
-    p_key = p_hash(p,t)
+    p_key = p_hash(p,t,group_lookup_addendum)
     probably_original = ((p_key not in p_history) and (p_key not in previous_history))
     return probably_original
 
-def find_predecessors(p,t,t_guids,terminals,p_history,previous_history):
+def find_predecessors(p,t,t_guids,terminals,p_history,previous_history,group_lookup_a):
     """This function returns a list of all the suspected predecessor 
     transactions in a chain leading to the purchase p.
 
@@ -359,9 +359,9 @@ def find_predecessors(p,t,t_guids,terminals,p_history,previous_history):
     of that previous transaction's session."""
 
     if previous_history != {}:
-        predecessors = p_history[p_hash(p,t)] + previous_history[p_hash(p,t)]
+        predecessors = p_history[p_hash(p,t,group_lookup_a)] + previous_history[p_hash(p,t,group_lookup_a)]
     else:
-        predecessors = p_history[p_hash(p,t)]
+        predecessors = p_history[p_hash(p,t,group_lookup_a)]
     try: # Sort predecessors for purchase p by EndDateLocal.
         sps = sorted(predecessors, key=lambda x: x['@EndDateLocal'])
     except:
@@ -418,8 +418,6 @@ def find_predecessors(p,t,t_guids,terminals,p_history,previous_history):
             latest_minutes = float(p['@Units'])
             uncorrected_rate = latest_amount/latest_minutes
             corrected_rate = latest_amount/(latest_minutes - cumulative_minutes)
-            difference = abs(corrected_rate - rate_i)/rate_i
-            uncorrected_difference = abs(uncorrected_rate - rate_i)/rate_i
             if difference > 0.1 and uncorrected_difference > 0.1:
                 print("Candidates for transactions prior to p = ")
                 pprint.pprint(p)
@@ -453,12 +451,12 @@ def find_predecessors(p,t,t_guids,terminals,p_history,previous_history):
     # Maybe consider highlighting transactions with anomalous rates as missing matching transactions... 
     return new_sps
 
-def add_to_dict(p,p_dict,terminals,t_guids):
+def add_to_dict(p,p_dict,terminals,t_guids,group_lookup_a):
     t = terminals[t_guids.index(p['@TerminalGuid'])]
-    p_dict[p_hash(p,t)].append(p)
+    p_dict[p_hash(p,t,group_lookup_a)].append(p)
     return p_dict
 
-def reframe(p,terminals,t_guids,p_history,previous_history,turbo_mode):
+def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,uncharted_e_zones,group_lookup_a,turbo_mode):
     # Take a dictionary and generate a new dictionary from it that samples
     # the appropriate keys and renames and transforms as desired.
     t_A = time.time()
@@ -478,7 +476,7 @@ def reframe(p,terminals,t_guids,p_history,previous_history,turbo_mode):
         row['Latitude'] = value_or_blank('Latitude',t)
         row['Longitude'] = value_or_blank('Longitude',t)
         # Maybe these should be value_or_none instead.
-        row['List_of_ad_hoc_groups'] = ad_hoc_groups(t)
+        row['List_of_ad_hoc_groups'] = ad_hoc_groups(t,uncharted_n_zones,uncharted_e_zones)
 
     row['Amount'] = float(p['@Amount'])
     t = terminals[t_guids.index(p['@TerminalGuid'])]
@@ -489,7 +487,7 @@ def reframe(p,terminals,t_guids,p_history,previous_history,turbo_mode):
 # DATA STRUCTURE
 
     t_B = time.time()
-    if not turbo_mode and not is_original(p,t,p_history,previous_history): 
+    if not turbo_mode and not is_original(p,t,p_history,previous_history,group_lookup_a): 
     # This is an initial test, but
     # some of the hits that it can return may still be rejected
     # by the find_predecessors function.
@@ -498,7 +496,7 @@ def reframe(p,terminals,t_guids,p_history,previous_history,turbo_mode):
     # correctly separate purchases into sessions.
     # [ ] Another option would be just to eliminate the is_original
     # function and replace it entirely with find_predecessors.
-        predecessors = find_predecessors(p,t,t_guids,terminals,p_history,previous_history)
+        predecessors = find_predecessors(p,t,t_guids,terminals,p_history,previous_history,group_lookup_a)
         print("durations = {}".format([int(x['@Units']) for x in predecessors + [p]]))
         #        print("We need to subtract the durations of the previous payments.")
         # Often only one value is printed to the console for a given purchase:
@@ -626,7 +624,7 @@ def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_
         stats['UTC Hour'] = start_time.astimezone(pytz.utc).strftime("%-H")
     return stats
 
-def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},zone_kind='old', space_aggregate_by='zone', time_aggregate_by=None, parent_zones=[], tz=pytz.timezone('US/Eastern')):
+def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,end_time, stats_by={},zone_kind='old', space_aggregate_by='zone', time_aggregate_by=None, parent_zones=[], tz=pytz.timezone('US/Eastern')):
     # Originally this function just aggregated information
     # between start_time and end_time to the zone level.
 
@@ -645,7 +643,7 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
 
         if space_aggregate_by == 'zone':
             if zone_kind == 'new':
-                zone, _, _ = numbered_zone(t_id)
+                zone, _, _ = numbered_zone(t_id,None,group_lookup_addendum)
             elif t_guid in t_guids:
                 t = terminals[t_guids.index(t_guid)]
                 if zone_kind == 'old':
@@ -715,7 +713,7 @@ def distill_stats(rps,terminals,t_guids,t_ids, start_time,end_time, stats_by={},
                     elif space_aggregate_by == 'meter':
                         stats_by[a_key]['Meter GUID'] = t_guid
                         stats_by[a_key]['Meter ID'] = t_id
-                        nz, _, _ = numbered_zone(t_id)
+                        nz, _, _ = numbered_zone(t_id,None,group_lookup_addendum)
                         stats_by[a_key]['Zone'] = nz
 
                     stats_by[a_key]['Transactions'] += 1
@@ -1439,7 +1437,7 @@ def main(*args, **kwargs):
     # will only be converted to UTC when using database caching.
 
     inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
-    ad_hoc_zones, parent_zones = pull_terminals(use_cache=use_cache,return_extra_zones=True)
+    ad_hoc_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=use_cache,return_extra_zones=True)
     print("ad hoc zones = {}".format(ad_hoc_zones))
 
     print("parent_zones = ...")
@@ -1502,8 +1500,8 @@ def main(*args, **kwargs):
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
         purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False,caching_mode)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-            reframe(p,terminals,t_guids,ps_dict,{},turbo_mode)
-            ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # ps_dict is intended to
+            reframe(p,terminals,t_guids,ps_dict,{},uncharted_numbered_zones,uncharted_enforcement_zones,group_lookup_addendum,turbo_mode)
+            ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids,group_lookup_addendum) # ps_dict is intended to
             # be a way to look up recent transactions that might be part of the same 
             # session as a particular transaction. Here it is being seeded.
 
@@ -1538,10 +1536,10 @@ def main(*args, **kwargs):
             reframed_ps = []
 
             for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-                reframed_ps.append(reframe(p,terminals,t_guids,ps_dict,previous_ps_dict,turbo_mode))
+                reframed_ps.append(reframe(p,terminals,t_guids,ps_dict,previous_ps_dict,uncharted_numbered_zones,uncharted_enforcement_zones,group_lookup_addendum,turbo_mode))
 
                 if slot_start.date() == current_day: # Keep a running history of all
-                    ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids) # purchases for a given day.
+                    ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids,group_lookup_addendum) # purchases for a given day.
                 else:
                     print("Moving ps_dict to previous_ps_dict at {}. (Should ps_dict be generated before the reframing loop for better efficiency? Would that screw up durations computations?)".format(slot_start))
                     current_day = slot_start.date()
@@ -1585,10 +1583,10 @@ def main(*args, **kwargs):
             t2 = time.time()
 
             # Condense to key statistics (including duration counts).
-            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, [], tz=pgh)
+            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, [], tz=pgh)
             # stats_rows is actually a dictionary, keyed by zone.
             if time_aggregation is None and space_aggregation == 'zone':  
-                ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', time_aggregation, parent_zones, tz=pgh)
+                ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', time_aggregation, parent_zones, tz=pgh)
 
             t3 = time.time()
             if time_aggregation is None and space_aggregation == 'zone':  

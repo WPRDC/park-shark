@@ -99,7 +99,7 @@ def pull_terminals(*args, **kwargs):
                              '342 - East Carson Lot',
                              '341 - 18th & Sidney Lot'],
     #     u'TEST - South Craig - Reporting': ['411 - Shadyside', '409 - Oakland 3']
-         })
+         }, ['426 - Hill District'], ['Hill District'], {'426': '426 - Hill District'})
         else:
             return None, None
 
@@ -131,6 +131,7 @@ def pull_terminals(*args, **kwargs):
     set_of_all_groups = set()
     uncharted_numbered_zones = []
     uncharted_enforcement_zones = []
+    group_lookup_addendum = {}
     for k,t in enumerate(terminals):
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
@@ -157,6 +158,17 @@ def pull_terminals(*args, **kwargs):
             uncharted_numbered_zones.append(new_numbered_zone)
             if new_enforcement_zone is not None:
                 uncharted_enforcement_zones.append(new_enforcement_zone)
+            if t['@Id'][:3] == "PBP":
+                # We found a new uncharted virtual zone, so let's create
+                # the corresponding group_lookup key-value pair.
+
+                # (Note that this could be done for each virtual zone and
+                # then double-checked to make sure that the correspondences
+                # are unambiguous to supply a freshly generated group_lookup
+                # dict to group_by_code.)
+                code = t['@Id'][3:]
+                group_lookup_addendum[code] = new_numbered_zone
+                print("      FOUND A NEW group_lookup PAIR: {}".format(group_lookup_addendum))
 
         #print('{}: ID = {}, new zone = {}'.format(k,t['@Id'],new_entry['Zone']))
         new_entry['AllGroups'] = char_delimit(all_groups(t),'|')
@@ -258,14 +270,14 @@ def pull_terminals(*args, **kwargs):
             parent_zones[ahz] = []
         for t in terminals:
             if ahz in all_groups(t):
-                parent, _, _ = numbered_zone(t['@Id'])
+                parent, _, _ = numbered_zone(t['@Id']) # Now that group_lookup_addendum has been determined, should it be used here? It seems like it should.
                 if parent not in parent_zones[ahz]:
                     parent_zones[ahz].append(parent)
 
     pprint.pprint(parent_zones)
 
     if return_extra_zones:
-        return list(ad_hoc_zones), parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones
+        return list(ad_hoc_zones), parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum
     else:
         return list_of_dicts, dkeys # The data that was previously written to the payment_points.csv file.
 ############
