@@ -833,8 +833,23 @@ def get_doc_from_url(url):
     # Convert Cale's XML into a Python dictionary
     doc = xmltodict.parse(r.text,encoding = r.encoding)
 
+    try:
+        # This try-catch clause is only protecting one of the three cases where
+        # the function is reading into doc without being sure that the fields
+        # are there (occasionally in practice they are not because of unknown
+        # stuff on the API end). 
 
-    url2 = doc['BatchDataExportResponse']['Url']
+        # The next time such an exception is thrown, it might make sense to 
+        # look at what has been printed from doc and maybe put the call
+        # to get_doc_from_url into a try-catch clause.
+        url2 = doc['BatchDataExportResponse']['Url']
+    except:
+        pprint.pprint(doc)
+        print("Unable to get the first URL by using the command url2 = doc['BatchDataExportResponse']['Url'].")
+        print("Waiting 10 seconds and restarting.")
+        time.sleep(10)
+        return None, False
+
     r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
     doc = xmltodict.parse(r2.text,encoding = r2.encoding)
 
