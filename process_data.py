@@ -943,7 +943,7 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
         purchases = cull_fields(ps)
 
-        print("cache = {}, recent = {}, too_soon = {}".format(cache,recent,too_soon))
+        #print("cache = {}, recent = {}, too_soon = {}".format(cache,recent,too_soon))
 
 
         if cache and not too_soon:
@@ -1686,11 +1686,11 @@ def main(*args, **kwargs):
         slot_start += timechunk
         slot_end = slot_start + timechunk
         t8 = time.time()
-        if not skip_processing:
-            if len(reframed_ps) > 0:
-                print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.  (t8-t0)/len(rps) = {:1.1e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t8-t0)/len(reframed_ps)))
-            else:
-                print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
+        #if not skip_processing:
+        #    if len(reframed_ps) > 0:
+        #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.  (t8-t0)/len(rps) = {:1.1e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t8-t0)/len(reframed_ps)))
+        #    else:
+        #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
     if spacetime == 'zone':
         print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
   
