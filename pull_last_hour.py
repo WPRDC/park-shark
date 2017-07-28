@@ -13,20 +13,26 @@
 # function would be running this script with output_to_csv = True and 
 # push_to_CKAN = False and then calling a pipeline function to pipe the 
 # CSV to the CKAN resource.
-import pytz
+import sys, pytz
 from datetime import datetime, timedelta
 import process_data
 
-def main():
+def main(*args,**kwargs):
+    raw_only = kwargs.get('raw_only',False)
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
     slot_start = process_data.roundTime(datetime.now(pgh) - timedelta(hours=1), slot_width) 
     halting_time = datetime.now(pgh) #process_data.roundTime(datetime.now(pgh), slot_width)
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(output_to_csv = False, push_to_CKAN = True, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100)
+    success = process_data.main(raw_only = raw_only, output_to_csv = True, push_to_CKAN = False, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] in ['raw','raw_only']:
+        main(raw_only = True)
+    elif len(sys.argv) > 1 and sys.argv[1] in ['cooked','well-done','well_done','done']:
+        main(raw_only = False)
+    else:
+        main()
