@@ -19,20 +19,33 @@ import process_data
 
 def main(*args,**kwargs):
     raw_only = kwargs.get('raw_only',False)
+    test_mode = kwargs.get('test_mode',False)
+    if test_mode:
+        output_to_csv = True
+        push_to_CKAN = False
+    else:
+        output_to_csv = False
+        push_to_CKAN = True
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
     slot_start = process_data.roundTime(datetime.now(pgh) - timedelta(hours=1), slot_width) 
     halting_time = datetime.now(pgh) #process_data.roundTime(datetime.now(pgh), slot_width)
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(raw_only = raw_only, output_to_csv = True, push_to_CKAN = False, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100)
+    success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
 if __name__ == '__main__':
+    raw_only = True
+    test_mode = False
     if len(sys.argv) > 1 and sys.argv[1] in ['raw','raw_only']:
-        main(raw_only = True)
+        raw_only = True
     elif len(sys.argv) > 1 and sys.argv[1] in ['cooked','well-done','well_done','done']:
-        main(raw_only = False)
-    else:
-        main()
+        raw_only = False
+    if len(sys.argv) > 2 and sys.argv[2] in ['test','test_mode']:
+        test_mode = True
+
+    if len(sys.argv) > 1:
+        print("raw_only = {}, test_mode = {}".format(raw_only,test_mode))
+    main(raw_only = raw_only, test_mode = test_mode)
