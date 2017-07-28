@@ -15,11 +15,19 @@
 # some kind of pipeline/job manager that can send out notifications if 
 # a particular ETL job fails.
 
-import pytz
+import sys, pytz
 from datetime import datetime, timedelta
 import process_data
 
-def main():
+def main(*args,**kwargs):
+    raw_only = kwargs.get('raw_only',False)
+    test_mode = kwargs.get('test_mode',False)
+    if test_mode:
+        output_to_csv = True
+        push_to_CKAN = False
+    else:
+        output_to_csv = False
+        push_to_CKAN = True
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
     slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=6))
@@ -32,9 +40,20 @@ def main():
     # process_data.py.
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(output_to_csv = False, push_to_CKAN = True, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
+    success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
 if __name__ == '__main__':
-    main()
+    raw_only = True
+    test_mode = False
+    if len(sys.argv) > 1 and sys.argv[1] in ['raw','raw_only']:
+        raw_only = True
+    elif len(sys.argv) > 1 and sys.argv[1] in ['cooked','well-done','well_done','done']:
+        raw_only = False
+    if len(sys.argv) > 2 and sys.argv[2] in ['test','test_mode']:
+        test_mode = True
+
+    if len(sys.argv) > 1:
+        print("raw_only = {}, test_mode = {}".format(raw_only,test_mode))
+    main(raw_only = raw_only, test_mode = test_mode)
