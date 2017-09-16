@@ -26,6 +26,7 @@ def main(*args,**kwargs):
     slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=6))
     halting_time = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=2))
     slot_start = kwargs.get('slot_start',pgh.localize(datetime(2012,7,23,0,0)))
+    spacetime = kwargs.get('spacetime','zone')
     halting_time = pgh.localize(datetime(3030,4,13,0,0))
     # Note that these days are chosen to be within the last 7 days so that 
     # the data can be pulled from the API without using the bulk API (and 
@@ -34,7 +35,7 @@ def main(*args,**kwargs):
     # for the processing; this would require reworking process_data.py.
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(output_to_csv = False, push_to_CKAN = True, caching_mode = 'utc_json', slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
+    success = process_data.main(output_to_csv = False, push_to_CKAN = True, spacetime = spacetime, caching_mode = 'utc_json', slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
