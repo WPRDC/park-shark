@@ -1744,13 +1744,11 @@ def main(*args, **kwargs):
                 cumulated_ad_hoc_dicts = []
                 print("Pushed the last batch of ad hoc transactions to {}".format(ad_hoc_resource_id))
             return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
+        # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
+        # the whole process succeeded).
         else:
             return success
 
-
-
-        # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
-        # the whole process succeeded).
 
     return None # The success Boolean should be defined when push_to_CKAN is false.
 
