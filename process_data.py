@@ -585,6 +585,7 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
         #durations = json.loads(stats_by_zone[zone]['Durations']) # No longer necessary 
         # since this field is going to be a list of integers until package_for_output
         # is called.
+        durations = stats_by_zone[zone]['Durations']
 #        if len(durations) > 0:
 #            print "\ndurations for zone {} = ".format(zone)
 #            pprint.pprint(durations)
@@ -597,7 +598,9 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
             # timechunk is one minute (i.e., no occupancy will be lost
             # due to rounding errors).
             for k in range(0,bins):
-                inferred_occupancy[slot_start+k*timechunk][zone] += durations[d_i]
+                inferred_occupancy[slot_start+k*timechunk][zone] += 1 
+                # inferred_occupancy is measured in cars (or used parking spaces),
+                # though a more useful metric would be percent_occupied.
 #        if len(durations) > 0:
 #            print "inferred_occpancy for zone {} =".format(zone)
 #            for t in sorted(inferred_occupancy.keys()):
@@ -630,7 +633,9 @@ def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_
     # put money into parking meters (or virtual meters via smartphone apps) and
     # Payments tells you how much money was paid, Durations tells you the breakdown of
     # parking minutes purchased. The sum of all the durations represented in the
-    # Durations dictionary should equal the value in the Car-minutes field.
+    # Durations list should equal the value in the Car-minutes field. This field has been
+    # changed to a list data structure until package_for_output, at which point it is 
+    # reformatted into a dictionary.
     if space_aggregate_by == 'ad hoc zone':
         stats['Parent Zone'] = None
     if time_aggregate_by == 'month':
