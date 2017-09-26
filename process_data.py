@@ -1329,18 +1329,21 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
         for zone in zlist:
             if zone in stats_rows.keys(): # For spacetime == 'zone', the aggregation keys are still zone values for now.
                 d = stats_rows[zone]
-            else: # This part is only necessary for the augmented list (which should
+            elif augment: # This part is only necessary for the augmented list (which should
             # have inferred occupancy for each zone for each slot (even if there were
             # no transactions during that slot), unlike list_of_dicts).
                 d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,time_aggregate_by,tz)
             #d['Zone'] = zone # This is no longer necessary.
             if zone in stats_rows.keys():
                 list_of_dicts.append(d)
-            if inferred_occupancy is not None:
+            if augment and inferred_occupancy is not None:
                 d['Inferred occupancy'] = inferred_occupancy[slot_start][zone]
         #            if d['Inferred occupancy'] > 0:
         #                print "Inferred occupancy:", slot_start,zone,d['Inferred occupancy']
-            if zone in temp_zone_info:
+            if augment and zone in temp_zone_info: # This was originally just "if zone in temp_zone_info",
+            # so I was deliberately adding these parameters to all rows (even when not computing 
+            # augmented statistics). Probably this was being done to allow centroids to be 
+            # calculated, but for now, I am eliminating such additions.
                 extra = temp_zone_info[zone]
                 d['Latitude'] = extra['Latitude']
                 d['Longitude'] = extra['Longitude']
