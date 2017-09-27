@@ -1,6 +1,7 @@
 import xmltodict
 import os
 import re
+import csv
 
 import json
 from collections import OrderedDict, Counter, defaultdict
@@ -42,19 +43,19 @@ import sys
 try:
     sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
     from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-    from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
+    from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_resource_data
 except:
     try:
         sys.path.insert(0, '/Users/daw165/bin/')# Office computer location
         from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-        from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
+        from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_resource_data
     except:
         from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
         #try:
         #    from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
         #except:
         #    print("Unable to import pipe_data_to_ckan")
-        from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id
+        from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_resource_data
 
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
@@ -287,17 +288,53 @@ temp_zone_info = {'344 - 18th & Carson Lot': {'Latitude': 40.428484093957401,
                'Longitude': -80.033656060668363,
                'MeterCount': 6,
                'Type': 'On street'}}
+# 341 - 18th & Sidney is missing from this list.
+
+def get_zone_info():
+    spot_counts_resource_id = "f9b65c53-ee4f-4585-8d81-b8531b688d06"
+    zone_info_cache_file = 'zone_info.csv'
+    try:
+        dp, settings, site, API_key = open_a_channel(server)
+        records = get_resource_data(site,spot_counts_resource_id,API_key=API_key,count=10000)
+    except:
+        print("Unable to download the zone/lot information. Falling back to the cached file.")
+        with open(zone_info_cache_file) as zic:
+            list_of_ds = csv.DictReader(zic)
+            zone_info = {}
+            for d in list_of_ds:
+                zone = d['zone']
+                zone_info[zone] = d
+                del(zone_info[zone]['zone'])
+
+    zone_info = {}
+    for r in records:
+        zone = r['zone']
+        zone_info[zone] = {'spaces': r['spaces'], 'type': 'On street' if r['on_street'] == 'true' else 'Lot'}
+        try:
+            zone_info[zone]['spaces'] = int(zone_info[zone]['spaces'])
+        except:
+            pass
+        if zone in temp_zone_info.keys():
+            zone_info[zone]['latitude'] = temp_zone_info[zone]['Latitude']
+            zone_info[zone]['longitude'] = temp_zone_info[zone]['Longitude']
+
+    # Convert to a list-of-dicts structure for caching to a file:
+    list_of_ds = [{'zone': k, **v} for k,v in zone_info.items()]
+    keys = sorted(list_of_ds[0].keys())
+    # Now cache the resulting zone_info in case it can't be retrieved.
+    write_or_append_to_csv(zone_info_cache_file,list_of_ds,keys,actually_overwrite=True)
+    return zone_info
 
 def roundTime(dt=None, roundTo=60):
-   """Round a datetime object to any time laps[e] in seconds
-   dt : datetime.datetime object, default now.
-   roundTo : Closest number of seconds to round to, default 1 minute.
-   Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-   """
-   if dt == None : dt = datetime.now()
-   seconds = (dt.replace(tzinfo=None) - dt.min).seconds
-   rounding = (seconds+roundTo/2) // roundTo * roundTo
-   return dt + timedelta(0,rounding-seconds,-dt.microsecond)
+    """Round a datetime object to any time laps[e] in seconds
+    dt : datetime.datetime object, default now.
+    roundTo : Closest number of seconds to round to, default 1 minute.
+    Author: Thierry Husson 2012 - Use it as you want but don't blame me.
+    """
+    if dt == None : dt = datetime.now()
+    seconds = (dt.replace(tzinfo=None) - dt.min).seconds
+    rounding = (seconds+roundTo/2) // roundTo * roundTo
+    return dt + timedelta(0,rounding-seconds,-dt.microsecond)
 
 def is_very_beginning_of_the_month(dt): 
    return dt.day == 1 and dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0
@@ -1269,7 +1306,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
-def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,augment):
+def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,augment):
     # This function works for zones and ad hoc zones. It has now been modified
     # to do basic agggregating by meter, ignoring inferred occupancy and augmentation.
     
@@ -1334,21 +1371,39 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
             # no transactions during that slot), unlike list_of_dicts).
                 d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,time_aggregate_by,tz)
             #d['Zone'] = zone # This is no longer necessary.
+            # Elaboration: That line seemed to be unnecessary when aggregation keys were invented
+            # as they explicitly put the zone (or whatever the spatial aggregation was) in the key,
+            # which shows up in this function in stats_rows. However, it is necessary to specify
+            # the zone (or whatever) when generating rows for the augmented file
+            # and when a zone has no transactions but still has some residual occupancy to report.
+            # Therefore:
+            if 'Zone' not in d.keys():
+                d['Zone'] = zone
             if zone in stats_rows.keys():
                 list_of_dicts.append(d)
+            # Note that augmented mode has not been generalized to handle different kinds of spatial 
+            # aggregation. Thus:
+            if augment and space_aggregate_by in ['meter']:
+                raise ValueError("Augmented mode has not been generalized to work with aggregating by {}".format(space_aggregate_by))
             if augment and inferred_occupancy is not None:
                 d['Inferred occupancy'] = inferred_occupancy[slot_start][zone]
         #            if d['Inferred occupancy'] > 0:
         #                print "Inferred occupancy:", slot_start,zone,d['Inferred occupancy']
-            if augment and zone in temp_zone_info: # This was originally just "if zone in temp_zone_info",
+            if augment and zone in zone_info.keys(): # This was originally just "if zone in temp_zone_info",
             # so I was deliberately adding these parameters to all rows (even when not computing 
             # augmented statistics). Probably this was being done to allow centroids to be 
             # calculated, but for now, I am eliminating such additions.
-                extra = temp_zone_info[zone]
-                d['Latitude'] = extra['Latitude']
-                d['Longitude'] = extra['Longitude']
-                d['Meter count'] = extra['MeterCount']
-                d['Zone type'] = extra['Type']
+                base = zone_info[zone]
+                if zone in temp_zone_info.keys():
+                    extra = temp_zone_info[zone]
+                    if 'Latitude' in extra:
+                        d['Latitude'] = extra['Latitude']
+                    else:
+                        print("No latitude found for {}".format(zone))
+                    if 'Longitude' in extra:
+                        d['Longitude'] = extra['Longitude']
+                d['space_count'] = base['spaces']
+                d['zone_type'] = base['type']
                 #augmented.append(d)
                 if augment:
                     if d['Inferred occupancy'] > 0 or zone in stats_rows.keys(): # stats_rows.keys() cannot be simply replaced with zlist.
@@ -1359,7 +1414,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, temp_zone_info,tz
             # are listed as inactive, this branch should never get called
             # unless someone (maybe the ParkMobile user entering a code)
             # makes an error.
-    #            print("Found a zone not listed in temp_zone_info: {}".format(zone))
+    #            print("Found a zone not listed in zone_info: {}".format(zone))
     return list_of_dicts, augmented
 
 def main(*args, **kwargs):
@@ -1390,6 +1445,9 @@ def main(*args, **kwargs):
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
 
+
+    if augment:
+        zone_info = get_zone_info()
 
     if caching_mode == 'db_caching':
         db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
@@ -1612,7 +1670,7 @@ def main(*args, **kwargs):
                 if is_very_beginning_of_the_month(slot_start) and len(stats_rows) > 0: # Store the old stats_rows and then reset stats_rows
                     print("Found the very beginning of the month")
                     # Store old stats_rows
-                    list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment)
+                    list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment)
                     if output_to_csv: 
                         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
@@ -1663,7 +1721,7 @@ def main(*args, **kwargs):
             # because of the ad hoc weirdness, which I am leaving out of meter-month aggregation, so for 
             # now, this clause is being governed by the value of spacetime.
 
-                list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,'zone',None,augment)
+                list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,zone_info,pgh,slot_start,slot_end,'zone',None,augment)
 
                 if output_to_csv and len(list_of_dicts) > 0: # Write to files as
                 # often as necessary, since the associated delay is not as great as
@@ -1727,7 +1785,7 @@ def main(*args, **kwargs):
     print("spacetime = {}".format(spacetime))
     if spacetime == 'meter,month' and output_to_csv:
         print("len(stats_rows) = {}".format(len(stats_rows)))
-        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,temp_zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment)
+        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment)
         print("len(list_of_dicts) = {}".format(len(list_of_dicts)))
         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
