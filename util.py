@@ -225,7 +225,7 @@ def build_keys(space_aggregation,time_aggregation):
     elif time_aggregation == 'month':
         time_keys = ['Year', 'Month', 'Hour', 'UTC Hour']
     base = ['Transactions', 'Car-minutes', 'Payments', 'Durations']
-    extras = ['Latitude', 'Longitude', 'Meter count', 'Zone type', 'Inferred occupancy']
+    extras = ['Latitude', 'Longitude', 'space_count', 'zone_type', 'Inferred occupancy']
 
     dkeys = space_keys + time_keys + base
     augmented_dkeys = dkeys + extras
