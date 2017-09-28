@@ -291,6 +291,7 @@ temp_zone_info = {'344 - 18th & Carson Lot': {'Latitude': 40.428484093957401,
 # 341 - 18th & Sidney is missing from this list.
 
 def get_zone_info():
+    # Gather useful parameters about each zone (or lot) into a zone_info dictionary.
     spot_counts_resource_id = "f9b65c53-ee4f-4585-8d81-b8531b688d06"
     zone_info_cache_file = 'zone_info.csv'
     try:
@@ -314,6 +315,8 @@ def get_zone_info():
             zone_info[zone]['spaces'] = int(zone_info[zone]['spaces'])
         except:
             pass
+#    [ ] Subtract lease counts from the number of available spots in each parking lot in get_zone_info to provide a more accurate estimate of percent_occupied.
+    
         if zone in temp_zone_info.keys():
             zone_info[zone]['latitude'] = temp_zone_info[zone]['Latitude']
             zone_info[zone]['longitude'] = temp_zone_info[zone]['Longitude']
@@ -1362,6 +1365,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
         # spacetime aggregation are used::
         #       mlist = sorted(list(set([u['Meter ID'] for u in stats_rows.values()]))) # Meter IDs
         zlist = sorted(list(set(sorted(stats_rows.keys())+zonelist))) # I think that the inner "sorted" function can be removed here.
+        sorted_zonelist = sorted(zonelist)
 
         for zone in zlist:
             if zone in stats_rows.keys(): # For spacetime == 'zone', the aggregation keys are still zone values for now.
@@ -1377,7 +1381,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             # the zone (or whatever) when generating rows for the augmented file
             # and when a zone has no transactions but still has some residual occupancy to report.
             # Therefore:
-            if 'Zone' not in d.keys():
+            if augment and ('Zone' not in d.keys()) and inferred_occupancy is not None:
                 d['Zone'] = zone
             if zone in stats_rows.keys():
                 list_of_dicts.append(d)
@@ -1405,10 +1409,20 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
                 d['space_count'] = base['spaces']
                 d['zone_type'] = base['type']
                 #augmented.append(d)
-                if augment:
-                    if d['Inferred occupancy'] > 0 or zone in stats_rows.keys(): # stats_rows.keys() cannot be simply replaced with zlist.
-                    # Rather, it must be just the set of zones extracted from the stats_rows field 'Zone'.
-                        augmented.append(d)
+            if augment and zone in zonelist: # By adding zone in zonelist, I'm boxing out the
+            # "zone in stats_rows.keys()" condition below, that was letting in things like
+            # zone = CMU Study.
+                if 'Inferred occupancy' not in d:
+                    print("zone = {}, d = ".format(zone))
+                    pprint.pprint(d)
+                # Below is the line that would need to be changed to output to the 
+                # augmented file rows where the inferred occupancy is zero.
+                #   To generate the data to send to Carto for a live (or quasi-live)
+                #   map, the package_for_output function could be called just at the
+                #   end of processing with augment=True.
+                if d['Inferred occupancy'] > 0 or zone in stats_rows.keys(): # stats_rows.keys() cannot be simply replaced with zlist.
+                # Rather, it must be just the set of zones extracted from the stats_rows field 'Zone'.
+                    augmented.append(d)
 
     #        elif zone in stats_rows.keys(): # Allentown is missing, but since all those terminals
             # are listed as inactive, this branch should never get called
@@ -1727,8 +1741,8 @@ def main(*args, **kwargs):
                 # often as necessary, since the associated delay is not as great as
                 # for pushing data to CKAN.
                     write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
-                    if not turbo_mode and augment:
-                        write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_dkeys,overwrite)
+                if output_to_csv and not turbo_mode and augment:
+                    write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_dkeys,overwrite)
 
                 cumulated_dicts += list_of_dicts
                 if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
@@ -1743,7 +1757,10 @@ def main(*args, **kwargs):
                     if success:
                         cumulated_dicts = []
 
-                ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',None,augment)
+                ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',None,augment and False)
+                # Sending the augment parameter here as "augment and False" to prevent 
+                # package_for_output from even trying to generate augmented output.
+
                 # Between the passed use_ad_hoc_zones boolean and other parameters, more
                 # information is being passed than necessary to distinguish between
                 # ad hoc zones and regular zones.
