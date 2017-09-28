@@ -60,11 +60,9 @@ def send_file_to_carto(filepath):
 
 
 def update_map(inferred_occupancy_dict,zonelist):
-    for zone in zonelist:
+    for zone in sorted(zonelist):
         if zone not in inferred_occupancy_dict:
             inferred_occupancy_dict[zone] = 0
-    print("type(inferred_occupancy_dict) = {}".format(type(inferred_occupancy_dict)))
-    pprint(inferred_occupancy_dict)
     list_of_records = [{'zone': k, 'inferred_occupancy': v} for k,v in inferred_occupancy_dict.items()]
     keys = ['zone','inferred_occupancy']
 
