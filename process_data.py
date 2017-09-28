@@ -27,6 +27,7 @@ import pytz
 
 from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 
+from carto_util import update_map
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
 from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
@@ -642,7 +643,7 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
                 # inferred_occupancy is measured in cars (or used parking spaces),
                 # though a more useful metric would be percent_occupied.
 #        if len(durations) > 0:
-#            print "inferred_occpancy for zone {} =".format(zone)
+#            print "inferred_occupancy for zone {} =".format(zone)
 #            for t in sorted(inferred_occupancy.keys()):
 #                print t, to_dict(inferred_occupancy[t])
     return inferred_occupancy
@@ -1440,6 +1441,9 @@ def main(*args, **kwargs):
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
     augment = kwargs.get('augment',False)
+    # [ ] augment and update_live_map are a little entangled now since update_live_map = True
+    # is assuming that augment = True, but there's nothing forcing that parameter to be
+    # set when calling process_data.main(). Thus, some refactoring is in order.
 
     default_filename = 'parking-dataset-1.csv'
     filename = kwargs.get('filename',default_filename)
@@ -1458,10 +1462,12 @@ def main(*args, **kwargs):
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
-
+    update_live_map = kwargs.get('update_live_map',False)
 
     if augment:
         zone_info = get_zone_info()
+    else:
+        zone_info = None
 
     if caching_mode == 'db_caching':
         db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
@@ -1777,9 +1783,15 @@ def main(*args, **kwargs):
                     if success_a:
                         cumulated_ad_hoc_dicts = []
 
+                if update_live_map: # Optionally update the live map if the timing of the
+                    # current slot is correct.
+                    if slot_start <= datetime.now(pytz.utc) < slot_start+timechunk:
+                        update_map(dict(inferred_occupancy[slot_start]),zonelist)
+
             if spacetime != 'meter,month':
                 if slot_start in inferred_occupancy:
-                    del inferred_occupancy[slot_start]
+                    del inferred_occupancy[slot_start] # Delete past inferred_occupancy dictionaries
+                    # to keep the data structure from growing without bound.
 
         slot_start += timechunk
         slot_end = slot_start + timechunk

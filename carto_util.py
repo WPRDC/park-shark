@@ -2,7 +2,24 @@ from carto.auth import APIKeyAuthClient
 from carto.datasets import DatasetManager
 
 from pprint import pprint
-import re
+import re, csv
+
+import os
+import tempfile
+from contextlib import contextmanager
+
+@contextmanager
+def tempinput(list_of_records,keys):
+    temp = tempfile.NamedTemporaryFile(delete=False,mode='w+t')
+    #temp.write(data)
+    dict_writer = csv.DictWriter(temp, keys, extrasaction='ignore', lineterminator='\n')
+    dict_writer.writeheader()
+    dict_writer.writerows(list_of_records)
+    temp.close()
+    try:
+        yield temp.name
+    finally:
+        os.unlink(temp.name)
 
 def authorize_carto():
     from prime_ckan.carto_credentials import ORGANIZATION, USERNAME, API_KEY
@@ -31,5 +48,29 @@ def send_file_to_carto(filepath):
     dataset = dataset_manager.create(filepath)
     print("Carto dataset with name '{}' created.".format(carto_name))
 
+# On moving from files to buffers (acting as virtual files):
+    # "It should be noted that should you need to interface with code that needs 
+    # filenames, then: If all your legacy code can take is a filename, then a 
+    # StringIO instance is not the way to go. Use the tempfile module to generate 
+    # a temporary filename instead:"
+    #   https://stackoverflow.com/questions/11892623/python-stringio-and-compatibility-with-with-statement-context-manager/11892712#11892712
+    #   "A StringIO instance is an open file already. The open command, on the 
+    #   other hand, only takes filenames, to return an open file. A StringIO 
+    #   instance is not suitable as a filename."
 
+
+def update_map(inferred_occupancy_dict,zonelist):
+    for zone in zonelist:
+        if zone not in inferred_occupancy_dict:
+            inferred_occupancy_dict[zone] = 0
+    print("type(inferred_occupancy_dict) = {}".format(type(inferred_occupancy_dict)))
+    pprint(inferred_occupancy_dict)
+    list_of_records = [{'zone': k, 'inferred_occupancy': v} for k,v in inferred_occupancy_dict.items()]
+    keys = ['zone','inferred_occupancy']
+
+    pprint(list_of_records)
+    with tempinput(list_of_records,keys) as tempfilename:
+        #processFile(tempfilename) 
+        #send_file_to_carto(tempfilename)
+        pass
 #send_file_to_carto('/Users/drw/test_carto.3.csv')
