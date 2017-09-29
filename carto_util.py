@@ -69,7 +69,7 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
     for record in list_of_records:
         zone = record['zone']
         if zone in zone_info:
-           record['percent_occupied'] = (record['inferred_occupancy'] + 0.0)/zone_info[zone]['spaces'] 
+           record['percent_occupied'] = round(10000*(record['inferred_occupancy'] + 0.0)/zone_info[zone]['spaces'])/100.0
 
     keys = ['zone','inferred_occupancy','percent_occupied']
 
