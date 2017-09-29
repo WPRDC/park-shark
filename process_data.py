@@ -309,6 +309,7 @@ def get_zone_info():
                 zone = d['zone']
                 zone_info[zone] = d
                 del(zone_info[zone]['zone'])
+        return zone_info
 
     zone_info = {}
     leases = {}
