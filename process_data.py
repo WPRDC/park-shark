@@ -1441,9 +1441,16 @@ def main(*args, **kwargs):
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
     augment = kwargs.get('augment',False)
-    # [ ] augment and update_live_map are a little entangled now since update_live_map = True
-    # is assuming that augment = True, but there's nothing forcing that parameter to be
-    # set when calling process_data.main(). Thus, some refactoring is in order.
+        # [ ] augment and update_live_map are a little entangled now since update_live_map = True
+        # is assuming that augment = True, but there's nothing forcing that parameter to be
+        # set when calling process_data.main(). Thus, some refactoring is in order. These are also
+        # entangled with raw_only. 
+        # raw_only means no calculated parameters should be output.
+        # augment means that, in addition to calculated parameters, a separate augmented file
+        # with estimated occupancies and the kitchen sink (currently zone centroids, though 
+        # that's really not strictly needed) is output. 
+        # augmented mode is very compatible with updating the live map since both involve tracking
+        # inferred occupancies.
 
     default_filename = 'parking-dataset-1.csv'
     filename = kwargs.get('filename',default_filename)
@@ -1786,7 +1793,7 @@ def main(*args, **kwargs):
                 if update_live_map: # Optionally update the live map if the timing of the
                     # current slot is correct.
                     if slot_start <= datetime.now(pytz.utc) < slot_start+timechunk:
-                        update_map(dict(inferred_occupancy[slot_start]),zonelist)
+                        update_map(dict(inferred_occupancy[slot_start]),zonelist,zone_info)
 
             if spacetime != 'meter,month':
                 if slot_start in inferred_occupancy:

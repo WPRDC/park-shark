@@ -10,7 +10,7 @@ from contextlib import contextmanager
 
 @contextmanager
 def tempinput(list_of_records,keys):
-    temp = tempfile.NamedTemporaryFile(delete=False,mode='w+t')
+    temp = tempfile.NamedTemporaryFile(delete=False,mode='w+t',prefix="estimated_occupancy_by_zone",suffix=".csv")
     #temp.write(data)
     dict_writer = csv.DictWriter(temp, keys, extrasaction='ignore', lineterminator='\n')
     dict_writer.writeheader()
@@ -59,16 +59,22 @@ def send_file_to_carto(filepath):
     #   instance is not suitable as a filename."
 
 
-def update_map(inferred_occupancy_dict,zonelist):
+def update_map(inferred_occupancy_dict,zonelist,zone_info):
     for zone in sorted(zonelist):
         if zone not in inferred_occupancy_dict:
             inferred_occupancy_dict[zone] = 0
+
     list_of_records = [{'zone': k, 'inferred_occupancy': v} for k,v in inferred_occupancy_dict.items()]
-    keys = ['zone','inferred_occupancy']
+    list_of_records.sort(key = lambda x: x['zone'])
+    for record in list_of_records:
+        zone = record['zone']
+        if zone in zone_info:
+           record['percent_occupied'] = (record['inferred_occupancy'] + 0.0)/zone_info[zone]['spaces'] 
+
+    keys = ['zone','inferred_occupancy','percent_occupied']
 
     pprint(list_of_records)
     with tempinput(list_of_records,keys) as tempfilename:
         #processFile(tempfilename) 
-        #send_file_to_carto(tempfilename)
-        pass
+        send_file_to_carto(tempfilename)
 #send_file_to_carto('/Users/drw/test_carto.3.csv')
