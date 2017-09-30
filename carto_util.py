@@ -2,24 +2,10 @@ from carto.auth import APIKeyAuthClient
 from carto.datasets import DatasetManager
 
 from pprint import pprint
+from datetime import datetime
 import re, csv
 
 import os
-import tempfile
-from contextlib import contextmanager
-
-@contextmanager
-def tempinput(list_of_records,keys):
-    temp = tempfile.NamedTemporaryFile(delete=False,mode='w+t',prefix="estimated_occupancy_by_zone",suffix=".csv")
-    #temp.write(data)
-    dict_writer = csv.DictWriter(temp, keys, extrasaction='ignore', lineterminator='\n')
-    dict_writer.writeheader()
-    dict_writer.writerows(list_of_records)
-    temp.close()
-    try:
-        yield temp.name
-    finally:
-        os.unlink(temp.name)
 
 def authorize_carto():
     from prime_ckan.carto_credentials import ORGANIZATION, USERNAME, API_KEY
@@ -74,7 +60,14 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
     keys = ['zone','inferred_occupancy','percent_occupied']
 
     pprint(list_of_records)
-    with tempinput(list_of_records,keys) as tempfilename:
-        #processFile(tempfilename) 
-        send_file_to_carto(tempfilename)
+
+    filename = "estimated_occupancy_by_zone-{}.csv".format(datetime.now().strftime("%Y%m%d-%H%M"))
+    print(filename)
+    with open(filename,'w') as f:
+        dict_writer = csv.DictWriter(f, keys, extrasaction='ignore', lineterminator='\n')
+        dict_writer.writeheader()
+        dict_writer.writerows(list_of_records)
+    send_file_to_carto(filename)
+    os.unlink(filename)
+    
 #send_file_to_carto('/Users/drw/test_carto.3.csv')
