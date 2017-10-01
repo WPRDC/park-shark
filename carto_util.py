@@ -27,7 +27,6 @@ def send_file_to_carto(filepath):
     carto_name = re.sub('.csv$','',filename)
     carto_name = re.sub('[\.\s]','_',carto_name)
     carto_name = carto_name.lower()
-    print("Filename transformed to Carto-style table name is '{}'".format(carto_name))
 
     dataset_names = [d.name for d in datasets]
     for d in datasets:
@@ -79,7 +78,6 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
         print("{} | {}".format(format_cell(l), format_cell(s)))
 
     filename = "estimated_occupancy_by_zone-{}.csv".format(datetime.now().strftime("%Y%m%d-%H%M"))
-    print(filename)
     with open(filename,'w') as f:
         dict_writer = csv.DictWriter(f, keys, extrasaction='ignore', lineterminator='\n')
         dict_writer.writeheader()
