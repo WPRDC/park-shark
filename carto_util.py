@@ -3,9 +3,12 @@ from carto.datasets import DatasetManager
 
 from pprint import pprint
 from datetime import datetime
-import re, csv
+import re, csv, os
 
-import os
+import itertools
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def authorize_carto():
     from prime_ckan.carto_credentials import ORGANIZATION, USERNAME, API_KEY
@@ -45,6 +48,13 @@ def send_file_to_carto(filepath):
     #   instance is not suitable as a filename."
 
 
+def format_cell(r):
+    if r is None:
+        return ''
+    percent = " {:>4.1f}%".format(r['percent_occupied']) if 'percent_occupied' in r else ''
+    formatted = "{:31} {:4d}{:6}".format(r['zone'],r['inferred_occupancy'],percent)
+    return formatted
+
 def update_map(inferred_occupancy_dict,zonelist,zone_info):
     for zone in sorted(zonelist):
         if zone not in inferred_occupancy_dict:
@@ -52,14 +62,21 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
 
     list_of_records = [{'zone': k, 'inferred_occupancy': v} for k,v in inferred_occupancy_dict.items()]
     list_of_records.sort(key = lambda x: x['zone'])
+    lot_data = []
+    street_data = []
     for record in list_of_records:
         zone = record['zone']
         if zone in zone_info:
            record['percent_occupied'] = round(10000*(record['inferred_occupancy'] + 0.0)/zone_info[zone]['spaces'])/100.0
+        if zone[0] == '3':
+            lot_data.append(record)
+        else:
+            street_data.append(record)
 
     keys = ['zone','inferred_occupancy','percent_occupied']
 
-    pprint(list_of_records)
+    for l,s in itertools.zip_longest(lot_data, street_data, fillvalue=None):
+        print("{} | {}".format(format_cell(l), format_cell(s)))
 
     filename = "estimated_occupancy_by_zone-{}.csv".format(datetime.now().strftime("%Y%m%d-%H%M"))
     print(filename)
