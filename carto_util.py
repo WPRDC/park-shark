@@ -50,8 +50,8 @@ def send_file_to_carto(filepath):
 def format_cell(r):
     if r is None:
         return ''
-    percent = " {:>4.1f}%".format(r['percent_occupied']) if 'percent_occupied' in r else ''
-    formatted = "{:31} {:4d}{:6}".format(r['zone'],r['inferred_occupancy'],percent)
+    percent = " {:>5.1f}%".format(r['percent_occupied']) if 'percent_occupied' in r else ''
+    formatted = "{:31} {:4d}{:7}".format(r['zone'],r['inferred_occupancy'],percent)
     return formatted
 
 def update_map(inferred_occupancy_dict,zonelist,zone_info):
