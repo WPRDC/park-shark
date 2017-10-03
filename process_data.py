@@ -248,8 +248,8 @@ def is_very_beginning_of_the_month(dt):
    return dt.day == 1 and dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0
 
 def beginning_of_day(dt=None):
-    # Takes a datetime and returns the first datetime before
-    # that that corresponds to LOCAL midnight (00:00).
+    """Takes a datetime and returns the first datetime before
+    that that corresponds to LOCAL midnight (00:00)."""
     if dt == None : dt = datetime.now()
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -270,9 +270,8 @@ def p_hash(p,t,group_lookup_addendum):
     return "{}|{}".format(p['@StartDateUtc'],z)
 
 def is_original(p,t,p_history,previous_history,group_lookup_addendum):
-    # This function does an initial check to see if a particular
-    # transaction might be an extension/"TopUp" of a previous
-    # purchase.
+    """This function does an initial check to see if a particular
+    transaction might be an extension/"TopUp" of a previous purchase."""
 
 
     # @PurchaseTypeName == Normal might be a usable way of 
@@ -414,8 +413,8 @@ def add_to_dict(p,p_dict,terminals,t_guids,group_lookup_a):
     return p_dict
 
 def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,uncharted_e_zones,group_lookup_a,turbo_mode,raw_only):
-    # Take a dictionary and generate a new dictionary from it that samples
-    # the appropriate keys and renames and transforms as desired.
+    """Take a dictionary and generate a new dictionary from it that samples
+    the appropriate keys and renames and transforms as desired."""
     t_A = time.time()
     row = {}
     #row['GUID'] = p['@PurchaseGuid'] # To enable this field,
@@ -442,9 +441,9 @@ def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,unc
         row['Duration'] = None # in minutes
     else:
         row['Duration'] = int(p['@Units']) # in minutes
-# THIS ASSUMES THAT DURATIONS WILL ALWAYS BE IN MINUTES.
-# IT WOULD BE NICE FOR THEM TO BE SO TO SIMPLIFY THE COUNTS
-# DATA STRUCTURE
+    # This assumes that durations will always be in minutes.
+    # It would be nice for them to be so to simplify the counts
+    # data structure.
 
     t_B = time.time()
     if not turbo_mode and not is_original(p,t,p_history,previous_history,group_lookup_a): 
@@ -525,6 +524,12 @@ def find_biggest_value(d_of_ds,field='Transactions'):
     return sorted(d_of_ds,key=lambda x:d_of_ds[x][field])[-1]
 
 def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
+    """This function uses the parking durations inferred by trying to piece
+    together sessions from individual transactions to synthesize an 
+    estimated county of parked cars for each zone and time chunk,
+    starting at slot_start and goging forward.
+
+    No correction factors have been applied yet."""
     delta_minutes = timechunk.total_seconds()/60.0
     for zone in stats_by_zone:
         #durations = json.loads(stats_by_zone[zone]['Durations']) # No longer necessary 
@@ -697,13 +702,13 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
     return stats_by
 
 def build_url(base_url,slot_start,slot_end):
-    # This function takes the bounding datetimes, checks that
-    # they have time zones, and builds the appropriate URL,
-    # converting the datetimes to UTC (which is what the CALE
-    # API expects).
+    """This function takes the bounding datetimes, checks that
+    they have time zones, and builds the appropriate URL,
+    converting the datetimes to UTC (which is what the CALE
+    API expects).
 
-    # This function is called by get_batch_parking_for_day 
-    # (and was also used by get_recent_parking_events).
+    This function is called by get_batch_parking_for_day 
+    (and was also used by get_recent_parking_events)."""
 
     if is_timezoneless(slot_start) or is_timezoneless(slot_end):
         raise ValueError("Whoa, whoa, whoa! One of those times is unzoned!")
@@ -742,7 +747,7 @@ def convert_doc_to_purchases(doc,slot_start,date_format):
     return []
 
 def cull_fields(ps):
-    # Remove a bunch of unneeded fields.
+    """Remove a bunch of unneeded fields."""
     purchases = remove_field(ps,'@Code')
     purchases = remove_field(purchases,'@ArticleID')
     purchases = remove_field(purchases,'@ArticleName')
@@ -841,18 +846,18 @@ def get_doc_from_url(url):
     return doc, True
 
 def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
-    # Caches parking once it's been downloaded and checks
-    # cache before redownloading.
+    """Caches parking once it's been downloaded and checks
+    cache before redownloading.
 
-    # Note that no matter what time of day is associated with slot_start,
-    # this function will get all of the transactions for that entire day.
-    # Filtering the results down to the desired time range is handled 
-    # elsewhere (in the calling function (get_batch_parking)).
+    Note that no matter what time of day is associated with slot_start,
+    this function will get all of the transactions for that entire day.
+    Filtering the results down to the desired time range is handled 
+    elsewhere (in the calling function (get_batch_parking)).
 
 
-    # Caching by date ties this approach to a particular time zone. This
-    # is why transactions are dropped if we send this function a UTC
-    # slot_start (I think).
+    Caching by date ties this approach to a particular time zone. This
+    is why transactions are dropped if we send this function a UTC
+    slot_start (I think)."""
 
     date_format = '%Y-%m-%d'
     slot_start = slot_start.astimezone(tz)
@@ -932,35 +937,35 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
     return ps
 
 def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False):
-    # Caches parking once it's been downloaded and checks
-    # cache before redownloading.
+    """Caches parking once it's been downloaded and checks
+    cache before redownloading.
 
-    # Note that no matter what time of day is associated with slot_start,
-    # this function will get all of the transactions for that entire day.
-    # Filtering the results down to the desired time range is handled 
-    # elsewhere (in the calling function (get_batch_parking)).
+    Note that no matter what time of day is associated with slot_start,
+    this function will get all of the transactions for that entire day.
+    Filtering the results down to the desired time range is handled 
+    elsewhere (in the calling function (get_batch_parking)).
 
 
-    # Caching by date ties this approach to a particular time zone. This
-    # is why transactions are dropped if we send this function a UTC
-    # slot_start (I think) and try to use the Eastern Time Zone JSON 
-    # files. This has been fixed by specifying the timezone 
-    # and distinguishing between JSON-file folders.
+    Caching by date ties this approach to a particular time zone. This
+    is why transactions are dropped if we send this function a UTC
+    slot_start (I think) and try to use the Eastern Time Zone JSON 
+    files. This has been fixed by specifying the timezone 
+    and distinguishing between JSON-file folders."""
 
     ps = get_day_from_json_or_api(slot_start,tz,cache,mute)
 
     return ps
 
 def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
-    # This function handles situation where slot_start and slot_end are on different days
-    # by calling get_batch_parking_for_day in a loop.
+    """This function handles situation where slot_start and slot_end are on different days
+    by calling get_batch_parking_for_day in a loop.
 
-    # The parameter "time_field" determines which of the timestamps is used for calculating
-    # the datetime values used to filter purchases down to those between slot_start
-    # and start_end.
+    The parameter "time_field" determines which of the timestamps is used for calculating
+    the datetime values used to filter purchases down to those between slot_start
+    and start_end.
 
 
-    # Note that the time zone tz and the time_field must be consistent for this to work properly.
+    Note that the time zone tz and the time_field must be consistent for this to work properly."""
     # Here is a little sanity check:
     
     if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
