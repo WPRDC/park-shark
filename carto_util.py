@@ -66,13 +66,18 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
     for record in list_of_records:
         zone = record['zone']
         if zone in zone_info:
-           record['percent_occupied'] = round(10000*(record['inferred_occupancy'] + 0.0)/zone_info[zone]['spaces'])/100.0
+            zone_data = zone_info[zone]
+            record['percent_occupied'] = round(10000*(record['inferred_occupancy'] + 0.0)/zone_data['spaces'])/100.0
+            # For now, add the centroids of the zones (where available).
+            if 'Latitude' in zone_data and 'Longitude' in zone_data:
+                record['latitude'] = zone_data['Latitude']
+                record['longitude'] = zone_data['Longitude']
         if zone[0] == '3':
             lot_data.append(record)
         else:
             street_data.append(record)
 
-    keys = ['zone','inferred_occupancy','percent_occupied']
+    keys = ['zone','inferred_occupancy','percent_occupied','latitude','longitude']
 
     for l,s in itertools.zip_longest(lot_data, street_data, fillvalue=None):
         print("{} | {}".format(format_cell(l), format_cell(s)))
@@ -84,5 +89,15 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
         dict_writer.writerows(list_of_records)
     send_file_to_carto(filename)
     os.unlink(filename)
-    
+
+# [ ] Check how these occupancy metrics are affected by the meter/mobile payment dichotomy
+#     and the limitations of imperfect session inference.
+    # The meter/mobile payment dichotomy means that meter durations can't be compared to
+    # mobile durations (since the latter may extend into hours that are free to park).
+        # To correct this, either meter durations would have to be extended by 
+        # careful use of timestamps or mobile durations would have to be truncated
+        # by using the operation hours of the meter AND the timestamps of the 
+        # payments.
+
+
 #send_file_to_carto('/Users/drw/test_carto.3.csv')
