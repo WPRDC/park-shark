@@ -69,9 +69,9 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
             zone_data = zone_info[zone]
             record['percent_occupied'] = round(10000*(record['inferred_occupancy'] + 0.0)/zone_data['spaces'])/100.0
             # For now, add the centroids of the zones (where available).
-            if 'Latitude' in zone_data and 'Longitude' in zone_data:
-                record['latitude'] = zone_data['Latitude']
-                record['longitude'] = zone_data['Longitude']
+            if 'latitude' in zone_data and 'longitude' in zone_data:
+                record['latitude'] = zone_data['latitude']
+                record['longitude'] = zone_data['longitude']
         if zone[0] == '3':
             lot_data.append(record)
         else:
