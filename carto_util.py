@@ -71,6 +71,8 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
                 record['percent_occupied'] = round(10000*(record['inferred_occupancy'] + 0.0)/zone_data['spaces'])/100.0
                 record['spaces'] = zone_data['spaces']
             # For now, add the centroids of the zones (where available).
+            if 'type' in zone_data:
+                record['type'] = zone_data['type']
             if 'latitude' in zone_data and 'longitude' in zone_data:
                 record['latitude'] = zone_data['latitude']
                 record['longitude'] = zone_data['longitude']
@@ -79,7 +81,7 @@ def update_map(inferred_occupancy_dict,zonelist,zone_info):
         else:
             street_data.append(record)
 
-    keys = ['zone','inferred_occupancy','percent_occupied','spaces','latitude','longitude']
+    keys = ['zone','inferred_occupancy','percent_occupied','spaces','latitude','longitude','type']
 
     for l,s in itertools.zip_longest(lot_data, street_data, fillvalue=None):
         print("{} | {}".format(format_cell(l), format_cell(s)))
