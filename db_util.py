@@ -215,7 +215,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             #query_date_string = query_start.astimezone(tz).strftime(date_format) # This is the date
             # in the local time zone. # This seems to not be used at all.
 
-            base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             url = build_url(base_url,query_start,query_end)
 
             t_start_dl = time.time()
@@ -417,7 +417,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
             #query_date_string = query_start.astimezone(tz).strftime(date_format) # This is the date
             # in the local time zone. # This seems to not be used at all.
 
-            base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             url = build_url(base_url,query_start,query_end)
 
             if not mute:

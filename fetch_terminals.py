@@ -20,10 +20,10 @@ if calculate_zone_centroids:
 
 # URL for accessing the Purchases listed under August 19, 2016 (seems to 
 # be based on UTC time when the purchase was made).
-#url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/2016-08-19/2016-08-20'
+#url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/2016-08-19/2016-08-20'
 
 # Add times after dates to narrow the query to a more precise time range:
-#url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/2016-08-19/120000/2016-08-19/130000'
+#url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/2016-08-19/120000/2016-08-19/130000'
 # samples only between 12pm and 1pm.
 
 #r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
@@ -103,7 +103,7 @@ def pull_terminals(*args, **kwargs):
         else:
             return None, None
 
-    url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
+    url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
     r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
 
     # Convert Cale's XML into a Python dictionary
@@ -113,7 +113,7 @@ def pull_terminals(*args, **kwargs):
     with open(f_terminals,'w+') as g:
         g.write(r.text)
 
-    attributes_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
+    attributes_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
     r = requests.get(attributes_url, auth=(CALE_API_user, CALE_API_password))
     doc = xmltodict.parse(r.text,encoding = r.encoding)
     attributes = doc['CustomAttributes']['Data']

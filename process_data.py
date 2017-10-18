@@ -886,9 +886,9 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
         slot_end = slot_start + timedelta(days = 1)
         
         if recent:
-            base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
+            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
         else:
-            base_url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             
         url = build_url(base_url,slot_start,slot_end)
 

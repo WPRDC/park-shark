@@ -685,7 +685,7 @@ def is_timezoneless(d):
 
 def get_terminals(use_cache = False):
     if not use_cache:
-        url = 'http://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
+        url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
 
         # Convert Cale's XML into a Python dictionary
