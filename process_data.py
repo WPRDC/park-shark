@@ -526,8 +526,8 @@ def find_biggest_value(d_of_ds,field='Transactions'):
 def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
     """This function uses the parking durations inferred by trying to piece
     together sessions from individual transactions to synthesize an 
-    estimated county of parked cars for each zone and time chunk,
-    starting at slot_start and goging forward.
+    estimated count of parked cars for each zone and time chunk,
+    starting at slot_start and going forward.
 
     No correction factors have been applied yet."""
     delta_minutes = timechunk.total_seconds()/60.0
@@ -957,7 +957,7 @@ def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False):
     return ps
 
 def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
-    """This function handles situation where slot_start and slot_end are on different days
+    """This function handles the situation where slot_start and slot_end are on different days
     by calling get_batch_parking_for_day in a loop.
 
     The parameter "time_field" determines which of the timestamps is used for calculating
@@ -1221,12 +1221,12 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,augment):
     # This function works for zones and ad hoc zones. It has now been modified
-    # to do basic agggregating by meter, ignoring inferred occupancy and augmentation.
+    # to do basic aggregating by meter, ignoring inferred occupancy and augmentation.
     
 
-    # Convert Durations (list of integers) and Payments to their final forms
+    # Convert Durations (list of integers) and Payments to their final forms.
     # (Durations becomes a JSON dict and Payments becomes rounded to the nearest
-    # cent. (moved from bottom of distill_stats)
+    # cent.) [moved from bottom of distill_stats]
     for aggregation_key in stats_rows.keys():
         counted = Counter(stats_rows[aggregation_key]['Durations'])
         stats_rows[aggregation_key]['Durations'] = json.dumps(counted, sort_keys=True)
