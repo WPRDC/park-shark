@@ -354,7 +354,7 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
     # If those numbers could be integrated with this in an ETL process, one
     # table could be used to get all the information needed for the reports.
     # (Maybe a human-readable name would be in there as well.)
-
+    mute_alerts = False
 
     group_lookup_base = {'301': '301 - Sheridan Harvard Lot',
                         '302': '302 - Sheridan Kirkwood Lot',
@@ -455,8 +455,11 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
             nrgs = numbered_reporting_groups(t)
             print(nrgs)
             if len(nrgs) == 0:
-                print("Fire off notification. This is an anomalous case.")
-                raise ValueError('No group found for code {}'.format(code))
+                msg = 'No group found for code {} and full terminal description {}'.format(code,to_dict(t))
+                print(msg)
+                if not mute_alerts:
+                    send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
+                return None, False, None, None # There's no group matching the code in the list, the match boolean is False, there's no new numbered zone, and no new enforcement zone (because there's no groups to pull this stuff from).
             else:
                 # Winnow by the code
                 matches = [nrg for nrg in nrgs if nrg[:3] == code[:3]]
