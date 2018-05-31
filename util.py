@@ -611,7 +611,7 @@ def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
     '413010-FORBES5803': 'SQ.HILL1',
     '413008-FORBES5810': 'SQ.HILL1', # 413004-FORBES5810 is currently a valid terminal.
     '308529-HARVBT0001': 'Harvard-Beatty-Inferred-L', #(inferred zone name)
-    '308530-HARVBT0002': 'Harvard-Beatty-Inferred-L ', #(inferred zone name)
+    '308530-HARVBT0002': 'Harvard-Beatty-Inferred-L', #(inferred zone name)
     '411576-IVYST-0702': 'SHADYSIDE1', # This is closer to SHADYSIDE1 than to SHADYSIDE2.
     '325570-JCCLOT0003': 'JCC-L',
     '406637-LIBRTY5102': 'BLOOMFIELD',
