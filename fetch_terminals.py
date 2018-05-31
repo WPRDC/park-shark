@@ -47,7 +47,7 @@ if calculate_zone_centroids:
 
 def csv_file_path():
     path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
-    filename = 'meters_etl/meters-{}.csv'.format(datetime.datetime.today().strftime("%y-%m"))
+    filename = 'meters_etl/meters-{}.csv'.format(datetime.datetime.today().strftime("%Y-%m"))
     csv_path = path+'/'+filename
     return csv_path
     
