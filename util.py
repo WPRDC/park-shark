@@ -189,19 +189,16 @@ def value_or_blank(key,d,subfields=[]):
 
 def write_or_append_to_csv(filename,list_of_dicts,keys,actually_overwrite=False):
     if not os.path.isfile(filename) or actually_overwrite:
-        #with open(filename, 'wb') as g: # Python-2-style
-        with open(filename, 'w') as g: # Python-3-style # Does encoding="utf-8" need to be added, as elsewhere?
+        with open(filename, 'w') as g: # Does encoding="utf-8" need to be added, as elsewhere?
             g.write(','.join(keys)+'\n')
-    #with open(filename, 'ab') as output_file: # Python-2-style
-    with open(filename, 'a') as output_file: # Python-3-style
+    with open(filename, 'a') as output_file: 
         dict_writer = csv.DictWriter(output_file, keys, extrasaction='ignore', lineterminator='\n')
         #dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
 
 
 def write_to_csv(filename,list_of_dicts,keys):
-    #with open(filename, 'wb') as output_file: # Python-2-style
-    with open(filename, 'w') as output_file: # Python-3-style
+    with open(filename, 'w') as output_file: 
         dict_writer = csv.DictWriter(output_file, keys, extrasaction='ignore', lineterminator='\n')
         dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
