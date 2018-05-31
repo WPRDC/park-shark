@@ -75,7 +75,8 @@ numbered_reporting_zones_list = ['301 - Sheridan Harvard Lot',
      '422 - Northshore',
      '423 - West End',
      '424 - Technology Drive',
-     '425 - Bakery Sq']
+     '425 - Bakery Sq',
+     '427 - Knoxville']
 
 zone_lookup = OrderedDict([
     (u'301 - Sheridan Harvard Lot', u'SHER-HAR-L'),
@@ -138,7 +139,8 @@ zone_lookup = OrderedDict([
     (u'421 - NorthSide', u'NORTHSIDE'),
     (u'422 - Northshore', u'NORTHSHORE'),
     (u'423 - West End', u'WEST END'),
-    (u'425 - Bakery Sq', u'BAKERY-SQ')
+    (u'425 - Bakery Sq', u'BAKERY-SQ'),
+    (u'427 - Knoxville', u'KNOXVILLE')
 ])
 
 def to_dict(input_ordered_dict):
@@ -423,7 +425,8 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
                         '422': '422 - Northshore',
                         '423': '423 - West End',
                         '424': '424 - Technology Drive',
-                        '425': '425 - Bakery Sq'
+                        '425': '425 - Bakery Sq',
+                        '427': '427 - Knoxville'
     }
     group_lookup = {**group_lookup_addendum, **group_lookup_base} # This works in Python 3.5 and higher.
     # Is the group already hard-coded in? If so, return it.
