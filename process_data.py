@@ -24,6 +24,7 @@ import time
 import pprint
 from datetime import datetime, timedelta
 import pytz
+from dateutil import parser
 
 from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 
@@ -1089,7 +1090,8 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         ps_for_whole_day = get_day_from_json_or_api(query_start,pytz.utc,cache,mute)
 
         # Filter down to the events in the slot #
-        datetimes = [(pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')) for p in ps_for_whole_day]
+        #datetimes = [(pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')) for p in ps_for_whole_day]
+        datetimes = [(pytz.utc).localize(parser.parse(p[ref_field])) for p in ps_for_whole_day]
         #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
         
         start_of_day = beginning_of_day(slot_start)
@@ -1113,7 +1115,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 
 # ~~~~~~~~~~~~~~~~
 
-def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc,time_field = '@StartDateUtc',dt_format='%Y-%m-%dT%H:%M:%S'):
+def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc,time_field = '@StartDateUtc'):
     # (This is designed to be the "get_ps" part of the function
     # formerly known as get_ps_from_somewhere.)
     
@@ -1163,7 +1165,8 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
         # since filtering is done further down in this function, this should not represent a 
         # problem. There should be no situations where more than two days of transactions will
         # wind up in this cache at any one time.
-        utc_dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all] # This may break for StartDateUtc!!!!!
+        #utc_dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all] # This may break for StartDateUtc!!!!!
+        utc_dts_cache = [tz.localize(parser.parse(p[time_field])) for p in ps_all] # This may break for StartDateUtc!!!!!
     else:
         ps_all = utc_ps_cache
     #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
