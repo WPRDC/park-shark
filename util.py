@@ -143,6 +143,8 @@ zone_lookup = OrderedDict([
     (u'427 - Knoxville', u'KNOXVILLE')
 ])
 
+correction_lookup = {'427-Knoxville': '427 - Knoxville'}
+
 def to_dict(input_ordered_dict):
     return loads(dumps(input_ordered_dict))
 
@@ -286,14 +288,19 @@ def convert_group_to_zone(t,group):
 def char_delimit(xs,ch):
     return(ch.join(xs))
 
+def standardize_group_name(name):
+    if name in correction_lookup.keys():
+        return correction_lookup[name]
+    return name
+
 def all_groups(t):
     if 'TerminalGroups' in t:
         if 'TerminalGroup' in t['TerminalGroups']:
             list_of_groups = t['TerminalGroups']['TerminalGroup']
             if type(list_of_groups) == type(OrderedDict()):
-                all_group_names = [list_of_groups['@TerminalGroupName']]
+                all_group_names = [standardize_group_name(list_of_groups['@TerminalGroupName'])]
             else:
-                all_group_names = [g['@TerminalGroupName'] for g in list_of_groups]
+                all_group_names = [standardize_group_name(g['@TerminalGroupName']) for g in list_of_groups]
             return all_group_names
     return []
 
@@ -309,7 +316,7 @@ def groups_of_type(group_type,t):
             group_list = t['TerminalGroups']['TerminalGroup']
             if type(group_list) == type(OrderedDict()):
                 group_list = [group_list]
-            reporting_group_names = [g['@TerminalGroupName'] for g in group_list if g['@TerminalGroupTypeName'] == group_type]
+            reporting_group_names = [standardize_group_name(g['@TerminalGroupName']) for g in group_list if g['@TerminalGroupTypeName'] == group_type]
             return reporting_group_names
     return []
 
@@ -320,9 +327,9 @@ def numbered_reporting_groups(t):
         if 'TerminalGroup' in t['TerminalGroups']:
             group_list = t['TerminalGroups']['TerminalGroup']
             if type(group_list) == type(OrderedDict()) and group_list['@TerminalGroupTypeName'] == 'Reporting' and is_three_digits(group_list['@TerminalGroupName'][:3]):
-                reporting_group_names = [group_list['@TerminalGroupName']]
+                reporting_group_names = [standardize_group_name(group_list['@TerminalGroupName'])]
             else:
-                reporting_group_names = [g['@TerminalGroupName'] for g in group_list if g['@TerminalGroupTypeName'] == 'Reporting' and is_three_digits(g['@TerminalGroupName'][:3])]
+                reporting_group_names = [standardize_group_name(g['@TerminalGroupName']) for g in group_list if g['@TerminalGroupTypeName'] == 'Reporting' and is_three_digits(g['@TerminalGroupName'][:3])]
             return reporting_group_names
     return []
 
@@ -479,7 +486,7 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
                     t_groups = t['TerminalGroups']['TerminalGroup']
                     if type(t_groups) != list:
                         t_groups = [t_groups]
-                    new_enforcement_zones = list({g['@TerminalGroupName'] for g in t_groups if g['@TerminalGroupTypeName'] == 'Enforcement'})
+                    new_enforcement_zones = list({standardize_group_name(g['@TerminalGroupName']) for g in t_groups if g['@TerminalGroupTypeName'] == 'Enforcement'})
                     print("new_enforcement_zones = {}".format(new_enforcement_zones))
                     if len(new_enforcement_zones) == 0:
                         raise ValueError("No enforcement zone found for the new numbered zone {}".format(new_numbered_zone))
@@ -660,7 +667,7 @@ def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
                 glist = [t['TerminalGroups']['TerminalGroup']]
             for terminalgroup in glist:
                 if terminalgroup['@TerminalGroupTypeName'] == 'Enforcement':
-                    zn = terminalgroup['@TerminalGroupName']
+                    zn = standardize_group_name(terminalgroup['@TerminalGroupName'])
             if zn == "Z - Inactive/Removed Terminals":
                 #print("\nGrody terminal listed with zone_name 'Z - Inactive/Removed Terminals':")
                 #pprint.pprint(to_dict(t))
