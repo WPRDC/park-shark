@@ -13,9 +13,9 @@ from datetime import datetime
 from credentials_file import CALE_API_user, CALE_API_password
 from notify import send_to_slack
 
-lot_list = ['18-CARSO-L', '18-SIDNE-L', '19-CARSO-L', '20-SIDNE-L', '42-BUTLE-L', '5224BUTL-L', 'ANSL-BEA-L', 'ASTE-WAR-L', 'BEAC-BAR-L', 'BEECHVIE-L', 'BROOKLIN-L', 'BROW-SAN-L', 'CENT-CRA-L', 'DOUG-PHI-L', 'EASTCARS-L', 'EASTOHIO-L', 'EVA-BEAT-L', 'FORB-MUR-L', 'FORB-SHA-L', 'FRIE-CED-L', 'HOME-ZEN-L', 'IVY-BELL-L', 'JCC-L', 'MAIN-ALE-L', 'OBSERHIL-L', 'PENNC.NW-L', 'SHER-HAR-L', 'SHER-KIR-L', 'SHILOH-L', 'TAME-BEA-L', 'TAYLOR-L', 'WALT-WAR-L']
+lot_list = ['18-CARSO-L', '18-SIDNE-L', '19-CARSO-L', '20-SIDNE-L', '42-BUTLE-L', '5224BUTL-L', 'ANSL-BEA-L', 'ASTE-WAR-L', 'BEAC-BAR-L', 'BEECHVIE-L', 'BROOKLIN-L', 'BROW-SAN-L', 'CENT-CRA-L', 'DOUG-PHI-L', 'EASTCARS-L', 'EASTOHIO-L', 'EVA-BEAT-L', 'FORB-MUR-L', 'FORB-SHA-L', 'FRIE-CED-L', 'HOME-ZEN-L', 'IVY-BELL-L', 'JCC-L', 'MAIN-ALE-L', 'OBSERHIL-L', 'PENNC.NW-L', 'SHER-HAR-L', 'SHER-KIR-L', 'SHILOH-L', 'TAME-BEA-L', 'TAYLOR-L', 'WALT-WAR-L'] # Harvard-Beatty-Inferred-L is missing from this list.
 
-pure_zones_list = ['ALLENTOWN', 'BAKERY-SQ', 'BEECHVIEW', 'BLOOMFIELD', 'BROOKLINE', 'CARRICK', 'DOWNTOWN1', 'DOWNTOWN2', 'EASTLIB', 'KNOXVILLE', 'LAWRENCEV', 'MELONPARK', 'MT.WASH', 'NORTHSHORE', 'NORTHSIDE', 'OAKLAND1', 'OAKLAND2', 'OAKLAND3', 'OAKLAND4', 'SHADYSIDE1', 'SHADYSIDE2', 'SOUTHSIDE', 'SQ.HILL1', 'SQ.HILL2', 'STRIPDIST', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'WEST END']#, 'Z - Inactive/Removed Terminals']
+pure_zones_list = ['ALLENTOWN', 'BAKERY-SQ', 'BEECHVIEW', 'BLOOMFIELD', 'BROOKLINE', 'CARRICK', 'DOWNTOWN1', 'DOWNTOWN2', 'EASTLIB', 'HILL-DIST', 'KNOXVILLE', 'LAWRENCEV', 'MELONPARK', 'MT.WASH', 'NORTHSHORE', 'NORTHSIDE', 'OAKLAND1', 'OAKLAND2', 'OAKLAND3', 'OAKLAND4', 'SHADYSIDE1', 'SHADYSIDE2', 'SOUTHSIDE', 'SQ.HILL1', 'SQ.HILL2', 'STRIPDIST', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'WEST END']#, 'Z - Inactive/Removed Terminals']
 
 # The reporting zones of the form '123 - Description'.
 numbered_reporting_zones_list = ['301 - Sheridan Harvard Lot',
@@ -76,6 +76,7 @@ numbered_reporting_zones_list = ['301 - Sheridan Harvard Lot',
      '423 - West End',
      '424 - Technology Drive',
      '425 - Bakery Sq',
+     '426 - Hill District',
      '427 - Knoxville']
 
 zone_lookup = OrderedDict([
@@ -140,6 +141,7 @@ zone_lookup = OrderedDict([
     (u'422 - Northshore', u'NORTHSHORE'),
     (u'423 - West End', u'WEST END'),
     (u'425 - Bakery Sq', u'BAKERY-SQ'),
+    (u'426 - Hill District', u'HILL-DIST'),
     (u'427 - Knoxville', u'KNOXVILLE')
 ])
 
@@ -433,6 +435,7 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
                         '423': '423 - West End',
                         '424': '424 - Technology Drive',
                         '425': '425 - Bakery Sq',
+                        '426': '426 - Hill District',
                         '427': '427 - Knoxville'
     }
     group_lookup = {**group_lookup_addendum, **group_lookup_base} # This works in Python 3.5 and higher.
