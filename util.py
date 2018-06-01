@@ -438,6 +438,8 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
                         '426': '426 - Hill District',
                         '427': '427 - Knoxville'
     }
+    group_lookup_base['Fri'] = None # Workaround for oddball 'Friendship Ave RPP' ID.
+
     group_lookup = {**group_lookup_addendum, **group_lookup_base} # This works in Python 3.5 and higher.
     # Is the group already hard-coded in? If so, return it.
     if code in group_lookup:
