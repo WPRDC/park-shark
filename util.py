@@ -454,7 +454,8 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
     # numbered reporting group.
     if len(candidate_groups) == 0:
         if t is None:
-            raise ValueError('No group found for code {}'.format(code))
+            msg = 'No group found for code {} and full terminal description {}'.format(code,to_dict(t))
+            code = None
         else:
             # An option at this point would be to use other information
             # in the terminal record to infer the group, matching the code
@@ -466,22 +467,22 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
             print(nrgs)
             if len(nrgs) == 0:
                 msg = 'No group found for code {} and full terminal description {}'.format(code,to_dict(t))
-                print(msg)
-                if not mute_alerts:
-                    send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
-                return None, False, None, None # There's no group matching the code in the list, the match boolean is False, there's no new numbered zone, and no new enforcement zone (because there's no groups to pull this stuff from).
+                code = None
             else:
                 # Winnow by the code
                 matches = [nrg for nrg in nrgs if nrg[:3] == code[:3]]
                 if len(matches) > 1:
-                    print("Fire off notification. Too many numbered zones to discern the true/best one.")
-                    raise ValueError('No group found for code {}'.format(code))
+                    msg = "Too many numbered zones to discern the true/best one. No group found for code {} and full terminal description {}".format(code,to_dict(t))
+                    code = None
                 elif len(matches) == 0:
-                    print("Fire off notification. Unable to identify a valid numbered zone.")
-                    raise ValueError('No group found for code {}'.format(code))
+                    msg = "Unable to identify a valid numbered zone. No group found for code {} and full terminal description {}".format(code,to_dict(t))
+                    code = None
                 else:
-                    print("Fire off notification. Found a new group.")
                     new_numbered_zone = matches[0]
+                    if not mute_alerts:
+                        msg = "Found a new group ({}) for code {} and full terminal description {}".format(new_numbered_zone,code,to_dict(t))
+                        send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
+
                     new_parent_terminal_structure = t['ParentTerminalStructure']['@Name']
                     t_groups = t['TerminalGroups']['TerminalGroup']
                     if type(t_groups) != list:
@@ -489,21 +490,28 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
                     new_enforcement_zones = list({standardize_group_name(g['@TerminalGroupName']) for g in t_groups if g['@TerminalGroupTypeName'] == 'Enforcement'})
                     print("new_enforcement_zones = {}".format(new_enforcement_zones))
                     if len(new_enforcement_zones) == 0:
-                        raise ValueError("No enforcement zone found for the new numbered zone {}".format(new_numbered_zone))
+                        msg = "No enforcement zone found for the new numbered zone {} for code {} and full terminal description {}".format(new_numbered_zone,code,to_dict(t))
+                        new_enforcement_zone = None
                     elif len(new_enforcement_zones) > 1:
-                        raise ValueError("More than one enforcement zone found for the new numbered zone {}".format(new_numbered_zone))
+                        msg = "More than one enforcement zone found for the new numbered zone {} for code {} and full terminal description {}".format(new_numbered_zone,code,to_dict(t))
+                        new_enforcement_zone = None
                     else:
                         new_enforcement_zone = new_enforcement_zones[0]
+
+                    if new_enforcement_zone is None and not mute_alerts:
+                        send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
                     return matches[0], True, new_numbered_zone, new_enforcement_zone
- 
-    raise ValueError('Too many candidate groups found for code {}'.format(code))
 
-    # [ ] Eventually replace these exceptions with notifications to
-    # administrators and a reasonable default value (like the original
-    # code.
+    if code is not None:
+        msg = 'Too many candidate groups found for code {}'.format(code)
+        code = None
 
-    return code, False, None, None
+    print(msg)
+    if not mute_alerts:
+        send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
+    return None, False, None, None # There's no group matching the code in the list, the match boolean is False, there's no new numbered zone, and no new enforcement zone (because there's no groups to pull this stuff from).
 
+    #return code, False, None, None
 
 def infer_group(t=None,t_id=None,group_lookup_addendum={}):
     # This function only works for virtual groups.
@@ -531,8 +539,9 @@ def numbered_zone(t_id,t=None,group_lookup_addendum={}):
                 # November 8th, 2012 data.
                 zone_in_ID, matched, new_num_zone, new_old_zone = '401 - Downtown 1', True, None, None
             else:
-                raise ValueError("Unable to find a numbered zone for terminal ID {}".format(t_id))
-
+                if not mute_alerts:
+                    msg = "Unable to find a numbered zone for terminal ID {} where terminal = {}".format(t_id,t)
+                    send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
         if matched:
             num_zone = zone_in_ID
     return num_zone, new_num_zone, new_old_zone
