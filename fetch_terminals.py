@@ -136,6 +136,7 @@ def pull_terminals(*args, **kwargs):
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
         new_entry['ID'] = t['@Id']
+        new_entry['description'] = value_or_blank('@Description',t)
         new_entry['Location'] = t['Location']
         new_entry['Latitude'] = value_or_blank('Latitude',t)
         new_entry['Longitude'] = value_or_blank('Longitude',t)
@@ -211,7 +212,7 @@ def pull_terminals(*args, **kwargs):
 
     #dkeys = list(list_of_dicts[0].keys()) # This does not set the correct order for the field names.
     dkeys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
-    'Rate information','Restrictions']
+    'Rate information','Restrictions','description']
 
     if output_to_csv:
         csv_path = csv_file_path()
