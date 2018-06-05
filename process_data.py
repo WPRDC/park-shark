@@ -918,7 +918,7 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
 
         if cache and not too_soon:
-            # Caching data from the LiveDataExport andpoint (but not today's data) is an interesting experiment.
+            # Caching data from the LiveDataExport endpoint (but not today's data) is an interesting experiment.
             try: # Python 3 file opening
                 with open(filename, "w") as f:
                     json.dump(purchases,f,indent=2)
