@@ -24,3 +24,5 @@ etl/settings.py
 prime_ckan/initialize_datastore_*
 prime_ckan_*
 prime_ckan/local_config.py
+nonchalance.py
+elsewhere.py
