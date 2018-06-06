@@ -4,6 +4,7 @@
 *.tsv
 *.webloc
 *.docx
+*.swp
 credentials_file.py
 local_parameters.py
 remote_parameters.py
