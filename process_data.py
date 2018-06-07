@@ -436,13 +436,43 @@ def fix_one_duration(p,session,raw_only=False):
                 raise ValueError("Found a transaction that is missing @EndDateUtc.")
         raise ValueError("Unable to sort session transactions.")
 
-    for p in ps:
-        if raw_only:
-            p['Duration'] = None # in minutes
-        else:
-            p['Duration'] = int(p['@Units']) # in minutes
+    # Find p in the sorted session list.
+    k = 0
+    while ps[k] != p:
+        k += 1
+    assert ps[k] == p
 
-    print("durations = {}".format([int(x['@Units']) for x in ps]))
+    if len(ps) > 1 and k+1 != len(ps):
+        p['Duration'] -= int(ps[k+1]['@Units'])
+
+        if p['Duration'] < 0:
+            pprint.pprint(ps)
+            pprint.pprint(p)
+            raise ValueError('Negative duration encountered.')
+
+    #print("Durations: {}, @Units: {}".format([e['Duration'] if 'Duration' in e else None for e in ps], [int(e['@Units']) for e in ps]))
+
+def fix_durations(session,raw_only=False):
+    try: # Sort transactions by EndDateUtc.
+        ps = sorted(session, key=lambda x: x['@EndDateUtc'])[::-1]
+    except:
+        print("len(session) = {}".format(len(session)))
+        for e in session:
+            if '@EndDateUtc' not in e:
+                print("Missing '@EndDateUtc':")
+                pprint.pprint(to_dict(e))
+                raise ValueError("Found a transaction that is missing @EndDateUtc.")
+        raise ValueError("Unable to sort session transactions.")
+
+    for p in ps:
+        if 'Duration' not in p:
+            if raw_only:
+                p['Duration'] = None # in minutes
+            else:
+                p['Duration'] = int(p['@Units']) # in minutes
+        else:
+            print("p with pre-existing Duration field found in fix_durations.")
+
     for k,p in enumerate(ps):
         # Subtract the durations of the previous payments.
         # If the minutes purchased are 10, 30, 5,
@@ -461,6 +491,11 @@ def fix_one_duration(p,session,raw_only=False):
             # minutes.
             p['Duration'] -= int(ps[k+1]['@Units'])
 
+            if p['Duration'] < 0:
+                pprint.pprint(session)
+                pprint.pprint(p)
+                raise ValueError('Negative duration encountered.')
+    #print("Durations: {}, @Units: {}".format([e['Duration'] for e in ps], [int(e['@Units']) for e in ps]))
 
 def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,uncharted_e_zones,group_lookup_a,turbo_mode,raw_only):
     """Take a dictionary and generate a new dictionary from it that samples
