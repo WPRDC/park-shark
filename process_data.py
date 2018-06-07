@@ -1337,8 +1337,8 @@ def main(*args, **kwargs):
     if caching_mode == 'db_caching':
         slot_start = slot_start.astimezone(pytz.utc)
         halting_time = halting_time.astimezone(pytz.utc)
-    # This is not related to the resetting of ps_dict, since extending 
-    # ps_dict by adding on previous_ps_dict did not change the fact that 
+    # This is not related to the resetting of session_dict, since extending 
+    # session_dict by adding on previous_session_dict did not change the fact that 
     # casting slot_start and halting_time to UTC caused all transactions
     # after 20:00 ET to not appear in the output.
 
@@ -1378,8 +1378,8 @@ def main(*args, **kwargs):
 
     cumulated_dicts = []
     cumulated_ad_hoc_dicts = []
-    ps_dict = defaultdict(list)
-    previous_ps_dict = defaultdict(list)
+    session_dict = defaultdict(list) # hash-based sessions
+    previous_session_dict = defaultdict(list)
 
     # The current approach to calculating durations tracks the recent transaction history
     # and subtracts the "Units" value (the number of cumulative minutes purchased)
@@ -1403,17 +1403,39 @@ def main(*args, **kwargs):
 
     # Using a separate seeding-mode stage considerably speeds up the warming-up
     # period (from maybe 10 minutes to closer to one or two).
+
+    # For a high-availability (like streaming solution), try running the program
+    # continuously. This would allow the recent purchase history to be store
+    # in memory, massively cutting down on the warm-up time. You would just
+    # need to wrap process_data in a loop that sends the CALE API a new
+    # request every 30 seconds, processes those new transactions, and update
+    # the relevant output slots.
     seeding_mode = True
+    linkable = [] # Purchases that can be sorted into hash-based sessions.
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
         purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False,caching_mode)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-            reframe(p,terminals,t_guids,ps_dict,{},uncharted_numbered_zones,uncharted_enforcement_zones,group_lookup_addendum,turbo_mode,raw_only)
             if not turbo_mode and not skip_processing:
-                ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids,group_lookup_addendum) # ps_dict is intended to
-                # be a way to look up recent transactions that might be part of the same 
-                # session as a particular transaction. Here it is being seeded.
+                if 'hash' in p:
+                    session_dict[p['hash']].append(p)
+                    linkable.append(p)
+
+        for session in session_dict.values():
+            fix_durations(session)
+
+        ps_in_sessions = [e for e in session for session in session_dict.values()]
+
+        print("len(session_dict) = {}, len(linkable) = {}, len(ps_in_sesssions) = {}, len(purchases) = {}".format(len(session_dict), len(linkable), len(ps_in_sessions), len(purchases)))
+        # If we could guarantee that all transactions would be hash_dict, we could just iterate
+        # through the pre-packaged sessions.
+
+
+        # [ ] Why is it necessary to reframe these purchases? The only reason for seeding session_dict is
+        # to correctly untangle Units into Durations, so this step is unneeded.
+        for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
+            hash_reframe(p,terminals,t_guids,session_dict,defaultdict(list),uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only)
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
@@ -1444,18 +1466,45 @@ def main(*args, **kwargs):
             time.sleep(3)
         else:
             reframed_ps = []
-
+            unlinkable = []
+            linkable = []
+            
+            # First cluster into sessions
             for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-                reframed_ps.append(reframe(p,terminals,t_guids,ps_dict,previous_ps_dict,uncharted_numbered_zones,uncharted_enforcement_zones,group_lookup_addendum,turbo_mode,raw_only))
-
                 if not turbo_mode:
                     if slot_start.date() == current_day: # Keep a running history of all
-                        ps_dict = add_to_dict(p,copy(ps_dict),terminals,t_guids,group_lookup_addendum) # purchases for a given day.
+                        if 'hash' in p:                  # purchases for a given day.
+                            session_dict[p['hash']].append(p)
+                            linkable.append(p)
+                        else:
+                            unlinkable.append(p)
                     else:
-                        print("Moving ps_dict to previous_ps_dict at {}. (Should ps_dict be generated before the reframing loop for better efficiency? Would that screw up durations computations?)".format(slot_start))
+                        print("Moving session_dict to previous_session_dict at {}.".format(slot_start))
                         current_day = slot_start.date()
-                        previous_ps_dict = ps_dict
-                        ps_dict = defaultdict(list) # And restart that history when a new day is encountered.
+                        previous_session_dict = session_dict
+                        session_dict = defaultdict(list) # And restart that history when a new day is encountered.
+
+            for p in linkable:
+                session = session_dict[p['hash']] + previous_session_dict[p['hash']]
+                fix_one_duration(p,session)
+            for p in unlinkable:
+                add_duration(p)
+
+            # Iterate through the new purchases and fix those durations where possible.
+
+            # And THEN we want to add those fixed purchases to the session_dict. Is this already
+            # being taken care of because everything is an object? [  ] Check that in fix_one_duration
+
+            # Dump linkable ps and unlinkable ps into a new list for reframing and processing.
+            
+            print("len(linkable) = {}, len(unlinkable) = {}".format(len(linkable), len(unlinkable)))
+            for p in linkable + unlinkable:
+                if 'Duration' not in p or p['Duration'] is None:
+                    pprint.pprint(session_dict[p['hash']])
+                    raise ValueError("Error!")
+
+                reframed_ps.append(hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only))
+
             # Temporary for loop to check for unconsidered virtual zone codes.
             #for rp in reframed_ps:
             #    if rp['TerminalID'][:3] == "PBP":
@@ -1582,7 +1631,7 @@ def main(*args, **kwargs):
         #    else:
         #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
     if spacetime == 'zone':
-        print("After the main processing loop, len(ps_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(ps_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
+        print("After the main processing loop, len(session_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(session_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
   
     if caching_mode == 'db_caching':
         cached_dates,_ = get_tables_from_db(db)
