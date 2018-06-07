@@ -415,9 +415,15 @@ def add_to_dict(p,p_dict,terminals,t_guids,group_lookup_a):
     p_dict[p_hash(p,t,group_lookup_a)].append(p)
     return p_dict
 
-def fix_durations(session,raw_only=False):
-    if len(session) == 1:
-        return session
+def add_duration(p,raw_only=False):
+    if raw_only:
+        p['Duration'] = None # in minutes
+    else:
+        p['Duration'] = int(p['@Units']) # in minutes
+    return p
+
+def fix_one_duration(p,session,raw_only=False):
+    add_duration(p)
     try: # Sort transactions by EndDateLocal.
         ps = sorted(session, key=lambda x: -x['@EndDateLocal'])
     except:
