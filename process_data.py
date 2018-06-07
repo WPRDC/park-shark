@@ -638,7 +638,7 @@ def cull_fields(ps):
     purchases = remove_field(purchases,'@BankAuthorizationReference','PurchasePayUnit')
     purchases = remove_field(purchases,'@CardFeeAmount','PurchasePayUnit')
     purchases = remove_field(purchases,'@PayUnitID','PurchasePayUnit')
-    purchases = remove_field(purchases,'@TransactionReference','PurchasePayUnit')
+    #purchases = remove_field(purchases,'@TransactionReference','PurchasePayUnit')
     purchases = remove_field(purchases,'@CardIssuer','PurchasePayUnit')
 
     return purchases
