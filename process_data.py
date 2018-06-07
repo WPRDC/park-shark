@@ -649,6 +649,11 @@ def cull_fields(ps):
 def get_doc_from_url(url):
     r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
 
+    if r.status_code == 403: # 403 = Forbidden, meaing that the CALE API
+        # has decided to shut down for a while (maybe for four hours
+        # after the last query of historical data).
+        raise ValueError("The CALE API is returning a 403 Forbidden error, making it difficult to accomplish anything.")
+
     # Convert Cale's XML into a Python dictionary
     doc = xmltodict.parse(r.text,encoding = r.encoding)
 
@@ -670,6 +675,9 @@ def get_doc_from_url(url):
         return None, False
 
     r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
+    if r2.status_code == 403:
+        raise ValueError("The CALE API is returning a 403 Forbidden error, making it difficult to accomplish anything.")
+
     doc = xmltodict.parse(r2.text,encoding = r2.encoding)
 
     delays = 0
@@ -690,6 +698,8 @@ def get_doc_from_url(url):
     # When the ZIP file is ready:
     delays = 0
     r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
+    if r3.status_code == 403:
+        raise ValueError("The CALE API is returning a 403 Forbidden error, making it difficult to accomplish anything.")
     while not r3.ok and delays < 20:
         time.sleep(5)
         r3 = requests.get(url3, stream=True, auth=(CALE_API_user, CALE_API_password))
