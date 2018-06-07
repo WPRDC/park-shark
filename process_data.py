@@ -425,14 +425,16 @@ def add_duration(p,raw_only=False):
 def fix_one_duration(p,session,raw_only=False):
     add_duration(p)
     try: # Sort transactions by EndDateLocal.
-        ps = sorted(session, key=lambda x: -x['@EndDateLocal'])
+        ps = sorted(session, key=lambda x: x['@EndDateUtc'])[::-1]
+        #pprint.pprint(ps)
     except:
         print("len(session) = {}".format(len(session)))
-        for p in session:
-            if '@EndDateLocal' not in p:
-                print("Missing '@EndDateLocal':")
-                pprint.pprint(to_dict(p))
-        raise ValueError("Found a transaction that is missing @EndDateLocal")
+        for e in session:
+            if '@EndDateUtc' not in e:
+                print("Missing '@EndDateUtc':")
+                pprint.pprint(to_dict(e))
+                raise ValueError("Found a transaction that is missing @EndDateUtc.")
+        raise ValueError("Unable to sort session transactions.")
 
     for p in ps:
         if raw_only:
