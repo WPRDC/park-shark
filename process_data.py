@@ -1438,9 +1438,7 @@ def main(*args, **kwargs):
         for session in session_dict.values():
             fix_durations(session)
 
-        ps_in_sessions = [e for e in session for session in session_dict.values()]
-
-        print("len(session_dict) = {}, len(linkable) = {}, len(ps_in_sesssions) = {}, len(purchases) = {}".format(len(session_dict), len(linkable), len(ps_in_sessions), len(purchases)))
+        print("len(session_dict) = {}, len(linkable) = {}, len(purchases) = {}".format(len(session_dict), len(linkable), len(purchases)))
         # If we could guarantee that all transactions would be hash_dict, we could just iterate
         # through the pre-packaged sessions.
 
