@@ -415,6 +415,45 @@ def add_to_dict(p,p_dict,terminals,t_guids,group_lookup_a):
     p_dict[p_hash(p,t,group_lookup_a)].append(p)
     return p_dict
 
+def fix_durations(session,raw_only=False):
+    if len(session) == 1:
+        return session
+    try: # Sort transactions by EndDateLocal.
+        ps = sorted(session, key=lambda x: -x['@EndDateLocal'])
+    except:
+        print("len(session) = {}".format(len(session)))
+        for p in session:
+            if '@EndDateLocal' not in p:
+                print("Missing '@EndDateLocal':")
+                pprint.pprint(to_dict(p))
+        raise ValueError("Found a transaction that is missing @EndDateLocal")
+
+    for p in ps:
+        if raw_only:
+            p['Duration'] = None # in minutes
+        else:
+            p['Duration'] = int(p['@Units']) # in minutes
+
+    print("durations = {}".format([int(x['@Units']) for x in ps]))
+    for k,p in enumerate(ps):
+        # Subtract the durations of the previous payments.
+        # If the minutes purchased are 10, 30, 5,
+        # the Units fields will have values 10, 40, and 45, when 
+        # sorted in chronological order.
+
+        # Reversing this process, we start with the most recent 
+        # transaction (45) and subtract the previous (40) to 
+        # get the minutes purchased (5).
+
+        if k+1 != len(ps):
+            # Subtract off the cumulative minutes purchased by the most recent
+            # predecessor, so that the Duration field represents just the Duration
+            # of this transaction. (Duration is the incremental number of minutes
+            # purchased, while the '@Units' field is the CUMULATIVE number of 
+            # minutes.
+            p['Duration'] -= int(ps[k+1]['@Units'])
+
+
 def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,uncharted_e_zones,group_lookup_a,turbo_mode,raw_only):
     """Take a dictionary and generate a new dictionary from it that samples
     the appropriate keys and renames and transforms as desired."""
