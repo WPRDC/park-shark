@@ -497,6 +497,47 @@ def fix_durations(session,raw_only=False):
                 raise ValueError('Negative duration encountered.')
     #print("Durations: {}, @Units: {}".format([e['Duration'] for e in ps], [int(e['@Units']) for e in ps]))
 
+def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zones,uncharted_e_zones,turbo_mode,raw_only):
+    """Take a dictionary and generate a new dictionary from it that samples
+    the appropriate keys and renames and transforms as desired.
+    
+    In contrast with reframe, which used ps_dict with its uncertain linking between transactions,
+    hash_reframe is hashing unique identifiers to take the guesswork out of linking transactions
+    into sessions (at the cost of preventing past transactions from being linked)."""
+    t_A = time.time()
+    row = {}
+    #row['GUID'] = p['@PurchaseGuid'] # To enable this field,
+    # get_batch_parking_for_day needs to be tweaked and
+    # JSON caches need to be regenerated.
+    try:
+        row['TerminalGUID'] = p['@TerminalGuid'] # This is useful
+    # for connecting purchases with terminals when the ID changes
+    # but the GUID does not change.
+    except:
+        print("p['@TerminalGuid'] is missing from {}".format(p))
+    row['TerminalID'] = p['@TerminalID']
+    if p['@TerminalGuid'] in t_guids:
+        t = terminals[t_guids.index(p['@TerminalGuid'])]
+        row['Latitude'] = value_or_blank('Latitude',t)
+        row['Longitude'] = value_or_blank('Longitude',t)
+        # Maybe these should be value_or_none instead.
+        row['List_of_ad_hoc_groups'] = ad_hoc_groups(t,uncharted_n_zones,uncharted_e_zones)
+
+    row['Amount'] = float(p['@Amount'])
+    row['Duration'] = p['Duration']
+    t = terminals[t_guids.index(p['@TerminalGuid'])]
+   
+    t_D = time.time()
+    #print("t_B - t_A = {:1.2e}, t_C-t_B = {:1.2e}, t_D-t_C = {:1.2e}".format(t_B-t_A,t_C-t_B,t_D-t_C))
+
+    return row
+
+     # Return list of OrderedDicts where each OrderedDict
+     # represents a row for a parking zone (or lot) and time slot.
+     # ZONE     START_DATETIME  END_DATETIME  TRANSACTIONS
+     #    CAR-HOURS   MONEY  LOT/VIRTUAL/OTHER INFORMATION
+
+
 def reframe(p,terminals,t_guids,p_history,previous_history,uncharted_n_zones,uncharted_e_zones,group_lookup_a,turbo_mode,raw_only):
     """Take a dictionary and generate a new dictionary from it that samples
     the appropriate keys and renames and transforms as desired."""
