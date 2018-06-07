@@ -369,7 +369,10 @@ def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_z
         row['List_of_ad_hoc_groups'] = ad_hoc_groups(t,uncharted_n_zones,uncharted_e_zones)
 
     row['Amount'] = float(p['@Amount'])
-    row['Duration'] = p['Duration']
+    if 'Duration' in p:
+        row['Duration'] = p['Duration']
+    else:
+        row['Duration'] = None
     t = terminals[t_guids.index(p['@TerminalGuid'])]
    
     t_D = time.time()
