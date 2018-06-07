@@ -33,6 +33,8 @@ from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
 from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
 
+from nonchalance import add_hashes
+
 # These functions should eventually be pulled from a repository othern than
 # utility_belt that can import transmogrifier:
 #from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
@@ -912,6 +914,7 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
             ps = convert_doc_to_purchases(doc['BatchExportRoot'],slot_start,date_format)
 
+        ps = add_hashes(ps)
         purchases = cull_fields(ps)
 
         #print("cache = {}, recent = {}, too_soon = {}".format(cache,recent,too_soon))
