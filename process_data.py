@@ -311,10 +311,7 @@ def fix_durations(session,raw_only=False):
 
     for p in ps:
         if 'Duration' not in p:
-            if raw_only:
-                p['Duration'] = None # in minutes
-            else:
-                p['Duration'] = int(p['@Units']) # in minutes
+            add_duration(p,raw_only)
         else:
             print("p with pre-existing Duration field found in fix_durations.")
 
