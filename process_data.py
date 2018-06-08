@@ -1103,7 +1103,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
     # cent.) [moved from bottom of distill_stats]
     for aggregation_key in stats_rows.keys():
         counted = Counter(stats_rows[aggregation_key]['Durations'])
-        stats_rows[aggregation_key]['Durations'] = json.dumps(counted, sort_keys=True)
+        stats_rows[aggregation_key]['durations'] = json.dumps(counted, sort_keys=True)
         stats_rows[aggregation_key]['Payments'] = float(round_to_cent(stats_rows[aggregation_key]['Payments']))
     #####
 
