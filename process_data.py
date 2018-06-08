@@ -1439,12 +1439,6 @@ def main(*args, **kwargs):
         # If we could guarantee that all transactions would be hash_dict, we could just iterate
         # through the pre-packaged sessions.
 
-
-        # [ ] Why is it necessary to reframe these purchases? The only reason for seeding session_dict is
-        # to correctly untangle Units into Durations, so this step is unneeded.
-        for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-            hash_reframe(p,terminals,t_guids,session_dict,defaultdict(list),uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only)
-
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
 
