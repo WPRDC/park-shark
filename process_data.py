@@ -1486,18 +1486,13 @@ def main(*args, **kwargs):
                         previous_session_dict = session_dict
                         session_dict = defaultdict(list) # And restart that history when a new day is encountered.
 
+            # Iterate through the new purchases and add the corrected durations where possible.
             for p in linkable:
                 session = session_dict[p['hash']] + previous_session_dict[p['hash']]
                 fix_one_duration(p,session)
             for p in unlinkable:
                 add_duration(p)
 
-            # Iterate through the new purchases and fix those durations where possible.
-
-            # And THEN we want to add those fixed purchases to the session_dict. Is this already
-            # being taken care of because everything is an object? [  ] Check that in fix_one_duration
-
-            # Dump linkable ps and unlinkable ps into a new list for reframing and processing.
             
             print("len(linkable) = {}, len(unlinkable) = {}".format(len(linkable), len(unlinkable)))
             for p in linkable + unlinkable:
