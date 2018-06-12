@@ -15,6 +15,7 @@ docs/
 sample-reports/
 batch-data/
 scratch/
+old/
 old-scripts/
 etl/ckan_settings.json
 etl/transmogrifier_settings.json
