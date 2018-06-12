@@ -1450,9 +1450,10 @@ def main(*args, **kwargs):
         purchases = get_parking_events(db,slot_start,slot_end,True,False,caching_mode)
         t1 = time.time()
 
-        print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
+        #print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
         if skip_processing:
+            print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
             print("Sleeping...")
             time.sleep(3)
         else:
@@ -1482,8 +1483,9 @@ def main(*args, **kwargs):
             for p in unlinkable:
                 add_duration(p)
 
-            
-            print("len(linkable) = {}, len(unlinkable) = {}".format(len(linkable), len(unlinkable)))
+            print("{} | {} purchases, len(linkable) = {}, len(unlinkable) = {}".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), 
+                len(purchases),len(linkable), len(unlinkable)))
+
             for p in linkable + unlinkable:
                 if 'Duration' not in p or p['Duration'] is None:
                     pprint.pprint(session_dict[p['hash']])
