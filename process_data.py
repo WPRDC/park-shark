@@ -14,10 +14,7 @@ only_these_fields, cast_fields, build_keys
 from fetch_terminals import pull_terminals
 import requests
 import zipfile
-try:
-    from StringIO import StringIO as BytesIO # For Python 2
-except ImportError:
-    from io import BytesIO # For Python 3
+from io import BytesIO # Works only under Python 3
 from copy import copy
 
 import time
@@ -790,21 +787,13 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
         if cache and not too_soon:
             # Caching data from the LiveDataExport endpoint (but not today's data) is an interesting experiment.
-            try: # Python 3 file opening
-                with open(filename, "w") as f:
-                    json.dump(purchases,f,indent=2)
-                if recent:
-                    print(" !!!!!!!!!!! Cached some data from the LiveDataExport endpoint in {}".format(filename))
-            except: # Python 2 file opening
-                with open(filename, "wb") as f:
-                    json.dump(purchases,f,indent=2)
+            with open(filename, "w") as f:
+                json.dump(purchases,f,indent=2)
+            if recent:
+                print(" !!!!!!!!!!! Cached some data from the LiveDataExport endpoint in {}".format(filename))
     else: # Load locally cached version
-        try: # Python 3 file opening
-            with open(filename, "r", encoding="utf-8") as f:
-                ps = json.load(f)
-        except: # Python 2 file opening
-            with open(filename,'rb') as f:
-                ps = json.load(f)
+        with open(filename, "r", encoding="utf-8") as f:
+            ps = json.load(f)
 
     return ps
 
