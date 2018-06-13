@@ -1017,7 +1017,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
         dt_start_i = slot_start
         while dt_start_i < slot_end:
             if caching_mode == 'utc_json':
-                ps_for_whole_day = get_utc_ps_for_day_from_json(slot_start,cache,mute)
+                ps_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,cache,mute)
             elif caching_mode == 'db_caching':
                 ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
             else:
