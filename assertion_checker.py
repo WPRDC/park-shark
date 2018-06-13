@@ -13,7 +13,7 @@ from fetch_terminals import pull_terminals
 
 import dataset
 import time
-import pprint
+from pprint import pprint
 from datetime import datetime, timedelta
 import pytz
 
@@ -142,7 +142,7 @@ def main(*args, **kwargs):
 
         # One pitfall here is that if the cached JSON file was saved 
         # without a particular field, the assertion will not be tested.
-        #pprint.pprint(purchases[0])
+        #pprint(purchases[0])
         #print(purchases[0]['@PaymentServiceType'])
         for k,p in enumerate(sorted(purchases, key = lambda x: x['@DateCreatedUtc'])):
             ref_field = '@DateCreatedUtc' #'@PurchaseDateUtc'
@@ -158,11 +158,11 @@ def main(*args, **kwargs):
                 hours[delta_in_hours] += 1
                 if delta_in_hours*delta_in_hours > 2000*2000:
                     print("Here's one of the most anomalously large time differences:")
-                    pprint.pprint(p)
+                    pprint(p)
 
                 #if not assertion_5(p):
                 #    print("Assertion 5 has been violated. Some events have a big time gap between StartDate and DateCreated, like this one:")
-                #    pprint.pprint(p)
+                #    pprint(p)
 
                 # Assertion 5 gets violated a lot!
 
@@ -172,25 +172,25 @@ def main(*args, **kwargs):
                     first_seen[field] = slot_start
                 if not assertion_1(p):
                     print("Assertion 1 has been violated with a @PurchaseTypeName value of {}".format(p['@PurchaseTypeName']))
-                    pprint.pprint(p)
+                    pprint(p)
             field = '@PaymentServiceType'
             if field in p:
                 if field not in first_seen:
                     first_seen[field] = slot_start
                 if not assertion_2(p):
                     print("Assertion 2 has been violated with a @PaymentServiceType value of {}".format(p[field]))
-                    pprint.pprint(p)
+                    pprint(p)
                 field2 = 'PurchasePayUnit'
                 if field2 in p and '@PayUnitName' in p[field2]:
                     if not assertion_3(p):
                         print("Assertion 3 has been violated.")
-                        pprint.pprint(p)
+                        pprint(p)
             # Assertion 4 gets violated a number of times per year, probably due to incorrect 
             # @PayIntervalEnd values.
             #if '@PayIntervalEndLocal' in p and '@EndDateLocal' in p:
             #    if not assertion_4(p):
             #        print("Assertion 4 has been violated.")
-            #        pprint.pprint(p)
+            #        pprint(p)
 
 
 
@@ -212,6 +212,6 @@ def main(*args, **kwargs):
 
     print("start_created_min = {}, start_created_max = {}".format(start_created_min,start_created_max))
     print("Distribution of DateCreatedUTC - StartTimeUTC (in hours): ")
-    pprint.pprint(hours)
+    pprint(hours)
 if __name__ == '__main__':
     main()

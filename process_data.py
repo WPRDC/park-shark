@@ -18,7 +18,7 @@ from io import BytesIO # Works only under Python 3
 from copy import copy
 
 import time
-import pprint
+from pprint import pprint
 from datetime import datetime, timedelta
 import pytz
 from dateutil import parser
@@ -268,13 +268,13 @@ def fix_one_duration(p,session,raw_only=False):
     add_duration(p)
     try: # Sort transactions by EndDateLocal.
         ps = sorted(session, key=lambda x: x['@EndDateUtc'])[::-1]
-        #pprint.pprint(ps)
+        #pprint(ps)
     except:
         print("len(session) = {}".format(len(session)))
         for e in session:
             if '@EndDateUtc' not in e:
                 print("Missing '@EndDateUtc':")
-                pprint.pprint(to_dict(e))
+                pprint(to_dict(e))
                 raise ValueError("Found a transaction that is missing @EndDateUtc.")
         raise ValueError("Unable to sort session transactions.")
 
@@ -288,8 +288,8 @@ def fix_one_duration(p,session,raw_only=False):
         p['Duration'] -= int(ps[k+1]['@Units'])
 
         if p['Duration'] < 0:
-            pprint.pprint(ps)
-            pprint.pprint(p)
+            pprint(ps)
+            pprint(p)
             raise ValueError('Negative duration encountered.')
 
     #print("Durations: {}, @Units: {}".format([e['Duration'] if 'Duration' in e else None for e in ps], [int(e['@Units']) for e in ps]))
@@ -302,7 +302,7 @@ def fix_durations(session,raw_only=False):
         for e in session:
             if '@EndDateUtc' not in e:
                 print("Missing '@EndDateUtc':")
-                pprint.pprint(to_dict(e))
+                pprint(to_dict(e))
                 raise ValueError("Found a transaction that is missing @EndDateUtc.")
         raise ValueError("Unable to sort session transactions.")
 
@@ -331,8 +331,8 @@ def fix_durations(session,raw_only=False):
             p['Duration'] -= int(ps[k+1]['@Units'])
 
             if p['Duration'] < 0:
-                pprint.pprint(session)
-                pprint.pprint(p)
+                pprint(session)
+                pprint(p)
                 raise ValueError('Negative duration encountered.')
     #print("Durations: {}, @Units: {}".format([e['Duration'] for e in ps], [int(e['@Units']) for e in ps]))
 
@@ -396,7 +396,7 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
         durations = stats_by_zone[zone]['Durations']
 #        if len(durations) > 0:
 #            print "\ndurations for zone {} = ".format(zone)
-#            pprint.pprint(durations)
+#            pprint(durations)
         for d_i in durations:
             bins = int(round(float(d_i)/delta_minutes))
             # Rounding like this means that for a timechunk of 10 minutes,
@@ -662,7 +662,7 @@ def get_doc_from_url(url):
         # to get_doc_from_url into a try-catch clause.
         url2 = doc['BatchDataExportResponse']['Url']
     except:
-        pprint.pprint(doc)
+        pprint(doc)
         print("Unable to get the first URL by using the command url2 = doc['BatchDataExportResponse']['Url'].")
         print("Waiting 10 seconds and restarting.")
         time.sleep(10)
@@ -964,7 +964,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
             #if purchase_i['@PurchaseGuid'] == 'EE37C59D-F9AD-97E8-D296-1C0A5A683A67':
             #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             #    print("start_of_day <= datetime_i < start_of_next_day = {}".format(start_of_day <= datetime_i < start_of_next_day))
-            #    pprint.pprint(purchase_i)
+            #    pprint(purchase_i)
 
         t_end_fetch = time.time()
         if len(ps) > 0:
@@ -1049,7 +1049,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     #pgh = pytz.timezone('US/Eastern')
     #for p in ps:
         #if p['@TerminalID'] == '404451-22NDST0002':
-        #    pprint.pprint(p)
+        #    pprint(p)
 
         # Search for particular transactions and print them.
         #if re.search('404',p['@TerminalID']) is not None:
@@ -1057,7 +1057,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
         #        sdu = (pytz.utc).localize(datetime.strptime(p[time_field],dt_format))
         #        sdl = sdu.astimezone(pgh)
         #        if pgh.localize(datetime(2013,10,1,17,30)) <= sdl < pgh.localize(datetime(2013,10,1,17,40)):
-        #            pprint.pprint(p)
+        #            pprint(p)
     last_utc_date_cache = slot_start.date()
     return ps
 
@@ -1198,7 +1198,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             # zone = CMU Study.
                 if 'Inferred occupancy' not in d:
                     print("zone = {}, d = ".format(zone))
-                    pprint.pprint(d)
+                    pprint(d)
                 # Below is the line that would need to be changed to output to the 
                 # augmented file rows where the inferred occupancy is zero.
                 #   To generate the data to send to Carto for a live (or quasi-live)
@@ -1360,7 +1360,7 @@ def main(*args, **kwargs):
     print("ad hoc zones = {}".format(ad_hoc_zones))
 
     print("parent_zones = ...")
-    pprint.pprint(parent_zones)
+    pprint(parent_zones)
 
 
     virtual_zone_checked = []
@@ -1500,7 +1500,7 @@ def main(*args, **kwargs):
 
             for p in linkable + unlinkable:
                 if 'Duration' not in p or p['Duration'] is None:
-                    pprint.pprint(session_dict[p['hash']])
+                    pprint(session_dict[p['hash']])
                     raise ValueError("Error!")
 
                 reframed_ps.append(hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only))

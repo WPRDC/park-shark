@@ -20,7 +20,7 @@ except ImportError:
 from copy import copy
 
 import time
-import pprint
+from pprint import pprint
 from datetime import datetime, timedelta
 import pytz
 
@@ -277,7 +277,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
                         print("beginning_of_day(slot_start) = {}".format(start_of_day))
                         print("datetime_i = {}".format(datetime_i))
                         print("beginning_of_day(slot_start) + timedelta(days=1) = {}".format(start_of_next_day))
-                        pprint.pprint(purchase_i)
+                        pprint(purchase_i)
                         raise ValueError("purchase_i['StartDateUTC_date'] != slot_start_date_string, {} != {}".format(purchase_i['StartDateUTC_date'], slot_start_date_string))
                     ps.append(purchase_i)
                     dts.append(datetime_i)
@@ -307,7 +307,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
 
             if should_be_none is not None:
                 print("should_be_none = ")
-                pprint.pprint(should_be_none)
+                pprint(should_be_none)
                 raise ValueError("A transaction was found in the database even though it shouldn't have been there according to cached_dates.")
 
             # ps is a list of dicts.
@@ -474,7 +474,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
                         print("beginning_of_day(slot_start) = {}".format(start_of_day))
                         print("datetime_i = {}".format(datetime_i))
                         print("beginning_of_day(slot_start) + timedelta(days=1) = {}".format(start_of_next_day))
-                        pprint.pprint(purchase_i)
+                        pprint(purchase_i)
                         raise ValueError("purchase_i['StartDateUTC_date'] != slot_start_date_string, {} != {}".format(purchase_i['StartDateUTC_date'], slot_start_date_string))
                     ps.append(purchase_i)
                     dts.append(datetime_i)
@@ -501,7 +501,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
 
             if should_be_none is not None:
                 print("should_be_none = ")
-                pprint.pprint(should_be_none)
+                pprint(should_be_none)
                 raise ValueError("A transaction was found in the database even though it shouldn't have been there according to cached_dates.")
 
             # ps is a list of dicts.

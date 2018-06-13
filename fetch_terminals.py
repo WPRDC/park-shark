@@ -2,7 +2,7 @@ import os
 import requests
 import xmltodict
 import datetime
-import pprint
+from pprint import pprint
 import copy
 
 from collections import OrderedDict, defaultdict
@@ -43,7 +43,7 @@ if calculate_zone_centroids:
 #purchases = doc['Purchases']['Purchase'] # List of parking purchases
 
 # Pretty-print the first entry in the purchases list with this command:
-#pprint.pprint(dict(purchases[0].items()))
+#pprint(dict(purchases[0].items()))
 
 def csv_file_path():
     path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
@@ -252,7 +252,7 @@ def pull_terminals(*args, **kwargs):
 
         sorted_zone_keys = ['Zone','Latitude','Longitude','MeterCount','Type']
 
-        pprint.pprint(zone_info)
+        pprint(zone_info)
 
         if output_to_csv:
             write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
@@ -263,7 +263,7 @@ def pull_terminals(*args, **kwargs):
     print("Here is the list of all groups not already in lot_list or pure_zones_list or numbered_reporting_zones_list or exclude_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
     maybe_ad_hoc_zones = set_of_all_groups - set(lot_list) - set(pure_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
     ad_hoc_zones = censor(maybe_ad_hoc_zones)
-    pprint.pprint(ad_hoc_zones)
+    pprint(ad_hoc_zones)
 
     parent_zones = {}
     for ahz in ad_hoc_zones:
@@ -275,7 +275,7 @@ def pull_terminals(*args, **kwargs):
                 if parent not in parent_zones[ahz]:
                     parent_zones[ahz].append(parent)
 
-    pprint.pprint(parent_zones)
+    pprint(parent_zones)
 
     if return_extra_zones:
         return list(ad_hoc_zones), parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum

@@ -3,7 +3,7 @@ import re
 import csv
 from collections import OrderedDict
 from json import loads, dumps
-import pprint
+from pprint import pprint
 import operator
 import requests
 import xmltodict
@@ -175,7 +175,7 @@ def add_element_to_set_string(x,set_string):
 
 def describe(t_id,terminals):
     t_ids = [t['@Id'] for t in terminals]
-    pprint.pprint(to_dict(terminals[t_ids.index(t_id)]))
+    pprint(to_dict(terminals[t_ids.index(t_id)]))
 
 def round_to_cent(m):
     try:
@@ -467,7 +467,7 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
             # to the numbered reporting zone, but this approach is not 
             # futureproof and could break.
 
-            pprint.pprint(t)
+            pprint(t)
             nrgs = numbered_reporting_groups(t)
             print(nrgs)
             if len(nrgs) == 0:
@@ -684,7 +684,7 @@ def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
                     zn = standardize_group_name(terminalgroup['@TerminalGroupName'])
             if zn == "Z - Inactive/Removed Terminals":
                 #print("\nGrody terminal listed with zone_name 'Z - Inactive/Removed Terminals':")
-                #pprint.pprint(to_dict(t))
+                #pprint(to_dict(t))
                 num_zone, new_num_zone, new_old_zone = numbered_zone(t['@Id'],t,group_lookup_addendum)
                 zn = convert_group_to_zone(t,num_zone)
                 if zn is None:
