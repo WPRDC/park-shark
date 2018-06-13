@@ -876,6 +876,8 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # Thus, the sequence is
     #       get_day_from_json_or_API: Check if the desired day is 
     #       in a JSON file. If not, it fetches the data from the API.
+    #       Adding hashes, culling fields, and saving local JSON
+    #       files of transactions happens here.
     #
     #       get_utc_ps_for_day_from_json: Takes lots of data (filtered
     #       by DateCreatedUtc) and synthesizes it into a single day
@@ -996,7 +998,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     # This function handles the situation where slot_start and slot_end are on different days
     # by calling get_ps_for_day in a loop.
 
-    # The parameter "time_field" determines which of the timestamps is used for calculating
+    # The function "time_field_of" determines which of the timestamps is used for calculating
     # the datetime values used to filter purchases down to those between slot_start
     # and start_end.
 
@@ -1259,7 +1261,7 @@ def main(*args, **kwargs):
 
     if caching_mode == 'db_caching':
         db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
-        # changed with a passed parameter to substituted a test database 
+        # changed with a passed parameter to substitute a test database
         # for running controlled tests with small numbers of events.
         db = create_or_connect_to_db(db_filename)
     else:
@@ -1404,10 +1406,11 @@ def main(*args, **kwargs):
     # over some number of hours (warm_up_period) during which the purchase history
     # is built up but the data is not output to anything (save the console).
 
-    # HOWEVER, the above reasoning is inconsistent with how the purchase history is
-    # currently being kept (clearing it at midnight every day). The edge case I
-    # was concerned about was the parking purchase that happens at 12:05am that
-    # extends a previous purchase.
+    # An edge case of concern is where a parking purchase that happens at 12:05am
+    # extends a previous purchase. To handle this, two dicts are maintained
+    # session_dict (for the day being worked on) and previous_session_dict
+    # (which holds yesterday's contents). Both must be checked when trying to
+    # link a new transaction with an existing session.
 
     # Using a separate seeding-mode stage considerably speeds up the warming-up
     # period (from maybe 10 minutes to closer to one or two).
@@ -1672,6 +1675,45 @@ def main(*args, **kwargs):
 
 
     return None # The success Boolean should be defined when push_to_CKAN is false.
+
+# Overview:
+# main() calls get_parking_events to get all transactions between two times.
+    #       get_parking_events: Dispatches the correct function based
+    #       on recency of the slot and then by caching method.
+    #
+    #       cache_in_memory_and_filter: Caches the most recent UTC day
+    #       of purchases in memory (or else uses the existing cache)
+    #       and then filters the results down to the desired slot.
+    #
+    #       get_utc_ps_for_day_from_json: Takes lots of data (filtered
+    #       by DateCreatedUtc) and synthesizes it into a single day
+    #       of purchases, filtered instead by StartDateUtc.
+    #
+    #       get_day_from_json_or_API: Check if the desired day is
+    #       in a JSON file. If not, it fetches the data from the API.
+    #       Adding hashes, culling fields, and saving local JSON
+    #       files of transactions happens here.
+# The transactions are obtained for a warm-up period (to ensure
+# that it's possible to attempt to join transactions together into
+# sessions.
+
+# The main function then iterates over time slots (say, 10-minute increments),
+# processing those transactions, joining them into sessions, calculating
+# durations, and then optionally aggregating, followed by distilling
+# statistics to be published and formatting them for output.
+
+# There's an opportunity to 1) refactor the session synthesis into a single
+# function (rather than two different chunks of code for the warm-up and
+# main loops) and a separate opportunity to store the session information
+# to expedite future analysis (or for more rapid processing of real-time
+# data).
+
+# Output/processing modes supported: fine-grained (10-minute or 1-hour) aggregation,
+# optionally coarse-grained aggregation (by month), spatial aggregations
+# (by meter or by zone or by ad hoc zone). Also raw-only (Parking Transactions
+# (binned) by Transaction Time), regular (Parking Transactions (binned) by
+# Parking Times), and augmented (to include inferred occupancy and maybe
+# zone coordinates for mapping).
 
 if __name__ == '__main__':
     main()
