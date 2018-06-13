@@ -720,8 +720,7 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
     Note that no matter what time of day is associated with slot_start,
     this function will get all of the transactions for that entire day.
     Filtering the results down to the desired time range is handled 
-    elsewhere (in the calling function (get_batch_parking)).
-
+    elsewhere (in the calling function (e.g., get_utc_ps_for_day_from_json)).
 
     Caching by date ties this approach to a particular time zone. This
     is why transactions are dropped if we send this function a UTC
@@ -975,7 +974,15 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 
 # ~~~~~~~~~~~~~~~~
 
+
 def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc,time_field = '@StartDateUtc'):
+    # Basically, this function gets all the parking events between slot_start and start_end (using time_field)
+    # to choose the field to filter on, and maintains an in-memory global cache of all parking events for the
+    # entire day corresponding to the last date called. Thus, when slot_start moves from January 1st to
+    # January 2nd, the old cache of purchases is dumped, and all of the events for the 2nd (in UTC time)
+    # are fetched and used for subsequent queries until slot_start advances to January 3rd.
+
+
     # (This is designed to be the "get_ps" part of the function
     # formerly known as get_ps_from_somewhere.)
     
@@ -1075,7 +1082,9 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live" 
         # (recent transactions) API.
         return cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute,caching_mode)
-    else:
+    else: # Currently utc_json mode is considered the default and the get_batch_parking
+        # functions are considered to be deprecated.
+
         #elif caching_mode == 'local_json': # The original approach
         return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
