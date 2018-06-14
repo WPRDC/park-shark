@@ -327,7 +327,7 @@ def fix_durations(session,raw_only=False):
             # predecessor, so that the Duration field represents just the Duration
             # of this transaction. (Duration is the incremental number of minutes
             # purchased, while the '@Units' field is the CUMULATIVE number of 
-            # minutes.
+            # minutes.)
             p['Duration'] -= int(ps[k+1]['@Units'])
 
             if p['Duration'] < 0:
@@ -870,7 +870,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
 def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
     # collecting data over two UTC days (from a function that 
-    # caches API query results as raw JSON files) and then filters
+    # caches API query results as raw JSON files) and then filtering
     # those results down to a single UTC day.
 
     # Thus, the sequence is
@@ -1381,6 +1381,8 @@ def main(*args, **kwargs):
     # 2) util.py/cast_fields()
     # 3) util.py/build_keys()
     # 4) maybe in process_data.py/package_for_output()
+    # and if changing the field names within the script as well,
+    # global (manual) search and replace can be used.
 
     ad_hoc_ordered_fields = list(ordered_fields)
     ordered_fields.remove({"id": "parent_zone", "type": "text"})
@@ -1444,7 +1446,7 @@ def main(*args, **kwargs):
             fix_durations(session)
 
         print("len(session_dict) = {}, len(linkable) = {}, len(purchases) = {}".format(len(session_dict), len(linkable), len(purchases)))
-        # If we could guarantee that all transactions would be hash_dict, we could just iterate
+        # If we could guarantee that all transactions would be in session_dict, we could just iterate
         # through the pre-packaged sessions.
 
     slot_end = slot_start + timechunk
@@ -1717,7 +1719,7 @@ def main(*args, **kwargs):
 
 # Output/processing modes supported: fine-grained (10-minute or 1-hour) aggregation,
 # optionally coarse-grained aggregation (by month), spatial aggregations
-# (by meter or by zone or by ad hoc zone). Also raw-only (Parking Transactions
+# (by meter or by zone or by ad hoc zone). Also naive transactions (Parking Transactions
 # (binned) by Transaction Time), regular (Parking Transactions (binned) by
 # Parking Times), and augmented (to include inferred occupancy and maybe
 # zone coordinates for mapping).
