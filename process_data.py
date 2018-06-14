@@ -378,7 +378,7 @@ def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_z
      # ZONE     START_DATETIME  END_DATETIME  TRANSACTIONS
      #    CAR-HOURS   MONEY  LOT/VIRTUAL/OTHER INFORMATION
 
-def find_biggest_value(d_of_ds,field='Transactions'):
+def find_biggest_value(d_of_ds,field='transactions'):
     return sorted(d_of_ds,key=lambda x:d_of_ds[x][field])[-1]
 
 def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
@@ -423,29 +423,29 @@ def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_
     stats = {}
 
     # This is where it would be nice to maybe do some different formatting based on the 
-    # time_aggregation parameter (since now a bin is not defined just by Start and End
+    # time_aggregation parameter (since now a bin is not defined just by start and end
     # but also by year-month. The other possibility would be to do it when the month
     # is archived (from the loop in main()).
     start_time_pgh = start_time.astimezone(tz)
-    stats['Start'] = datetime.strftime(start_time_pgh,"%Y-%m-%d %H:%M:%S")
+    stats['start'] = datetime.strftime(start_time_pgh,"%Y-%m-%d %H:%M:%S")
     # [ ] Is this the correct start time?
     end_time_pgh = end_time.astimezone(tz)
-    stats['End'] = datetime.strftime(end_time_pgh,"%Y-%m-%d %H:%M:%S")
+    stats['end'] = datetime.strftime(end_time_pgh,"%Y-%m-%d %H:%M:%S")
     start_time_utc = start_time.astimezone(pytz.utc)
-    stats['UTC Start'] = datetime.strftime(start_time_utc,"%Y-%m-%d %H:%M:%S")
-    stats['Transactions'] = 0
-    stats['Car-minutes'] = 0
+    stats['utc_start'] = datetime.strftime(start_time_utc,"%Y-%m-%d %H:%M:%S")
+    stats['transactions'] = 0
+    stats['car_minutes'] = 0
     stats['Payments'] = 0.0
     stats['Durations'] = [] # The Durations field represents the durations of the purchases
-    # made during this time slot. Just as Transactions indicates how many times people
+    # made during this time slot. Just as transactions indicates how many times people
     # put money into parking meters (or virtual meters via smartphone apps) and
     # Payments tells you how much money was paid, Durations tells you the breakdown of
     # parking minutes purchased. The sum of all the durations represented in the
-    # Durations list should equal the value in the Car-minutes field. This field has been
+    # Durations list should equal the value in the car_minutes field. This field has been
     # changed to a list data structure until package_for_output, at which point it is 
     # reformatted into a dictionary.
     if space_aggregate_by == 'ad hoc zone':
-        stats['Parent Zone'] = None
+        stats['parent_zone'] = None
     if time_aggregate_by == 'month':
         stats['Year'] = start_time.astimezone(tz).strftime("%Y")
         stats['Month'] = start_time.astimezone(tz).strftime("%m")
@@ -523,10 +523,10 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                         stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,tz=pytz.timezone('US/Eastern'))
 
                     zone = a_key.split('|')[0]
-                    stats_by[a_key]['Zone'] = zone
+                    stats_by[a_key]['zone'] = zone
 
                     if space_aggregate_by == 'ad hoc zone':
-                        if 'Parent Zone' in stats_by[a_key]:
+                        if 'parent_zone' in stats_by[a_key]:
                             #for zone in space_aggregation_keys:
                             # There are now cases where getting the zone from space_aggregation_keys
                             # for space_aggregate_by == 'ad hoc zone' results in multiple zones
@@ -543,17 +543,17 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                             # each case, which is what I've done. 
                             # This output seems to be the same as before space-time aggregation
                             # was added.
-                            stats_by[a_key]['Parent Zone'] = '|'.join(parent_zones[zone])
+                            stats_by[a_key]['parent_zone'] = '|'.join(parent_zones[zone])
 
                     elif space_aggregate_by == 'meter':
                         stats_by[a_key]['Meter GUID'] = t_guid
                         stats_by[a_key]['Meter ID'] = t_id
                         nz, _, _ = numbered_zone(t_id,None,group_lookup_addendum)
-                        stats_by[a_key]['Zone'] = nz
+                        stats_by[a_key]['zone'] = nz
 
-                    stats_by[a_key]['Transactions'] += 1
+                    stats_by[a_key]['transactions'] += 1
                     if rp['Duration'] is not None:
-                        stats_by[a_key]['Car-minutes'] += rp['Duration']
+                        stats_by[a_key]['car_minutes'] += rp['Duration']
                         stats_by[a_key]['Durations'].append(rp['Duration'])
                     stats_by[a_key]['Payments'] += rp['Amount']
 
@@ -1104,7 +1104,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
     for aggregation_key in stats_rows.keys():
         counted = Counter(stats_rows[aggregation_key]['Durations'])
         stats_rows[aggregation_key]['durations'] = json.dumps(counted, sort_keys=True)
-        stats_rows[aggregation_key]['Payments'] = float(round_to_cent(stats_rows[aggregation_key]['Payments']))
+        stats_rows[aggregation_key]['payments'] = float(round_to_cent(stats_rows[aggregation_key]['Payments']))
     #####
 
     #print("space_aggregate_by = {}, time_aggregate_by = {}, len(stats_rows) = {}".format(space_aggregate_by,time_aggregate_by,len(stats_rows)))
@@ -1158,15 +1158,15 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             # have inferred occupancy for each zone for each slot (even if there were
             # no transactions during that slot), unlike list_of_dicts).
                 d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,time_aggregate_by,tz)
-            #d['Zone'] = zone # This is no longer necessary.
+            #d['zone'] = zone # This is no longer necessary.
             # Elaboration: That line seemed to be unnecessary when aggregation keys were invented
             # as they explicitly put the zone (or whatever the spatial aggregation was) in the key,
             # which shows up in this function in stats_rows. However, it is necessary to specify
             # the zone (or whatever) when generating rows for the augmented file
             # and when a zone has no transactions but still has some residual occupancy to report.
             # Therefore:
-            if augment and ('Zone' not in d.keys()) and inferred_occupancy is not None:
-                d['Zone'] = zone
+            if augment and ('zone' not in d.keys()) and inferred_occupancy is not None:
+                d['zone'] = zone
             if zone in stats_rows.keys():
                 list_of_dicts.append(d)
             # Note that augmented mode has not been generalized to handle different kinds of spatial 
@@ -1174,9 +1174,9 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             if augment and space_aggregate_by in ['meter']:
                 raise ValueError("Augmented mode has not been generalized to work with aggregating by {}".format(space_aggregate_by))
             if augment and inferred_occupancy is not None:
-                d['Inferred occupancy'] = inferred_occupancy[slot_start][zone]
-        #            if d['Inferred occupancy'] > 0:
-        #                print "Inferred occupancy:", slot_start,zone,d['Inferred occupancy']
+                d['inferred_occupancy'] = inferred_occupancy[slot_start][zone]
+        #            if d['inferred_occupancy'] > 0:
+        #                print "Inferred occupancy:", slot_start,zone,d['inferred_occupancy']
             if augment and zone in zone_info.keys(): # This was originally just "if zone in temp_zone_info",
             # so I was deliberately adding these parameters to all rows (even when not computing 
             # augmented statistics). Probably this was being done to allow centroids to be 
@@ -1196,7 +1196,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             if augment and zone in zonelist: # By adding zone in zonelist, I'm boxing out the
             # "zone in stats_rows.keys()" condition below, that was letting in things like
             # zone = CMU Study.
-                if 'Inferred occupancy' not in d:
+                if 'inferred_occupancy' not in d:
                     print("zone = {}, d = ".format(zone))
                     pprint(d)
                 # Below is the line that would need to be changed to output to the 
@@ -1204,8 +1204,8 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
                 #   To generate the data to send to Carto for a live (or quasi-live)
                 #   map, the package_for_output function could be called just at the
                 #   end of processing with augment=True.
-                if d['Inferred occupancy'] > 0 or zone in stats_rows.keys(): # stats_rows.keys() cannot be simply replaced with zlist.
-                # Rather, it must be just the set of zones extracted from the stats_rows field 'Zone'.
+                if d['inferred_occupancy'] > 0 or zone in stats_rows.keys(): # stats_rows.keys() cannot be simply replaced with zlist.
+                # Rather, it must be just the set of zones extracted from the stats_rows field 'zone'.
                     augmented.append(d)
 
     #        elif zone in stats_rows.keys(): # Allentown is missing, but since all those terminals
@@ -1244,7 +1244,7 @@ def main(*args, **kwargs):
     # like correct calculation of durations.
     raw_only = kwargs.get('raw_only', False)
     # When raw_only is True, calculated columns like Durations
-    # and Car-minutes should contain null values.
+    # and car_minutes should contain null values.
     if raw_only:
         turbo_mode = True
     skip_processing = kwargs.get('skip_processing',False)
@@ -1365,18 +1365,25 @@ def main(*args, **kwargs):
 
     virtual_zone_checked = []
 
-    ordered_fields = [{"id": "Zone", "type": "text"}]
-    ordered_fields.append({"id": "Parent Zone", "type": "text"})
-    ordered_fields.append({"id": "Start", "type": "timestamp"})
-    ordered_fields.append({"id": "End", "type": "timestamp"})
-    ordered_fields.append({"id": "UTC Start", "type": "timestamp"})
-    ordered_fields.append({"id": "Transactions", "type": "int"})
-    ordered_fields.append({"id": "Car-minutes", "type": "int"})
-    ordered_fields.append({"id": "Payments", "type": "float"})
-    ordered_fields.append({"id": "Durations", "type": "json"})
+    ordered_fields = [{"id": "zone", "type": "text"}]
+    ordered_fields.append({"id": "parent_zone", "type": "text"})
+    ordered_fields.append({"id": "start", "type": "timestamp"})
+    ordered_fields.append({"id": "end", "type": "timestamp"})
+    ordered_fields.append({"id": "utc_start", "type": "timestamp"})
+    ordered_fields.append({"id": "transactions", "type": "int"})
+    ordered_fields.append({"id": "car_minutes", "type": "int"})
+    ordered_fields.append({"id": "payments", "type": "float"})
+    ordered_fields.append({"id": "durations", "type": "json"})
+    # There are presently three to four(!) places to change the names
+    # of fields to allow them to be pushed to CKAN (or even written
+    # to a CSV file):
+    # 1) Here, where the ordered_fields (poor man's schema) is defined,
+    # 2) util.py/cast_fields()
+    # 3) util.py/build_keys()
+    # 4) maybe in process_data.py/package_for_output()
 
     ad_hoc_ordered_fields = list(ordered_fields)
-    ordered_fields.remove({"id": "Parent Zone", "type": "text"})
+    ordered_fields.remove({"id": "parent_zone", "type": "text"})
 
     if push_to_CKAN: # Explicitly list the resources in the console.
         dp, settings, site, API_key = open_a_channel(server)
@@ -1558,7 +1565,7 @@ def main(*args, **kwargs):
             #if len(stats_rows) == 0:
             #    print
             #else:
-            #    print("({})".format(find_biggest_value(stats_rows,'Transactions')))
+            #    print("({})".format(find_biggest_value(stats_rows,'transactions')))
 
             if spacetime == 'zone': # The original idea for these clauses was to make them all
             # like 

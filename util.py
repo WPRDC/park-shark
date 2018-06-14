@@ -218,22 +218,22 @@ def build_keys(space_aggregation,time_aggregation):
     # these field names.
 
 
-    # I just added 'UTC Start' to ad_hoc_dkeys on April 25, 2017.
+    # I just added 'utc_start' to ad_hoc_dkeys on April 25, 2017.
     if space_aggregation == 'zone':
-        space_keys = ['Zone']
+        space_keys = ['zone']
     elif space_aggregation == 'meter':
-        space_keys = ['Meter ID', 'Meter GUID', 'Zone']
+        space_keys = ['Meter ID', 'Meter GUID', 'zone']
 
     if time_aggregation is None:
-        time_keys = ['Start', 'End', 'UTC Start']
+        time_keys = ['start', 'end', 'utc_start']
     elif time_aggregation == 'month':
         time_keys = ['Year', 'Month', 'Hour', 'UTC Hour']
-    base = ['Transactions', 'Car-minutes', 'Payments', 'durations']
-    extras = ['Latitude', 'Longitude', 'space_count', 'zone_type', 'Inferred occupancy']
+    base = ['transactions', 'car_minutes', 'payments', 'durations']
+    extras = ['Latitude', 'Longitude', 'space_count', 'zone_type', 'inferred_occupancy']
 
     dkeys = space_keys + time_keys + base
     augmented_dkeys = dkeys + extras
-    ad_hoc_dkeys = space_keys + ['Parent Zone'] + time_keys + base
+    ad_hoc_dkeys = space_keys + ['parent_zone'] + time_keys + base
     return dkeys, augmented_dkeys, ad_hoc_dkeys
 
 
@@ -724,17 +724,18 @@ def get_terminals(use_cache = False):
     return terminals
 
 def cast_fields(original_dicts,ordered_fields):
+    # This can become pre_load functions in a Marshmallow schema.
     data = []
     for d_original in original_dicts:
         d = dict(d_original) # Clone the dict to prevent changing the original
-        d['Durations'] = loads(d['Durations'])
-        d['Payments'] = float(d['Payments'])
+        d['durations'] = loads(d['durations'])
+        d['payments'] = float(d['payments'])
         # This may not be necessary, but ensuring that datetimes are in
         # ISO format is the best way of preparing timestamps to be
         # sent to CKAN.
-        d['Start'] = datetime.strptime(d['Start'],"%Y-%m-%d %H:%M:%S").isoformat()
-        d['End'] = datetime.strptime(d['End'],"%Y-%m-%d %H:%M:%S").isoformat()
-        d['UTC Start'] = datetime.strptime(d['UTC Start'],"%Y-%m-%d %H:%M:%S").isoformat()
+        d['start'] = datetime.strptime(d['start'],"%Y-%m-%d %H:%M:%S").isoformat()
+        d['end'] = datetime.strptime(d['end'],"%Y-%m-%d %H:%M:%S").isoformat()
+        d['utc_start'] = datetime.strptime(d['utc_start'],"%Y-%m-%d %H:%M:%S").isoformat()
 
         ordered_row = OrderedDict([(fi['id'],d[fi['id']]) for fi in ordered_fields])
         data.append(ordered_row)
