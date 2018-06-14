@@ -1235,7 +1235,7 @@ def main(*args, **kwargs):
         # augmented mode is very compatible with updating the live map since both involve tracking
         # inferred occupancies.
 
-    default_filename = 'parking-dataset-1.csv'
+    default_filename = 'transactions-1.csv'
     filename = kwargs.get('filename',default_filename)
     overwrite = kwargs.get('overwrite',False)
 
@@ -1610,7 +1610,7 @@ def main(*args, **kwargs):
                 # ad hoc zones and regular zones.
 
                 if output_to_csv and len(ad_hoc_list_of_dicts) > 0:
-                    write_or_append_to_csv('ad-hoc-parking-dataset-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys,overwrite)
+                    write_or_append_to_csv('ad-hoc-transactions-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys,overwrite)
                     #print("Wrote some ad hoc data to a CSV file")
 
                 cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
