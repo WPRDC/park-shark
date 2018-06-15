@@ -29,6 +29,7 @@ from carto_util import update_map
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
 from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
+from prime_ckan.pipe_to_CKAN_resource import send_data_to_pipeline, TransactionsSchema, OffshootTransactionsSchema
 
 from nonchalance import add_hashes
 
@@ -57,7 +58,6 @@ except:
         #except:
         #    print("Unable to import pipe_data_to_ckan")
         from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_resource_data
-
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
 
@@ -1221,8 +1221,12 @@ def main(*args, **kwargs):
     # to control those output channels.
     t_begin = time.time()
 
+    use_datapusher = False # Boolean for controlling switch from datapusher to wprdc-etl pipelines
+
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
+    transactions_resource_name = 'Parking Transactions by Payment Time and Zone'
+    offshoot_transactions_resource_name = 'Parking Transactions by Payment Time and Offshoot Zone'
     augment = kwargs.get('augment',False)
         # [ ] augment and update_live_map are a little entangled now since update_live_map = True
         # is assuming that augment = True, but there's nothing forcing that parameter to be
@@ -1534,11 +1538,19 @@ def main(*args, **kwargs):
 
                     if push_to_CKAN:
                         # server and resource_id parameters are imported from remote_parameters.py
-                        filtered_list_of_dicts = only_these_fields(list_of_dicts,dkeys)
-                        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
+                        if use_datapusher:
+                            filtered_list_of_dicts = only_these_fields(list_of_dicts,dkeys)
+                            filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
 
-                        #success = pipe_data_to_ckan(server, resource_id, cumulated_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-                        success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                            success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                        else:
+                            schema = TransactionsSchema
+                            filtered_list_of_dicts = only_these_fields(list_of_dicts,dkeys)
+                            filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
+                            fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
+                            print("fields_to_publish = {}".format(fields_to_publish))
+                            primary_keys = ['zone', 'utc_start']
+                            success = send_data_to_pipeline('testbed', transactions_resource_name, schema, filtered_list_of_dicts, fields_to_publish, primary_keys=primary_keys)
                         print("success = {}".format(success))
 
                     if (push_to_CKAN and success) or not push_to_CKAN: 
@@ -1595,8 +1607,14 @@ def main(*args, **kwargs):
                     filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
                     filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
 
-                    #success = pipe_data_to_ckan(server, resource_id, cumulated_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-                    success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                    if use_datapusher:
+                        success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                    else:
+                        schema = TransactionsSchema
+                        fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
+                        print("fields_to_publish = {}".format(fields_to_publish))
+                        primary_keys = ['zone', 'utc_start']
+                        success = send_data_to_pipeline('testbed', transactions_resource_name, schema, filtered_list_of_dicts, fields_to_publish, primary_keys=primary_keys)
                     print("success = {}".format(success))
                     if success:
                         cumulated_dicts = []
@@ -1617,7 +1635,16 @@ def main(*args, **kwargs):
                 if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
                     filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
                     filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
-                    success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                    
+                    if use_datapusher:
+                        success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+                    else:
+                        schema = OffshootTransactionsSchema
+                        fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
+                        print("fields_to_publish = {}".format(fields_to_publish))
+                        primary_keys = ['zone', 'utc_start']
+                        success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, filtered_list_of_dicts, fields_to_publish, primary_keys=primary_keys)
+
                     if success_a:
                         cumulated_ad_hoc_dicts = []
 
@@ -1662,17 +1689,32 @@ def main(*args, **kwargs):
             filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
         else:
             filtered_list_of_dicts = only_these_fields(list_of_dicts,dkeys)
-        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields)
-        success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
-        #success = pipe_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
+        if use_datapusher:
+            success = push_data_to_ckan(server, resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+        else:
+            schema = TransactionsSchema
+            fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
+            primary_keys = ['zone', 'utc_start']
+            success = send_data_to_pipeline('testbed', transactions_resource_name, schema, filtered_list_of_dicts, fields_to_publish, primary_keys=primary_keys)
+
         if success:
             if spacetime == 'zone':
                 cumulated_dicts = []
             print("Pushed the last batch of transactions to {}".format(resource_id))
+
         if spacetime == 'zone':
             filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
             filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
-            success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+
+            if use_datapusher:
+                success_a = push_data_to_ckan(server, ad_hoc_resource_id, filtered_list_of_dicts, upload_in_chunks=True, chunk_size=5000, keys=None)
+            else:
+                schema = OffshootTransactionsSchema
+                fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
+                print("fields_to_publish = {}".format(fields_to_publish))
+                primary_keys = ['zone', 'utc_start']
+                success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, filtered_list_of_dicts, fields_to_publish, primary_keys=primary_keys)
             if success_a:
                 cumulated_ad_hoc_dicts = []
                 print("Pushed the last batch of ad hoc transactions to {}".format(ad_hoc_resource_id))
