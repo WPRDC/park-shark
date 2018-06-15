@@ -1505,10 +1505,8 @@ def main(*args, **kwargs):
 
                     if push_to_CKAN:
                         schema = TransactionsSchema
-                        fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
-                        print("fields_to_publish = {}".format(fields_to_publish))
                         primary_keys = ['zone', 'utc_start']
-                        success = send_data_to_pipeline('testbed', transactions_resource_name, schema, list_of_dicts, fields_to_publish, primary_keys=primary_keys)
+                        success = send_data_to_pipeline('testbed', transactions_resource_name, schema, list_of_dicts, primary_keys=primary_keys)
                         print("success = {}".format(success))
 
                     if (push_to_CKAN and success) or not push_to_CKAN: 
@@ -1562,10 +1560,8 @@ def main(*args, **kwargs):
                 if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
                     print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                     schema = TransactionsSchema
-                    fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
-                    print("fields_to_publish = {}".format(fields_to_publish))
                     primary_keys = ['zone', 'utc_start']
-                    success = send_data_to_pipeline('testbed', transactions_resource_name, schema, cumulated_dicts, fields_to_publish, primary_keys=primary_keys)
+                    success = send_data_to_pipeline('testbed', transactions_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
                     print("success = {}".format(success))
                     if success:
                         cumulated_dicts = []
@@ -1585,10 +1581,8 @@ def main(*args, **kwargs):
                 cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
                 if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
                     schema = OffshootTransactionsSchema
-                    fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
-                    print("fields_to_publish = {}".format(fields_to_publish))
                     primary_keys = ['zone', 'utc_start']
-                    success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, fields_to_publish, primary_keys=primary_keys)
+                    success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts,  primary_keys=primary_keys)
 
                     if success_a:
                         cumulated_ad_hoc_dicts = []
@@ -1635,9 +1629,8 @@ def main(*args, **kwargs):
         else:
             filtered_list_of_dicts = list_of_dicts
         schema = TransactionsSchema
-        fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
         primary_keys = ['zone', 'utc_start']
-        success = send_data_to_pipeline('testbed', transactions_resource_name, schema, filtered_list_of_dicts, fields_to_publish, primary_keys=primary_keys)
+        success = send_data_to_pipeline('testbed', transactions_resource_name, schema, filtered_list_of_dicts, primary_keys=primary_keys)
 
         if success:
             if spacetime == 'zone':
@@ -1646,10 +1639,8 @@ def main(*args, **kwargs):
 
         if spacetime == 'zone':
             schema = OffshootTransactionsSchema
-            fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
-            print("fields_to_publish = {}".format(fields_to_publish))
             primary_keys = ['zone', 'utc_start']
-            success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, fields_to_publish, primary_keys=primary_keys)
+            success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
             if success_a:
                 cumulated_ad_hoc_dicts = []
                 print("Pushed the last batch of ad hoc transactions to {}".format(ad_hoc_resource_id))
