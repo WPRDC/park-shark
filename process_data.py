@@ -1,9 +1,5 @@
-import xmltodict
-import os
-import re
-import csv
+import os, re, csv, json, xmltodict
 
-import json
 from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
@@ -17,10 +13,9 @@ import zipfile
 from io import BytesIO # Works only under Python 3
 from copy import copy
 
-import time
+import time, pytz
 from pprint import pprint
 from datetime import datetime, timedelta
-import pytz
 from dateutil import parser
 
 from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
