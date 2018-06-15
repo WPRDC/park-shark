@@ -1350,27 +1350,13 @@ def main(*args, **kwargs):
 
     virtual_zone_checked = []
 
-    ordered_fields = [{"id": "zone", "type": "text"}]
-    ordered_fields.append({"id": "parent_zone", "type": "text"})
-    ordered_fields.append({"id": "start", "type": "timestamp"})
-    ordered_fields.append({"id": "end", "type": "timestamp"})
-    ordered_fields.append({"id": "utc_start", "type": "timestamp"})
-    ordered_fields.append({"id": "transactions", "type": "int"})
-    ordered_fields.append({"id": "car_minutes", "type": "int"})
-    ordered_fields.append({"id": "payments", "type": "float"})
-    ordered_fields.append({"id": "durations", "type": "json"})
-    # There are presently three to four(!) places to change the names
+    # There are presently one to two places to change the names
     # of fields to allow them to be pushed to CKAN (or even written
     # to a CSV file):
-    # 1) Here, where the ordered_fields (poor man's schema) is defined,
-    # 2) util.py/cast_fields()
-    # 3) util.py/build_keys()
-    # 4) maybe in process_data.py/package_for_output()
+    # 1) util.py/build_keys()
+    # 2) maybe in process_data.py/package_for_output()
     # and if changing the field names within the script as well,
     # global (manual) search and replace can be used.
-
-    ad_hoc_ordered_fields = list(ordered_fields)
-    ordered_fields.remove({"id": "parent_zone", "type": "text"})
 
     if push_to_CKAN: # Explicitly list the resources in the console.
         dp, settings, site, API_key = open_a_channel(server)
