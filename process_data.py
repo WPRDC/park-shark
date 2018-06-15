@@ -1554,7 +1554,7 @@ def main(*args, **kwargs):
                 # for pushing data to CKAN.
                     write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
                 if output_to_csv and not turbo_mode and augment:
-                    write_or_append_to_csv('augmented-purchases-1.csv',augmented,augmented_dkeys,overwrite)
+                    write_or_append_to_csv('augmented-transactions-1.csv',augmented,augmented_dkeys,overwrite)
 
                 cumulated_dicts += list_of_dicts
                 if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
