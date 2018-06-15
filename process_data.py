@@ -6,7 +6,7 @@ lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
 pure_zones_list, numbered_reporting_zones_list, ad_hoc_groups, \
 add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
-only_these_fields, cast_fields, build_keys
+cast_fields, build_keys
 from fetch_terminals import pull_terminals
 import requests
 import zipfile
@@ -1519,8 +1519,7 @@ def main(*args, **kwargs):
 
                     if push_to_CKAN:
                         schema = TransactionsSchema
-                        filtered_list_of_dicts = only_these_fields(list_of_dicts,dkeys)
-                        filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
+                        filtered_list_of_dicts = cast_fields(list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
                         fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
                         print("fields_to_publish = {}".format(fields_to_publish))
                         primary_keys = ['zone', 'utc_start']
@@ -1577,9 +1576,7 @@ def main(*args, **kwargs):
                 cumulated_dicts += list_of_dicts
                 if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
                     print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
-                    # server and resource_id parameters are imported from remote_parameters.py
-                    filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
-                    filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
+                    filtered_list_of_dicts = cast_fields(cumulated_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
 
                     schema = TransactionsSchema
                     fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
@@ -1604,8 +1601,7 @@ def main(*args, **kwargs):
 
                 cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
                 if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
-                    filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
-                    filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
+                    filtered_list_of_dicts = cast_fields(cumulated_ad_hoc_dicts,ad_hoc_ordered_fields)
                     
                     schema = OffshootTransactionsSchema
                     fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
@@ -1654,9 +1650,9 @@ def main(*args, **kwargs):
     if push_to_CKAN: # Upload the last batch.
         # server and resource_id parameters are imported from remote_parameters.py
         if spacetime == 'zone':
-            filtered_list_of_dicts = only_these_fields(cumulated_dicts,dkeys)
+            filtered_list_of_dicts = cumulated_dicts
         else:
-            filtered_list_of_dicts = only_these_fields(list_of_dicts,dkeys)
+            filtered_list_of_dicts = list_of_dicts
         filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ordered_fields) # This is all a hack until a proper marshmallow-based pipeline can be called.
         schema = TransactionsSchema
         fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
@@ -1669,8 +1665,7 @@ def main(*args, **kwargs):
             print("Pushed the last batch of transactions to {}".format(resource_id))
 
         if spacetime == 'zone':
-            filtered_list_of_dicts = only_these_fields(cumulated_ad_hoc_dicts,ad_hoc_dkeys)
-            filtered_list_of_dicts = cast_fields(filtered_list_of_dicts,ad_hoc_ordered_fields)
+            filtered_list_of_dicts = cast_fields(cumulated_ad_hoc_dicts,ad_hoc_ordered_fields)
 
             schema = OffshootTransactionsSchema
             fields_to_publish = schema().serialize_to_ckan_fields() # These are field names and types together.
