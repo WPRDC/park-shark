@@ -23,7 +23,6 @@ from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 from carto_util import update_map
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
-from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
 from prime_ckan.pipe_to_CKAN_resource import send_data_to_pipeline, TransactionsSchema, OffshootTransactionsSchema
 
 from nonchalance import add_hashes
@@ -32,15 +31,15 @@ import sys
 try:
     sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
     from utility_belt.push_to_CKAN_resource import open_a_channel
-    from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_resource_data
+    from utility_belt.gadgets import get_resource_data
 except:
     try:
         sys.path.insert(0, '/Users/daw165/bin/')# Office computer location
         from utility_belt.push_to_CKAN_resource import open_a_channel
-        from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_resource_data
+        from utility_belt.gadgets import get_resource_data
     except:
         from prime_ckan.push_to_CKAN_resource import open_a_channel
-        from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_resource_data
+        from prime_ckan.gadgets import get_resource_data
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
 
@@ -1358,14 +1357,6 @@ def main(*args, **kwargs):
     # and if changing the field names within the script as well,
     # global (manual) search and replace can be used.
 
-    if push_to_CKAN: # Explicitly list the resources in the console.
-        dp, settings, site, API_key = open_a_channel(server)
-        package_name = get_package_name_from_resource_id(site,resource_id,API_key)
-        print("package = {}, site = {}, server = {}".format(package_name, site, server))
-        r_name = get_resource_parameter(site,resource_id,'name',API_key)
-        a_h_name = get_resource_parameter(site,ad_hoc_resource_id,'name',API_key)
-        print("resource_id = {} ({}),  ad_hoc_resource_id = {} ({})".format(resource_id, r_name, ad_hoc_resource_id, a_h_name))
-
     cumulated_dicts = []
     cumulated_ad_hoc_dicts = []
     session_dict = defaultdict(list) # hash-based sessions
@@ -1623,7 +1614,6 @@ def main(*args, **kwargs):
         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
     if push_to_CKAN: # Upload the last batch.
-        # server and resource_id parameters are imported from remote_parameters.py
         if spacetime == 'zone':
             filtered_list_of_dicts = cumulated_dicts
         else:
@@ -1635,7 +1625,7 @@ def main(*args, **kwargs):
         if success:
             if spacetime == 'zone':
                 cumulated_dicts = []
-            print("Pushed the last batch of transactions to {}".format(resource_id))
+            print("Pushed the last batch of transactions to {}".format(transactions_resource_name))
 
         if spacetime == 'zone':
             schema = OffshootTransactionsSchema
@@ -1643,7 +1633,7 @@ def main(*args, **kwargs):
             success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
             if success_a:
                 cumulated_ad_hoc_dicts = []
-                print("Pushed the last batch of ad hoc transactions to {}".format(ad_hoc_resource_id))
+                print("Pushed the last batch of offshoot-zone transactions to {}".format(offshoot_transactions_resource_name))
             return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
         # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
         # the whole process succeeded).
