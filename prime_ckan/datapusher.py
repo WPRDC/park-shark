@@ -1,6 +1,6 @@
 import requests
 import json
-import datetime
+from datetime import datetime
 
 
 class Datapusher:
@@ -164,7 +164,7 @@ class Datapusher:
                 'id': resource,
                 'url': self.dump_url + resource,
                 'url_type': 'datapusher',
-                'last_modified': datetime.datetime.now().isoformat(),
+                'last_modified': datetime.now().isoformat(),
             })
         )
         return update.status_code
