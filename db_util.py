@@ -8,8 +8,7 @@ from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
 pure_zones_list, numbered_reporting_zones_list, ad_hoc_groups, \
-add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
-only_these_fields, cast_fields
+group_by_code, numbered_zone
 from fetch_terminals import pull_terminals
 import requests
 import zipfile
@@ -29,33 +28,6 @@ import dataset, sqlalchemy
 
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
-from prime_ckan.remote_parameters import server, resource_id, ad_hoc_resource_id
-
-# These functions should eventually be pulled from a repository othern than
-# utility_belt that can import transmogrifier:
-#from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-#from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
-#from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id
-
-#from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
-
-import sys
-try:
-    sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
-    from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-    from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
-except:
-    try:
-        sys.path.insert(0, '/Users/daw165/bin/')# Office computer location
-        from utility_belt.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-        from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id
-    except:
-        from prime_ckan.push_to_CKAN_resource import push_data_to_ckan, open_a_channel
-        #try:
-        #    from prime_ckan.pipe_to_CKAN_resource import pipe_data_to_ckan
-        #except:
-        #    print("Unable to import pipe_data_to_ckan")
-        from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id
 
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
