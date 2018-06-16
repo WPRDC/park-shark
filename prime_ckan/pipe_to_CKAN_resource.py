@@ -1,15 +1,5 @@
 #!/usr/bin/env python
 import sys, os, re, json, csv, ckanapi
-try:
-    sys.path.insert(0, '/Users/drw/WPRDC') # A path that we need to import code from
-    from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_site
-except:
-    try:
-        sys.path.insert(0, '/Users/daw165/bin') # Office computer location
-        from utility_belt.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_site
-    except:
-        from prime_ckan.gadgets import get_resource_parameter, get_package_name_from_resource_id, get_site
-
 from prime_ckan.gadgets import get_package_parameter
 #import util
 #from . import util
@@ -79,18 +69,6 @@ class DurationsSchema(pl.BaseSchema):
         data['end'] = datetime.strptime(data['end'],"%Y-%m-%d %H:%M:%S").isoformat()
         data['utc_start'] = datetime.strptime(data['utc_start'],"%Y-%m-%d %H:%M:%S").isoformat()
 
-class ParkingSchema(pl.BaseSchema):
-    zone = fields.String(dump_to='Zone')
-    start = fields.DateTime(dump_to='Start')
-    end = fields.DateTime(dump_to='End')
-    utc_start = fields.DateTime(dump_to='UTC Start')
-    transactions = fields.Integer(dump_to='Transactions')
-    car_minutes = fields.Integer(dump_to='Car-minutes')
-    payments = fields.Float(dump_to='Payments')
-    durations = fields.Dict(dump_to='Durations')
-
-    class Meta:
-        ordered = True
 #    @pre_load
 #    def just_print_out_the_data(self,data):
 #        pprint(data)
@@ -138,66 +116,6 @@ def find_resource_id(site,package_id,resource_name,API_key=None):
         if r['name'] == resource_name:
             return r['id']
     return None
-
-def pipe_data_to_ckan(server, resource_id, list_of_dicts, upload_in_chunks=True, chunk_size=1000, keys=None):
-    # This function currently assumes that the repository has already been
-    # set up (that is, the datastore exists, the fields are defined and
-    # typed and have an order).
-
-    # [ ] Eventually extend this to check whether the datastore needs to
-    # be set up, and if it does, to somehow specify the order of the
-    # columns.
-
-    # If the datastore has not been set up with a unique key or keys
-    # already, trying to upsert results in a 409 error
-    # ("table does not have a unique key defined").
-
-    # [ ] Eventually check here to see if a) the datastore exists and
-    # b) it's got fields set up.
-    #       * If not, set that stuff in up in another function called
-    #         from here (or do it through the pipeline).
-
-
-    # [ ] The correct schema to select depends upon whether it is parking by zone or ad hoc zone.
-    #   The schema must somehow be specified
-   
-
-    # Work around the fact that the ETL pipline module seems to expect
-    # that the package ID is specified (rather than the resource ID):
-    with open(local_config.SETTINGS_FILE,'r') as f:
-        settings = json.load(f)
-        site = settings['loader']['ckan']['ckan_root_url']
-        API_key = settings['loader']['ckan']['ckan_api_key']
-    package_id = get_resource_parameter(site,resource_id,'package_id',API_key) 
-
-    resource_name = get_resource_parameter(site,resource_id,'name',API_key) 
-    package_name = get_package_name_from_resource_id(site,resource_id,API_key) 
-
-    print(ParkingSchema().serialize_to_ckan_fields(capitalize=False))
-
-    parking_pipeline = pl.Pipeline('parking_pipeline', 
-                                   'Pipeline for piping parking parameters', 
-                                   settings_file=local_config.SETTINGS_FILE, 
-                                   log_status=False) \
-        .connect(pl.NonConnector, list_of_dicts) \
-        .extract(pl.ListofDictsExtractor) \
-        .schema(ParkingSchema) \
-        .load(pl.CKANDatastoreLoader, 'ckan', # CKANDatastoreLoader vs. CKANLoader (The former extends the latter.)
-              fields=ParkingSchema().serialize_to_ckan_fields(capitalize=False), 
-              key_fields = ['Zone','UTC Start'],
-              package_id=package_id,
-              resource_id=resource_id, 
-              method='upsert')
-    pipe_output = parking_pipeline.run()
-
-    if hasattr(pipe_output,'upload_complete') and pipe_output.upload_complete:
-        print("Data successfully piped to {}/{}.".format(package_name,resource_name))
-        return True
-    else:
-        print("Data not successfully piped to {}/{}.".format(package_name,resource_name))
-        return False
-        
-    #success = push_to_extant_datastore(server, resource_id, list_of_dicts, upload_in_chunks, chunk_size, keys)
 
 def get_connection_parameters(server, settings_file_path):
     with open(settings_file_path) as f:
