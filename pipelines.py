@@ -5,10 +5,10 @@ try:
 except:
     try:
         sys.path.insert(0, '~/bin') # Office computer location
-        from utility_belt.gadgets import get_resource_parameter, get_package_parameter
+        from pipe.gadgets import get_resource_parameter, get_package_parameter
     except:
         print("Trying Option 3")
-        from prime_ckan.gadgets import get_resource_parameter, get_package_parameter
+        from pipe.gadgets import get_resource_parameter, get_package_parameter
 
 import os, json
 import datetime
@@ -19,7 +19,7 @@ import pipeline as pl # This comes from the wprdc-etl repository.
 
 from fetch_terminals import pull_terminals, csv_file_path
 
-from prime_ckan import local_config # This is yet another workaround.
+from pipe import local_config # This is yet another workaround.
 
 
 class MetersSchema(pl.BaseSchema):

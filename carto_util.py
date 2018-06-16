@@ -11,7 +11,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def authorize_carto():
-    from prime_ckan.carto_credentials import ORGANIZATION, USERNAME, API_KEY
+    from parameters.carto_credentials import ORGANIZATION, USERNAME, API_KEY
     BASE_URL = "https://{organization}.carto.com/user/{user}/". \
         format(organization=ORGANIZATION,
                        user=USERNAME)

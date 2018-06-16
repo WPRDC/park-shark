@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, os, re, json, csv, ckanapi
-from prime_ckan.gadgets import get_package_parameter
+from pipe.gadgets import get_package_parameter
 #import util
 #from . import util
 #import loaders, schema, pipeline
