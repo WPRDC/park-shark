@@ -26,6 +26,8 @@ etl/settings.py
 prime_ckan/initialize_datastore_*
 prime_ckan_*
 prime_ckan/local_config.py
+prime_ckan/transmogrifier_settings.json
 nonchalance.py
 elsewhere.py
 TODO
+parameters/
