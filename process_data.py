@@ -23,23 +23,10 @@ from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 from carto_util import update_map
 from credentials_file import CALE_API_user, CALE_API_password
 from local_parameters import path
-from prime_ckan.pipe_to_CKAN_resource import send_data_to_pipeline, TransactionsSchema, OffshootTransactionsSchema
+from prime_ckan.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, OffshootTransactionsSchema
+from prime_ckan.gadgets import get_resource_data
 
 from nonchalance import add_hashes
-
-import sys
-try:
-    sys.path.insert(0, '~/WPRDC') # A path that we need to import code from
-    from utility_belt.push_to_CKAN_resource import open_a_channel
-    from utility_belt.gadgets import get_resource_data
-except:
-    try:
-        sys.path.insert(0, '/Users/daw165/bin/')# Office computer location
-        from utility_belt.push_to_CKAN_resource import open_a_channel
-        from utility_belt.gadgets import get_resource_data
-    except:
-        from prime_ckan.push_to_CKAN_resource import open_a_channel
-        from prime_ckan.gadgets import get_resource_data
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
 
@@ -163,13 +150,13 @@ temp_zone_info = {'344 - 18th & Carson Lot': {'Latitude': 40.428484093957401,
                'Longitude': -80.033656060668363}}
 # 341 - 18th & Sidney is missing from this list.
 
-def get_zone_info():
+def get_zone_info(server):
     """Gather useful parameters about each zone (or lot) into a zone_info dictionary."""
     spot_counts_resource_id = "f9b65c53-ee4f-4585-8d81-b8531b688d06"
     lease_counts_resource_id = "f92ac002-7739-46f8-8fa9-d4668f9a54fd"
     zone_info_cache_file = 'zone_info.csv'
     try:
-        dp, settings, site, API_key = open_a_channel(server)
+        settings, site, package_id, API_key = get_connection_parameters(server, local_config.SETTINGS_FILE)
         records = get_resource_data(site,spot_counts_resource_id,API_key=API_key,count=10000)
         lease_rows = get_resource_data(site,lease_counts_resource_id,API_key=API_key,count=10000)
     except:
@@ -273,6 +260,13 @@ def fix_one_duration(p,session,raw_only=False):
             pprint(ps)
             pprint(p)
             raise ValueError('Negative duration encountered.')
+    elif 'Duration' not in p:
+        p['Duration'] = int(p['@Units'])
+
+    # Now that each purchase has an associated duration, calculate the TruePayIntervalStartUtc:
+    p['TruePayIntervalStartUtc'] = (pytz.utc).localize(parser.parse(p['@PayIntervalEndUtc'])) - timedelta(minutes=p['Duration'])
+    # This is a costly operation, so really calculating Durations and finding the true pay interval bounds should be
+    # done when the data is first pulled and stored in the local cache.
 
     #print("Durations: {}, @Units: {}".format([e['Duration'] if 'Duration' in e else None for e in ps], [int(e['@Units']) for e in ps]))
 
@@ -1205,6 +1199,7 @@ def main(*args, **kwargs):
 
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
+    server = kwargs.get('server', 'sandbox') # 'testbed'
     transactions_resource_name = 'Parking Transactions by Payment Time and Zone'
     offshoot_transactions_resource_name = 'Parking Transactions by Payment Time and Offshoot Zone'
     augment = kwargs.get('augment',False)
@@ -1239,7 +1234,7 @@ def main(*args, **kwargs):
     update_live_map = kwargs.get('update_live_map',False)
 
     if augment:
-        zone_info = get_zone_info()
+        zone_info = get_zone_info(server)
     else:
         zone_info = None
 
@@ -1497,7 +1492,7 @@ def main(*args, **kwargs):
                     if push_to_CKAN:
                         schema = TransactionsSchema
                         primary_keys = ['zone', 'utc_start']
-                        success = send_data_to_pipeline('testbed', transactions_resource_name, schema, list_of_dicts, primary_keys=primary_keys)
+                        success = send_data_to_pipeline(server, transactions_resource_name, schema, list_of_dicts, primary_keys=primary_keys)
                         print("success = {}".format(success))
 
                     if (push_to_CKAN and success) or not push_to_CKAN: 
@@ -1552,7 +1547,7 @@ def main(*args, **kwargs):
                     print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                     schema = TransactionsSchema
                     primary_keys = ['zone', 'utc_start']
-                    success = send_data_to_pipeline('testbed', transactions_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
+                    success = send_data_to_pipeline(server, transactions_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
                     print("success = {}".format(success))
                     if success:
                         cumulated_dicts = []
@@ -1573,7 +1568,7 @@ def main(*args, **kwargs):
                 if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
                     schema = OffshootTransactionsSchema
                     primary_keys = ['zone', 'utc_start']
-                    success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts,  primary_keys=primary_keys)
+                    success_a = send_data_to_pipeline(server, offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts,  primary_keys=primary_keys)
 
                     if success_a:
                         cumulated_ad_hoc_dicts = []
@@ -1620,7 +1615,7 @@ def main(*args, **kwargs):
             filtered_list_of_dicts = list_of_dicts
         schema = TransactionsSchema
         primary_keys = ['zone', 'utc_start']
-        success = send_data_to_pipeline('testbed', transactions_resource_name, schema, filtered_list_of_dicts, primary_keys=primary_keys)
+        success = send_data_to_pipeline(server, transactions_resource_name, schema, filtered_list_of_dicts, primary_keys=primary_keys)
 
         if success:
             if spacetime == 'zone':
@@ -1630,7 +1625,7 @@ def main(*args, **kwargs):
         if spacetime == 'zone':
             schema = OffshootTransactionsSchema
             primary_keys = ['zone', 'utc_start']
-            success_a = send_data_to_pipeline('testbed', offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
+            success_a = send_data_to_pipeline(server, offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
             if success_a:
                 cumulated_ad_hoc_dicts = []
                 print("Pushed the last batch of offshoot-zone transactions to {}".format(offshoot_transactions_resource_name))
