@@ -284,11 +284,15 @@ def fix_one_duration(p,session,raw_only=False):
     elif 'Duration' not in p:
         p['Duration'] = int(p['@Units'])
 
-    # Now that each purchase has an associated duration, calculate the TruePayIntervalStartUtc:
-    p['TruePayIntervalStartUtc'] = (pytz.utc).localize(parser.parse(p['@PayIntervalEndUtc'])) - timedelta(minutes=p['Duration'])
+    # Now that each purchase has an associated duration, calculate the true start of the corresponding
+    # parking segment (when the car has parked, not when it has paid).
+    p['parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(p['@EndDateUtc'])) - timedelta(minutes=p['Duration'])
     # This is a costly operation, so really calculating Durations and finding the true pay interval bounds should be
     # done when the data is first pulled and stored in the local cache.
+    p['segment_number'] = len(ps)-k-1
 
+
+    pprint(ps)
     #print("Durations: {}, @Units: {}".format([e['Duration'] if 'Duration' in e else None for e in ps], [int(e['@Units']) for e in ps]))
 
 def fix_durations(session,raw_only=False):
@@ -332,11 +336,18 @@ def fix_durations(session,raw_only=False):
             # minutes.)
             p['Duration'] -= int(ps[k+1]['@Units'])
 
+            # Now that each purchase has an associated duration, calculate the true start of the corresponding
+            # parking segment (when the car has parked, not when it has paid).
             if p['Duration'] < 0:
                 pprint(session)
                 pprint(p)
                 raise ValueError('Negative duration encountered.')
-    #print("Durations: {}, @Units: {}".format([e['Duration'] for e in ps], [int(e['@Units']) for e in ps]))
+
+        p['parking_segment_start_utc'] = parking_segment_start_of(p)
+        p['segment_number'] = len(ps)-k-1
+
+
+    pprint(ps)
 
 def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zones,uncharted_e_zones,turbo_mode,raw_only):
     """Take a dictionary and generate a new dictionary from it that samples
