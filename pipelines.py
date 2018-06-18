@@ -19,7 +19,7 @@ import pipeline as pl # This comes from the wprdc-etl repository.
 
 from fetch_terminals import pull_terminals, csv_file_path
 
-from pipe import local_config # This is yet another workaround.
+from local_parameters import SETTINGS_FILE # This is yet another workaround.
 
 
 class MetersSchema(pl.BaseSchema):
@@ -83,12 +83,10 @@ def move_to_front(f,f_ts):
 
 yesterday = datetime.date.today() - datetime.timedelta(days=1)
 
-#package_id = '530f334b-4d7c-40c5-bf50-ba55645bb8b3' # "Testy" test package
-package_id = '4ec3583a-b6e8-4a4e-bfb2-7609bee33cea' # Test Meters package under PPA organization
-
 monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
 current_resource_name = 'Current Payment Points'
 
+server = "official-version"
 
 # Combined Data 
 #   primary keys: Meter ID and/or GUID and the year/month 
@@ -125,11 +123,11 @@ unfixed_list_of_dicts, unfixed_keys = pull_terminals(output_to_csv=True,return_e
 csv_path = csv_file_path()
 
 # Load CKAN parameters to get the package name.
-with open(local_config.SETTINGS_FILE,'r') as f:
+with open(SETTINGS_FILE,'r') as f:
     settings = json.load(f)
-    site = settings['loader']['ckan']['ckan_root_url']
-    API_key = settings['loader']['ckan']['ckan_api_key']
-
+    site = settings['loader'][server]['ckan_root_url']
+    API_key = settings['loader'][server]['ckan_api_key']
+    package_id = settings['loader'][server]['package_id']
 
 kwdict = {'return_extra_zones': False,
     'output_to_csv': False,
@@ -161,12 +159,12 @@ shoving_method = 'upsert'
 
 current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
                                       'Current Meters Pipeline', 
-                                      settings_file=local_config.SETTINGS_FILE,                                     
+                                      settings_file=SETTINGS_FILE,
                                       log_status=False) \
     .connect(pl.FileConnector, csv_path) \
     .extract(pl.CSVExtractor) \
     .schema(schema) \
-    .load(pl.CKANDatastoreLoader, 'ckan',
+    .load(pl.CKANDatastoreLoader, server,
           fields=schema().serialize_to_ckan_fields(),
           key_fields=key_fields,
           package_id=package_id,
@@ -193,12 +191,12 @@ reordered_fields_and_types = move_to_front('year_month',schema().serialize_to_ck
 print(reordered_fields_and_types)
 cumulative_meters_pipeline = pl.Pipeline('cumulative_meters_pipeline', 
                                       'Cumulative Meters Pipeline', 
-                                      settings_file=local_config.SETTINGS_FILE,                                     
+                                      settings_file=SETTINGS_FILE,
                                       log_status=False) \
     .connect(pl.FileConnector, csv_path) \
     .extract(pl.CSVExtractor) \
     .schema(schema) \
-    .load(pl.CKANDatastoreLoader, 'ckan',
+    .load(pl.CKANDatastoreLoader, server,
           fields=reordered_fields_and_types,
           key_fields=key_fields,
           package_id=package_id,

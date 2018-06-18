@@ -18,8 +18,6 @@ from pprint import pprint
 
 DEFAULT_CKAN_INSTANCE = 'https://data.wprdc.org'
 
-from . import local_config # SETTINGS_FILE path is stored in local_config.py
-
 class TransactionsSchema(pl.BaseSchema):
     zone = fields.String()
     start = fields.DateTime()
@@ -125,7 +123,7 @@ def get_connection_parameters(server, settings_file_path):
     API_key = settings['loader'][server]['ckan_api_key']
     return settings, site, package_id, API_key 
 
-def send_data_to_pipeline(server,resource_name,schema,list_of_dicts,primary_keys,chunk_size=5000):
+def send_data_to_pipeline(server,settings_file_path,resource_name,schema,list_of_dicts,primary_keys,chunk_size=5000):
     # Taken from github.com/WPRDC/stop-in-the-name-of-data.
 
     if resource_name is not None:
@@ -157,7 +155,7 @@ def send_data_to_pipeline(server,resource_name,schema,list_of_dicts,primary_keys
     # Code below stolen from prime_ckan/*/open_a_channel() but really from utility_belt/gadgets
     #with open(os.path.dirname(os.path.abspath(__file__))+'/ckan_settings.json') as f: # The path of this file needs to be specified.
 
-    settings, site, package_id, API_key = get_connection_parameters(server, local_config.SETTINGS_FILE)
+    settings, site, package_id, API_key = get_connection_parameters(server, settings_file_path)
 
     update_method = 'upsert'
     if len(primary_keys) == 0:
@@ -182,7 +180,7 @@ def send_data_to_pipeline(server,resource_name,schema,list_of_dicts,primary_keys
     super_pipeline = pl.Pipeline('parking_pipeline',
                                       'Pipeline for Parking Data',
                                       log_status=False,
-                                      settings_file=local_config.SETTINGS_FILE,
+                                      settings_file=settings_file_path,
                                       settings_from_file=True,
                                       start_from_chunk=0,
                                       chunk_size=chunk_size

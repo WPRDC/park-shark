@@ -22,7 +22,7 @@ from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 
 from carto_util import update_map
 from credentials_file import CALE_API_user, CALE_API_password
-from local_parameters import path
+from local_parameters import path, SETTINGS_FILE
 from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, OffshootTransactionsSchema
 from pipe.gadgets import get_resource_data
 
@@ -156,7 +156,7 @@ def get_zone_info(server):
     lease_counts_resource_id = "f92ac002-7739-46f8-8fa9-d4668f9a54fd"
     zone_info_cache_file = 'zone_info.csv'
     try:
-        settings, site, package_id, API_key = get_connection_parameters(server, local_config.SETTINGS_FILE)
+        settings, site, package_id, API_key = get_connection_parameters(server, SETTINGS_FILE)
         records = get_resource_data(site,spot_counts_resource_id,API_key=API_key,count=10000)
         lease_rows = get_resource_data(site,lease_counts_resource_id,API_key=API_key,count=10000)
     except:
@@ -1492,7 +1492,7 @@ def main(*args, **kwargs):
                     if push_to_CKAN:
                         schema = TransactionsSchema
                         primary_keys = ['zone', 'utc_start']
-                        success = send_data_to_pipeline(server, transactions_resource_name, schema, list_of_dicts, primary_keys=primary_keys)
+                        success = send_data_to_pipeline(server, SETTINGS_FILE, transactions_resource_name, schema, list_of_dicts, primary_keys=primary_keys)
                         print("success = {}".format(success))
 
                     if (push_to_CKAN and success) or not push_to_CKAN: 
@@ -1547,7 +1547,7 @@ def main(*args, **kwargs):
                     print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                     schema = TransactionsSchema
                     primary_keys = ['zone', 'utc_start']
-                    success = send_data_to_pipeline(server, transactions_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
+                    success = send_data_to_pipeline(server, SETTINGS_FILE, transactions_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
                     print("success = {}".format(success))
                     if success:
                         cumulated_dicts = []
@@ -1568,7 +1568,7 @@ def main(*args, **kwargs):
                 if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
                     schema = OffshootTransactionsSchema
                     primary_keys = ['zone', 'utc_start']
-                    success_a = send_data_to_pipeline(server, offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts,  primary_keys=primary_keys)
+                    success_a = send_data_to_pipeline(server, SETTINGS_FILE, offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts,  primary_keys=primary_keys)
 
                     if success_a:
                         cumulated_ad_hoc_dicts = []
@@ -1615,7 +1615,7 @@ def main(*args, **kwargs):
             filtered_list_of_dicts = list_of_dicts
         schema = TransactionsSchema
         primary_keys = ['zone', 'utc_start']
-        success = send_data_to_pipeline(server, transactions_resource_name, schema, filtered_list_of_dicts, primary_keys=primary_keys)
+        success = send_data_to_pipeline(server, SETTINGS_FILE, transactions_resource_name, schema, filtered_list_of_dicts, primary_keys=primary_keys)
 
         if success:
             if spacetime == 'zone':
@@ -1625,7 +1625,7 @@ def main(*args, **kwargs):
         if spacetime == 'zone':
             schema = OffshootTransactionsSchema
             primary_keys = ['zone', 'utc_start']
-            success_a = send_data_to_pipeline(server, offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
+            success_a = send_data_to_pipeline(server, SETTINGS_FILE, offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
             if success_a:
                 cumulated_ad_hoc_dicts = []
                 print("Pushed the last batch of offshoot-zone transactions to {}".format(offshoot_transactions_resource_name))
