@@ -904,10 +904,6 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     #       on recency of the slot and then by caching method.
 
 
-
-    # (This is designed to be the "from_somewhere" part of the function
-    # formerly known as get_ps_from_somewhere.)
-
     # As suggested by the name, this function is designed specifially
     # for the 'utc_json' caching mode.
     ###
@@ -996,16 +992,6 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     # entire day corresponding to the last date called. Thus, when slot_start moves from January 1st to
     # January 2nd, the old cache of purchases is dumped, and all of the events for the 2nd (in UTC time)
     # are fetched and used for subsequent queries until slot_start advances to January 3rd.
-
-
-    # (This is designed to be the "get_ps" part of the function
-    # formerly known as get_ps_from_somewhere.)
-    
-    # That is,
-    #       get_ps_from_somewhere(db,slot_start,slot_end,cache,mute)
-    # should return the same results as
-    #       cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute)
-    # which suggests a good test to try.
 
     ###
     # This function handles the situation where slot_start and slot_end are on different days
