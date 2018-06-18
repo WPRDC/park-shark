@@ -1013,7 +1013,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 # ~~~~~~~~~~~~~~~~
 
 
-def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc):
+def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json'):
     # Basically, this function gets all the parking events between slot_start and start_end (using time_field)
     # to choose the field to filter on, and maintains an in-memory global cache of all parking events for the
     # entire day corresponding to the last date called. Thus, when slot_start moves from January 1st to
@@ -1029,11 +1029,14 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     # and start_end.
 
 
-    # Note that the time zone tz and the time_field must be consistent for this to work properly.
-    # Here is a little sanity check:
-    #if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): # This does an XOR
-                                                                       # between these values.
-    #    raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
+    # Note that the time zone tz and the field produced by payment_time_of must be consistent
+    # for this to work properly.
+    tz = pytz.utc
+    # The old sanity check looked like this:
+        #if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): # This does an XOR
+                                                                           # between these values.
+        #    raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
+    # At present, it's not so easy to verify that payment_time_of() returns a UTC time.
 
     global last_utc_date_cache, utc_ps_cache, utc_dts_cache
     if last_utc_date_cache != slot_start.date():
