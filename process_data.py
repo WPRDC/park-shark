@@ -880,6 +880,33 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
 
 ########################
 
+def payment_time_of(p):
+    # Establish a standard time field used for deciding which slot a
+    # transaction should fit into.
+
+    # This function must only return UTC time fields to work
+    # correctly in cache_in_memory_and_filter.
+
+
+    # Possible improvements:
+    # 1) Define a payment-time-utc field that stores the standardized
+    # time field (as defined below)
+    #if 'payment-time-utc' in p: # This could be used to define the time
+    #    # field used for binning the transaction for cases where
+    #    # session-clustering and true transaction start and end times
+    #    # can be correctly and reliably deduced.
+    #    return p['payment-time-utc']
+    # 2) Store payment-time-utc as a datetime (avoiding having to
+    # recalculate it later maybe) and then also refactor payment_time_of
+    # to always return datetimes instead of strings that need to be parsed.
+
+    if type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.
+        return p['@PurchaseDateUtc']
+    elif p['PurchasePayUnit']['@PayUnitName'] == 'Mobile Payment':
+        return p['@DateCreatedUtc']
+    else:
+        return p['@PurchaseDateUtc']
+
 def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
     # collecting data over two UTC days (from a function that 
