@@ -841,7 +841,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     Note that the time zone tz and the time_field must be consistent for this to work properly."""
     # Here is a little sanity check:
     
-    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): 
+    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc):
         # This does an XOR between these values.
         raise RuntimeError("It looks like time_field may not be consistent with the provided time zone")
 
@@ -1013,7 +1013,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 # ~~~~~~~~~~~~~~~~
 
 
-def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc,time_field = '@StartDateUtc'):
+def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json',tz=pytz.utc):
     # Basically, this function gets all the parking events between slot_start and start_end (using time_field)
     # to choose the field to filter on, and maintains an in-memory global cache of all parking events for the
     # entire day corresponding to the last date called. Thus, when slot_start moves from January 1st to
@@ -1024,17 +1024,16 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     # This function handles the situation where slot_start and slot_end are on different days
     # by calling get_ps_for_day in a loop.
 
-    # The function "time_field_of" determines which of the timestamps is used for calculating
+    # The function "payment_time__of" determines which of the timestamps is used for calculating
     # the datetime values used to filter purchases down to those between slot_start
     # and start_end.
 
 
     # Note that the time zone tz and the time_field must be consistent for this to work properly.
     # Here is a little sanity check:
-    
-    if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): # This does an XOR 
-                                                                      # between these values.
-        raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
+    #if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): # This does an XOR
+                                                                       # between these values.
+    #    raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
 
     global last_utc_date_cache, utc_ps_cache, utc_dts_cache
     if last_utc_date_cache != slot_start.date():
@@ -1061,7 +1060,8 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
         # problem. There should be no situations where more than two days of transactions will
         # wind up in this cache at any one time.
         #utc_dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all] # This may break for StartDateUtc!!!!!
-        utc_dts_cache = [tz.localize(parser.parse(p[time_field])) for p in ps_all] # This may break for StartDateUtc!!!!!
+
+        utc_dts_cache = [tz.localize(parser.parse(payment_time_of(p))) for p in ps_all] # This may break for StartDateUtc!!!!!
     else:
         ps_all = utc_ps_cache
     #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
@@ -1116,7 +1116,6 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #elif caching_mode == 'local_json': # The original approach
         return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
-        #return get_batch_parking(slot_start,slot_end,cache,mute,pgh,time_field = '@PurchaseDateLocal')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,augment):
