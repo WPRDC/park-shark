@@ -292,6 +292,11 @@ def fix_one_duration(p,session,raw_only=False):
     #print("Durations: {}, @Units: {}".format([e['Duration'] if 'Duration' in e else None for e in ps], [int(e['@Units']) for e in ps]))
 
 def fix_durations(session,raw_only=False):
+    """This function accepts a pre-grouped set of purchases that comprise
+    a single car's parking session. This is typically one to five transactions.
+    These purchases can be assigned new fields (like 'Duration') which are
+    computed by examining other purchases to infer the real parking time
+    associated with each transaction."""
     try: # Sort transactions by EndDateUtc.
         ps = sorted(session, key=lambda x: x['@EndDateUtc'])[::-1]
     except:
@@ -1365,11 +1370,12 @@ def main(*args, **kwargs):
 
     virtual_zone_checked = []
 
-    # There are presently one to two places to change the names
+    # There are presently two to three places to change the names
     # of fields to allow them to be pushed to CKAN (or even written
     # to a CSV file):
     # 1) util.py/build_keys()
     # 2) maybe in process_data.py/package_for_output()
+    # 3) the Marshmallow schema
     # and if changing the field names within the script as well,
     # global (manual) search and replace can be used.
 
