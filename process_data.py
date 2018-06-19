@@ -962,7 +962,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # gigantic discrepancy between the DateCreatedUtc timestamp
     # and the StartDateUtc timestamp.
 
-    ref_field = '@StartDateUtc' # This should not be changed.
+    #ref_field = '@StartDateUtc' # This should not be changed. # But it looks like I'm changing it.
 
     #for each date in day before, day of, and day after (to get all transactions)
         # [Three full days is probably slightly overkill since the most extreme 
@@ -993,10 +993,13 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         ps_for_whole_day = get_day_from_json_or_api(query_start,pytz.utc,cache,mute)
 
         # Filter down to the events in the slot #
-        #datetimes = [(pytz.utc).localize(datetime.strptime(p[ref_field],'%Y-%m-%dT%H:%M:%S')) for p in ps_for_whole_day]
-        datetimes = [(pytz.utc).localize(parser.parse(p[ref_field])) for p in ps_for_whole_day]
+        datetimes = []
+        for p in ps_for_whole_day:
+            p['payment_time_utc'] = (pytz.utc).localize(parser.parse(payment_time_of(p)))
+            datetimes.append(p['payment_time_utc'])
+        #datetimes = [(pytz.utc).localize(parser.parse(payment_time_of(p))) for p in ps_for_whole_day]
+
         #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
-        
         start_of_day = beginning_of_day(slot_start)
         start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
         for purchase_i,datetime_i in zip(ps_for_whole_day,datetimes):
