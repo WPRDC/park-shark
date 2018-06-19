@@ -1456,10 +1456,9 @@ def main(*args, **kwargs):
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
         purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False,caching_mode)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-            if not turbo_mode and not skip_processing:
-                if 'hash' in p:
-                    session_dict[p['hash']].append(p)
-                    linkable.append(p)
+            if 'hash' in p:
+                session_dict[p['hash']].append(p)
+                linkable.append(p)
 
         for session in session_dict.values():
             fix_durations(session)
@@ -1501,20 +1500,19 @@ def main(*args, **kwargs):
             unlinkable = []
             linkable = []
             
+            if slot_start.date() != current_day:
+                print("Moving session_dict to previous_session_dict at {}.".format(slot_start))
+                current_day = slot_start.date()
+                previous_session_dict = session_dict
+                session_dict = defaultdict(list) # Restart the history when a new day is encountered.
+
             # First cluster into sessions
             for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-                if not turbo_mode:
-                    if slot_start.date() == current_day: # Keep a running history of all
-                        if 'hash' in p:                  # purchases for a given day.
-                            session_dict[p['hash']].append(p)
-                            linkable.append(p)
-                        else:
-                            unlinkable.append(p)
-                    else:
-                        print("Moving session_dict to previous_session_dict at {}.".format(slot_start))
-                        current_day = slot_start.date()
-                        previous_session_dict = session_dict
-                        session_dict = defaultdict(list) # And restart that history when a new day is encountered.
+                if 'hash' in p:                        # Keep a running history of all
+                    session_dict[p['hash']].append(p)  # purchases for a given day. 
+                    linkable.append(p)
+                else:
+                    unlinkable.append(p)
 
             # Iterate through the new purchases and add the corrected durations where possible.
             for p in linkable:
