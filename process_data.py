@@ -1030,7 +1030,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     # This function handles the situation where slot_start and slot_end are on different days
     # by calling get_ps_for_day in a loop.
 
-    # The function "payment_time__of" determines which of the timestamps is used for calculating
+    # The function "payment_time_of" determines which of the timestamps is used for calculating
     # the datetime values used to filter purchases down to those between slot_start
     # and start_end.
 
