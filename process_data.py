@@ -290,9 +290,6 @@ def fix_one_duration(p,session,raw_only=False):
     # This is a costly operation, so really calculating Durations and finding the true pay interval bounds should be
     # done when the data is first pulled and stored in the local cache.
     p['segment_number'] = len(ps)-k-1
-
-
-    pprint(ps)
     #print("Durations: {}, @Units: {}".format([e['Duration'] if 'Duration' in e else None for e in ps], [int(e['@Units']) for e in ps]))
 
 def fix_durations(session,raw_only=False):
@@ -345,9 +342,6 @@ def fix_durations(session,raw_only=False):
 
         p['parking_segment_start_utc'] = parking_segment_start_of(p)
         p['segment_number'] = len(ps)-k-1
-
-
-    pprint(ps)
 
 def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zones,uncharted_e_zones,turbo_mode,raw_only):
     """Take a dictionary and generate a new dictionary from it that samples
@@ -1260,7 +1254,7 @@ def main(*args, **kwargs):
 
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
-    server = kwargs.get('server', 'sandbox') # 'testbed'
+    server = kwargs.get('server', 'testbed') # 'sandbox'
     transactions_resource_name = 'Parking Transactions by Payment Time and Zone'
     offshoot_transactions_resource_name = 'Parking Transactions by Payment Time and Offshoot Zone'
     augment = kwargs.get('augment',False)
@@ -1577,11 +1571,6 @@ def main(*args, **kwargs):
                     inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
                 # We may eventually need to compute ad_hoc_inferred_occupancy.
             t4 = time.time()
-
-            #if len(stats_rows) == 0:
-            #    print
-            #else:
-            #    print("({})".format(find_biggest_value(stats_rows,'transactions')))
 
             if spacetime == 'zone': # The original idea for these clauses was to make them all
             # like 
