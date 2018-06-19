@@ -10,6 +10,7 @@ local_parameters.py
 remote_parameters.py
 remote_parameters_*
 json/
+utc_json/
 csv/
 docs/
 sample-reports/
@@ -31,3 +32,6 @@ nonchalance.py
 elsewhere.py
 TODO
 parameters/
+linked/
+linkable/
+unlinkable/
