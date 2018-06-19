@@ -8,11 +8,11 @@
 # some kind of pipeline/job manager that can send out notifications if a 
 # particular ETL job fails.
 
-import pytz
+import sys, pytz
 from datetime import datetime, timedelta
 import process_data
 
-def main():
+def main(use_cache):
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
     slot_start = process_data.roundTime(datetime.now(pgh) - timedelta(minutes=10), slot_width) 
@@ -22,12 +22,18 @@ def main():
 #    slot_start = pgh.localize(process_data.beginning_of_day(datetime(2016,9,29,0,0)))
     halting_time = slot_start+timedelta(hours = 24)
     slot_start = pgh.localize(datetime(2013,1,23,11,45,18))
-    halting_time = slot_start+timedelta(seconds=1)
+    halting_time = slot_start+timedelta(seconds=1) # This is now catching zero transactions,
+    # probably because of a change in reference field.
+    halting_time = slot_start+timedelta(seconds=10)
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(output_to_csv = True, push_to_CKAN = False, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100, timechunk = timedelta(seconds=1))
+    success = process_data.main(use_cache=use_cache, output_to_csv = True, push_to_CKAN = False, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100, timechunk = timedelta(seconds=1))
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
 if __name__ == '__main__':
-    main()
+    use_cache = False
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'use_cache':
+            use_cache = True
+    main(use_cache=use_cache)
