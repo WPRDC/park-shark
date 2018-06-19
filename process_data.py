@@ -286,7 +286,7 @@ def fix_one_duration(p,session,raw_only=False):
 
     # Now that each purchase has an associated duration, calculate the true start of the corresponding
     # parking segment (when the car has parked, not when it has paid).
-    p['parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(p['@EndDateUtc'])) - timedelta(minutes=p['Duration'])
+    p['parking_segment_start_utc'] = parking_segment_start_of(p)
     # This is a costly operation, so really calculating Durations and finding the true pay interval bounds should be
     # done when the data is first pulled and stored in the local cache.
     p['segment_number'] = len(ps)-k-1
@@ -906,6 +906,12 @@ def payment_time_of(p):
         return p['@DateCreatedUtc']
     else:
         return p['@PurchaseDateUtc']
+
+def parking_segment_start_of(p):
+    # Test this calculation for various cases (mobile vs. non-mobile,
+    # before parking hours, during parking hours, and after parking hours)
+    # to be sure that it is sufficiently general.
+    return (pytz.utc).localize(parser.parse(p['@EndDateUtc'])) - timedelta(minutes=p['Duration'])
 
 def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
