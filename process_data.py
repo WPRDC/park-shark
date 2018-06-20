@@ -21,8 +21,8 @@ from dateutil import parser
 from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 
 from carto_util import update_map
-from credentials_file import CALE_API_user, CALE_API_password
-from local_parameters import path, SETTINGS_FILE
+from parameters.credentials_file import CALE_API_user, CALE_API_password
+from parameters.local_parameters import path, SETTINGS_FILE
 from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, OffshootTransactionsSchema
 from pipe.gadgets import get_resource_data
 

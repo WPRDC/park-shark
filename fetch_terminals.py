@@ -9,9 +9,9 @@ from collections import OrderedDict, defaultdict
 import re
 from util import to_dict, write_to_csv, value_or_blank, is_a_lot, is_a_virtual_lot, is_a_virtual_zone, corrected_zone_name, char_delimit, all_groups, lot_list, pure_zones_list, numbered_reporting_zones_list, zone_lookup, is_virtual, numbered_zone, censor
 
-from credentials_file import CALE_API_user, CALE_API_password
+from parameters.credentials_file import CALE_API_user, CALE_API_password
 
-from local_parameters import path
+from parameters.local_parameters import path
 
 calculate_zone_centroids = False
 if calculate_zone_centroids:

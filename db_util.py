@@ -26,8 +26,8 @@ import pytz
 import dataset, sqlalchemy
 
 
-from credentials_file import CALE_API_user, CALE_API_password
-from local_parameters import path
+from parameters.credentials_file import CALE_API_user, CALE_API_password
+from parameters.local_parameters import path
 
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)

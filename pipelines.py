@@ -19,7 +19,7 @@ import pipeline as pl # This comes from the wprdc-etl repository.
 
 from fetch_terminals import pull_terminals, csv_file_path
 
-from local_parameters import SETTINGS_FILE # This is yet another workaround.
+from parameters.local_parameters import SETTINGS_FILE # This is yet another workaround.
 
 
 class MetersSchema(pl.BaseSchema):
