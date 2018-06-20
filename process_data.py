@@ -343,14 +343,13 @@ def fix_durations(session,raw_only=False):
         p['parking_segment_start_utc'] = parking_segment_start_of(p)
         p['segment_number'] = len(ps)-k-1
 
-def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zones,uncharted_e_zones,turbo_mode,raw_only):
+def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zones,uncharted_e_zones,turbo_mode,raw_only,extend=True):
     """Take a dictionary and generate a new dictionary from it that samples
     the appropriate keys and renames and transforms as desired.
     
     In contrast with reframe, which used ps_dict with its uncertain linking between transactions,
     hash_reframe is hashing unique identifiers to take the guesswork out of linking transactions
     into sessions (at the cost of preventing past transactions from being linked)."""
-    t_A = time.time()
     row = {}
     #row['GUID'] = p['@PurchaseGuid'] # To enable this field,
     # get_batch_parking_for_day needs to be tweaked and
@@ -364,10 +363,11 @@ def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_z
     row['TerminalID'] = p['@TerminalID']
     if p['@TerminalGuid'] in t_guids:
         t = terminals[t_guids.index(p['@TerminalGuid'])]
-        row['Latitude'] = value_or_blank('Latitude',t)
-        row['Longitude'] = value_or_blank('Longitude',t)
-        # Maybe these should be value_or_none instead.
-        row['List_of_ad_hoc_groups'] = ad_hoc_groups(t,uncharted_n_zones,uncharted_e_zones)
+        if extend:
+            row['Latitude'] = value_or_blank('Latitude',t)
+            row['Longitude'] = value_or_blank('Longitude',t)
+            # Maybe these should be value_or_none instead.
+            row['List_of_ad_hoc_groups'] = ad_hoc_groups(t,uncharted_n_zones,uncharted_e_zones)
 
     row['Amount'] = float(p['@Amount'])
     if 'Duration' in p:
@@ -376,14 +376,7 @@ def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_z
         row['Duration'] = None
     t = terminals[t_guids.index(p['@TerminalGuid'])]
    
-    t_D = time.time()
-    #print("t_B - t_A = {:1.2e}, t_C-t_B = {:1.2e}, t_D-t_C = {:1.2e}".format(t_B-t_A,t_C-t_B,t_D-t_C))
-
     return row
-     # Return list of OrderedDicts where each OrderedDict
-     # represents a row for a parking zone (or lot) and time slot.
-     # ZONE     START_DATETIME  END_DATETIME  TRANSACTIONS
-     #    CAR-HOURS   MONEY  LOT/VIRTUAL/OTHER INFORMATION
 
 def find_biggest_value(d_of_ds,field='transactions'):
     return sorted(d_of_ds,key=lambda x:d_of_ds[x][field])[-1]
