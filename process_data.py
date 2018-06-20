@@ -1248,8 +1248,10 @@ def main(*args, **kwargs):
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
     server = kwargs.get('server', 'testbed') # 'sandbox'
-    transactions_resource_name = 'Parking Transactions by Payment Time and Zone'
-    offshoot_transactions_resource_name = 'Parking Transactions by Payment Time and Offshoot Zone'
+    transactions_resource_name = 'Parking Transactions Grouped by Payment Time and Zone'
+    offshoot_transactions_resource_name = 'Parking Transactions Grouped by Payment Time and Offshoot Zone'
+    occupancy_resource_name = 'Parking Transactions and Durations Grouped by Parking Time and Zone'
+
     augment = kwargs.get('augment',False)
         # [ ] augment and update_live_map are a little entangled now since update_live_map = True
         # is assuming that augment = True, but there's nothing forcing that parameter to be
