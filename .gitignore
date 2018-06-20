@@ -5,10 +5,6 @@
 *.webloc
 *.docx
 *.swp
-credentials_file.py
-local_parameters.py
-remote_parameters.py
-remote_parameters_*
 json/
 utc_json/
 csv/
@@ -18,16 +14,9 @@ batch-data/
 scratch/
 old/
 old-scripts/
-etl/ckan_settings.json
-etl/transmogrifier_settings.json
-etl/settings.py
 *settings.json
 */*settings.json
 */settings.py
-prime_ckan/initialize_datastore_*
-prime_ckan_*
-prime_ckan/local_config.py
-prime_ckan/transmogrifier_settings.json
 nonchalance.py
 elsewhere.py
 TODO
