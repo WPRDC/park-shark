@@ -1239,6 +1239,17 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
     #            print("Found a zone not listed in zone_info: {}".format(zone))
     return list_of_dicts, augmented
 
+def resource_name(spacetime):
+    if spacetime == 'zone':
+        return 'Parking Transactions Grouped by Payment Time and Zone'
+    elif spacetime in ['zone,month', 'month']:
+        return 'Parking Transactions Grouped by Month, Payment Time, and Zone'
+    elif spacetime == 'meter,month':
+        return 'Parking Transactions Grouped by Month, Payment Time, and Meter'
+    elif spacetime == 'meter':
+        return 'Parking Transactions Grouped by Payment Time and Meter'
+    raise ValueError("No resource name specified for spacetime = {}".format(spacetime))
+
 def main(*args, **kwargs):
     # This function accepts slot_start and halting_time datetimes as
     # arguments to set the time range and push_to_CKAN and output_to_csv
@@ -1248,7 +1259,7 @@ def main(*args, **kwargs):
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
     server = kwargs.get('server', 'testbed') # 'sandbox'
-    transactions_resource_name = 'Parking Transactions Grouped by Payment Time and Zone'
+
     offshoot_transactions_resource_name = 'Parking Transactions Grouped by Payment Time and Offshoot Zone'
     occupancy_resource_name = 'Parking Transactions and Durations Grouped by Parking Time and Zone'
 
@@ -1541,7 +1552,7 @@ def main(*args, **kwargs):
                     if push_to_CKAN:
                         schema = TransactionsSchema
                         primary_keys = ['zone', 'utc_start']
-                        success = send_data_to_pipeline(server, SETTINGS_FILE, transactions_resource_name, schema, list_of_dicts, primary_keys=primary_keys)
+                        success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, list_of_dicts, primary_keys=primary_keys)
                         print("success = {}".format(success))
 
                     if (push_to_CKAN and success) or not push_to_CKAN: 
@@ -1591,7 +1602,7 @@ def main(*args, **kwargs):
                     print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                     schema = TransactionsSchema
                     primary_keys = ['zone', 'utc_start']
-                    success = send_data_to_pipeline(server, SETTINGS_FILE, transactions_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
+                    success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, cumulated_dicts, primary_keys=primary_keys)
                     print("success = {}".format(success))
                     if success:
                         cumulated_dicts = []
@@ -1659,12 +1670,12 @@ def main(*args, **kwargs):
             filtered_list_of_dicts = list_of_dicts
         schema = TransactionsSchema
         primary_keys = ['zone', 'utc_start']
-        success = send_data_to_pipeline(server, SETTINGS_FILE, transactions_resource_name, schema, filtered_list_of_dicts, primary_keys=primary_keys)
+        success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, filtered_list_of_dicts, primary_keys=primary_keys)
 
         if success:
             if spacetime == 'zone':
                 cumulated_dicts = []
-            print("Pushed the last batch of transactions to {}".format(transactions_resource_name))
+            print("Pushed the last batch of transactions to {}".format(resource_name(spacetime)))
 
         if spacetime == 'zone':
             schema = OffshootTransactionsSchema
