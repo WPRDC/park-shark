@@ -463,6 +463,9 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
 
     # THEN it was modified to also allow aggregation by
     # meter ID instead of only by zone.
+
+    # If 'Duration' does not have a non-None value in any of the rps,
+    # distill_stats will not add Durations and car-minutes fields.
     for k,rp in enumerate(rps):
         t_guid = rp['TerminalGUID']
         t_id = rp['TerminalID']
@@ -1120,6 +1123,11 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
 def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,augment):
     # This function works for zones and ad hoc zones. It has now been modified
     # to do basic aggregating by meter, ignoring inferred occupancy and augmentation.
+
+    # In some cases, the output of package_for_output can look very much like list(stats_rows.values())
+    # without the sorting by zone name. One thing that package_for_output adds is ensuring that all
+    # zones in zonelist are represented in augmented output (so zones with zero occupancy still
+    # get rows).
     
 
     # Convert Durations (list of integers) and Payments to their final forms.
