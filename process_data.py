@@ -1559,7 +1559,7 @@ def main(*args, **kwargs):
 
                     if (push_to_CKAN and success) or not push_to_CKAN: 
                         stats_rows = {}
-                    if (push_to_CKAN and success) and output_to_CSV: 
+                    if (push_to_CKAN and not success) and output_to_CSV:
                         raise ValueError("stats_rows was not cleared because of failure to write to CKAN, but this would cause data to be double-written to the CSV file. No code exists to resolve this conflict, so this script is throwing its digital hands up to avoid making a mess.")
 
             elif time_aggregation is None:
