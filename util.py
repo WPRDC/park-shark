@@ -228,13 +228,17 @@ def build_keys(space_aggregation,time_aggregation):
         time_keys = ['start', 'end', 'utc_start']
     elif time_aggregation == 'month':
         time_keys = ['Year', 'Month', 'Hour', 'UTC Hour']
-    base = ['transactions', 'car_minutes', 'payments', 'durations']
+    base = ['transactions', 'payments']
+    linked_keys = ['car_minutes', 'durations'] # These keys are valid when
+    # the transactions have been linked and durations can be correctly
+    # calculated.
     extras = ['Latitude', 'Longitude', 'space_count', 'zone_type', 'inferred_occupancy']
 
     dkeys = space_keys + time_keys + base
     augmented_dkeys = dkeys + extras
     ad_hoc_dkeys = space_keys + ['parent_zone'] + time_keys + base
-    return dkeys, augmented_dkeys, ad_hoc_dkeys
+    occ_dkeys = space_keys + time_keys + base + linked_keys
+    return dkeys, augmented_dkeys, ad_hoc_dkeys, occ_dkeys
 
 
 def unique_values(xs,field):
