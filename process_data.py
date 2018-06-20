@@ -1474,6 +1474,8 @@ def main(*args, **kwargs):
     
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
+    starting_time = copy(slot_start) # The passed parameters slot_start should actually be renamed,
+    # but it appears in like 160 places across many files.
 ###########################################
     stats_rows = {} # This is only needed for the extra time aggregation modes.
 
