@@ -1695,6 +1695,20 @@ def main(*args, **kwargs):
         success_transactions = None # The success Boolean should be defined when push_to_CKAN is false.
 
 
+    ###
+    if len(all_unlinkable) != 0: # This is all that would be in the target time range
+        # NOT considering the warm-up period (which is tracked by warmup_unlinkable_count).
+        print("Unable to compute occupancy for all transactions with complete confidence due to {} unlinkable transactions.".format(len(all_unlinkable)))
+        print("Let's profile the unlinkable transactions by start and end times...")
+        end_times = defaultdict(int)
+        for p in all_unlinkable:
+            rounded_to_slot = round_time(p['payment_time_utc'],timechunk.seconds,"down")
+            end_times[rounded_to_slot] += 1
+
+        for et in sorted(end_times.keys()):
+            print("{}: {}".format(et, end_times[et]))
+
+    print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
     return success_transactions
 
 # Overview:
