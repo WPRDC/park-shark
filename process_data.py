@@ -1214,14 +1214,14 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             # augmented statistics). Probably this was being done to allow centroids to be 
             # calculated, but for now, I am eliminating such additions.
                 base = zone_info[zone]
-                if zone in temp_zone_info.keys():
-                    extra = temp_zone_info[zone]
-                    if 'Latitude' in extra:
-                        d['Latitude'] = extra['Latitude']
-                    else:
-                        print("No latitude found for {}".format(zone))
-                    if 'Longitude' in extra:
-                        d['Longitude'] = extra['Longitude']
+                #if zone in temp_zone_info.keys():
+                #    extra = temp_zone_info[zone]
+                #    if 'Latitude' in extra:
+                #        d['Latitude'] = extra['Latitude']
+                #    else:
+                #        print("No latitude found for {}".format(zone))
+                #    if 'Longitude' in extra:
+                #        d['Longitude'] = extra['Longitude']
                 d['space_count'] = base['spaces']
                 d['zone_type'] = base['type']
                 #augmented.append(d)
