@@ -1202,7 +1202,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             if augment and ('zone' not in d.keys()) and inferred_occupancy is not None:
                 d['zone'] = zone
             if zone in stats_rows.keys():
-                list_of_dicts.append(d)
+                list_of_dicts.append(copy(d))
             # Note that augmented mode has not been generalized to handle different kinds of spatial 
             # aggregation. Thus:
             if augment and space_aggregate_by in ['meter']:
@@ -1245,6 +1245,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             # unless someone (maybe the ParkMobile user entering a code)
             # makes an error.
     #            print("Found a zone not listed in zone_info: {}".format(zone))
+
     return list_of_dicts, augmented
 
 def resource_name(spacetime):
