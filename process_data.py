@@ -1121,7 +1121,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
-def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,augment,transactions_only):
+def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,transactions_only):
     # This function works for zones and ad hoc zones. It has now been modified
     # to do basic aggregating by meter, ignoring inferred occupancy and augmentation.
 
@@ -1134,6 +1134,8 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
     # Convert Durations (list of integers) and Payments to their final forms.
     # (Durations becomes a JSON dict and Payments becomes rounded to the nearest
     # cent.) [moved from bottom of distill_stats]
+    augment = not transactions_only
+
     for aggregation_key in stats_rows.keys():
         if not transactions_only:
             counted = Counter(stats_rows[aggregation_key]['Durations'])
@@ -1176,7 +1178,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             year_month, hour_string = dt_string.split(' ')
             list_of_dicts.append(stats_rows[a_key])
 
-    else: # Implicitly, spacetime == 'zone' here.
+    else: #if space_aggregate_by == 'zone' and time_aggregate_by is None: # The expectation is that spacetime == 'zone' here.
         list_of_dicts = []
         augmented = []
         # Eventually zlist should be formed like mlist is being formed, in case other kinds of 
@@ -1272,7 +1274,6 @@ def main(*args, **kwargs):
     offshoot_transactions_resource_name = 'Parking Transactions Grouped by Payment Time and Offshoot Zone'
     occupancy_resource_name = 'Parking Transactions and Durations Grouped by Parking Time and Zone'
 
-    augment = kwargs.get('augment',False)
         # [ ] augment and update_live_map are a little entangled now since update_live_map = True
         # is assuming that augment = True, but there's nothing forcing that parameter to be
         # set when calling process_data.main(). Thus, some refactoring is in order. These are also
@@ -1302,10 +1303,7 @@ def main(*args, **kwargs):
     # minimum length of the list of dicts that triggers uploading to CKAN.
     update_live_map = kwargs.get('update_live_map',False)
 
-    if augment:
-        zone_info = get_zone_info(server)
-    else:
-        zone_info = None
+    zone_info = get_zone_info(server)
 
     if caching_mode == 'db_caching':
         db_filename = kwargs.get('db_filename','transactions_cache.db') # This can be
@@ -1553,7 +1551,7 @@ def main(*args, **kwargs):
                 if is_very_beginning_of_the_month(slot_start) and len(stats_rows) > 0: # Store the old stats_rows and then reset stats_rows
                     print("Found the very beginning of the month")
                     # Store old stats_rows
-                    list_of_dicts, augmented = package_for_output(stats_rows,zonelist,{},zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment,transactions_only=True)
+                    list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,transactions_only=True)
                     if output_to_csv: 
                         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
@@ -1591,14 +1589,12 @@ def main(*args, **kwargs):
             # because of the ad hoc weirdness, which I am leaving out of meter-month aggregation, so for 
             # now, this clause is being governed by the value of spacetime.
 
-                list_of_dicts, augmented = package_for_output(stats_rows,zonelist,{},zone_info,pgh,slot_start,slot_end,'zone',None,augment,transactions_only=True)
+                list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,'zone',None,transactions_only=True)
 
                 if output_to_csv and len(list_of_dicts) > 0: # Write to files as
                 # often as necessary, since the associated delay is not as great as
                 # for pushing data to CKAN.
                     write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
-                if output_to_csv and not turbo_mode and augment:
-                    write_or_append_to_csv('augmented-transactions-1.csv',augmented,augmented_dkeys,overwrite)
 
                 cumulated_dicts += list_of_dicts
                 if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
@@ -1610,7 +1606,7 @@ def main(*args, **kwargs):
                     if success:
                         cumulated_dicts = []
 
-                ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',None,augment and False,transactions_only=True)
+                ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',None,transactions_only=True)
                 # Sending the augment parameter here as "augment and False" to prevent 
                 # package_for_output from even trying to generate augmented output.
 
@@ -1652,7 +1648,7 @@ def main(*args, **kwargs):
     print("spacetime = {}".format(spacetime))
     if spacetime == 'meter,month' and output_to_csv:
         print("len(stats_rows) = {}".format(len(stats_rows)))
-        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,{},zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment,transactions_only=True)
+        list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,transactions_only=True)
         print("len(list_of_dicts) = {}".format(len(list_of_dicts)))
         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
