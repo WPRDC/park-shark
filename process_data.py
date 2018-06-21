@@ -1557,6 +1557,22 @@ def main(*args, **kwargs):
             #            print("Found group {}".format(code_group))
             #            virtual_zone_checked.append(code)
 
+
+            ### BEGIN AGGREGATION/STATS-COMPILATION/OUTPUT-PREPARATION. Inputs: slot_start, slot_end,
+            ### reframed_ps, stats_rows, cumulated_dicts
+            ### zone_info, zonelist, terminals, t_ids, t_guids, group_lookup_addendum, zone_kind, pgh
+            ### dkeys  # These could conceivably be replaced in the write_to_csv function
+                       # by something that extracts the keys from the schema.
+            ### server
+            ### spacetime, space_aggregation, time_aggregation, turbo_mode, output_to_csv, push_to_CKAN, overwrite
+
+            ### It would be nice to be able to package this code up and call it twice: Once for binned transactions 
+            ### by payment time and once for binned transactions with durations and inferrable occupancy, by true parking times.
+
+            ### Currently (instead) there is no abstraction to bin objects and the transactions-loop code is a more 
+            ### complicated version of the occupancy-loop code (chiefly due to the different kinds of aggregations
+            ### and support for offshoot zones. The transactions-loop is simpler now that the occupancy and 
+            ### augmented stuff has been pulled out of it.
             if time_aggregation == 'month': 
                 if is_very_beginning_of_the_month(slot_start) and len(stats_rows) > 0: # Store the old stats_rows and then reset stats_rows
                     print("Found the very beginning of the month")
