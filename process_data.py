@@ -1527,17 +1527,24 @@ def main(*args, **kwargs):
             for p in linkable:
                 session = session_dict[p['hash']] + previous_session_dict[p['hash']]
                 fix_one_duration(p,session)
-            for p in unlinkable:
-                add_duration(p)
+            #for p in unlinkable: # Actually, I think that durations should not be added to
+            #    add_duration(p)  # unlinkable (hash-free) transactions, since the value
+                                  # is deceptive.
 
             print("{} | {} purchases, len(linkable) = {}, len(unlinkable) = {}".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), 
                 len(purchases),len(linkable), len(unlinkable)))
 
             for p in linkable + unlinkable:
                 if 'Duration' not in p or p['Duration'] is None:
-                    pprint(session_dict[p['hash']])
-                    raise ValueError("Error!")
-
+                    if 'hash' in p and p['hash'] in session_dict.keys():
+                        pprint(session_dict[p['hash']])
+                    else:
+                        print("No hash found for the transaction ")
+                        pprint(p)
+                    #raise ValueError("Error!")
+                    # Policy change: It's not necessary to assign a Duration to a transaction (since we're breaking the old inaccuate approach
+                    # to calculating durations. The Duration field is only a non-None value now when the duration of the transaction can
+                    # be determined (e.g., by linking transactions and untangling true segments and durations that the parker paid for).
                 reframed_ps.append(hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=True))
 
             # Temporary for loop to check for unconsidered virtual zone codes.
