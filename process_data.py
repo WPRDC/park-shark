@@ -1683,14 +1683,16 @@ def main(*args, **kwargs):
             if success_a:
                 cumulated_ad_hoc_dicts = []
                 print("Pushed the last batch of offshoot-zone transactions to {}".format(offshoot_transactions_resource_name))
-            return success and success_a # This will be true if the last two pushes of data to CKAN are true (and even if all previous pushes
-        # failed, the data should be sitting around in cumulated lists, and these last two success Booleans will tell you whether
-        # the whole process succeeded).
+            success_transactions = success and success_a # This will be true if the last two pushes of data to CKAN are true 
+            # (and even if all previous pushes failed, the data should be sitting around in cumulated lists, and these last 
+            # two success Booleans will tell you whether the whole process succeeded).
         else:
-            return success
+            success_transactions = success
+    else:
+        success_transactions = None # The success Boolean should be defined when push_to_CKAN is false.
 
 
-    return None # The success Boolean should be defined when push_to_CKAN is false.
+    return success_transactions
 
 # Overview:
 # main() calls get_parking_events to get all transactions between two times.
