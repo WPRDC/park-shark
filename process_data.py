@@ -1456,6 +1456,7 @@ def main(*args, **kwargs):
     # the relevant output slots.
     seeding_mode = True
     linkable = [] # Purchases that can be sorted into hash-based sessions.
+    all_unlinkable = [] # For now, we're excluding the warm_up period transactions.
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
@@ -1474,6 +1475,7 @@ def main(*args, **kwargs):
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
+    warmup_unlinkable_count = len(purchases) - len(linkable)
     dkeys, ad_hoc_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation)
     
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
@@ -1520,6 +1522,7 @@ def main(*args, **kwargs):
                 else:
                     unlinkable.append(p)
 
+            all_unlinkable += unlinkable
             # Iterate through the new purchases and add the corrected durations where possible.
             for p in linkable:
                 session = session_dict[p['hash']] + previous_session_dict[p['hash']]
