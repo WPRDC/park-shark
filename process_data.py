@@ -1474,7 +1474,7 @@ def main(*args, **kwargs):
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
-    dkeys, augmented_dkeys, ad_hoc_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation)
+    dkeys, ad_hoc_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation)
     
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 

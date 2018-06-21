@@ -232,13 +232,12 @@ def build_keys(space_aggregation,time_aggregation):
     linked_keys = ['car_minutes', 'durations'] # These keys are valid when
     # the transactions have been linked and durations can be correctly
     # calculated.
-    extras = ['Latitude', 'Longitude', 'space_count', 'zone_type', 'inferred_occupancy']
+    extras = ['space_count', 'zone_type', 'inferred_occupancy']
 
     dkeys = space_keys + time_keys + base
-    augmented_dkeys = dkeys + extras
     ad_hoc_dkeys = space_keys + ['parent_zone'] + time_keys + base
-    occ_dkeys = space_keys + time_keys + base + linked_keys
-    return dkeys, augmented_dkeys, ad_hoc_dkeys, occ_dkeys
+    occ_dkeys = space_keys + time_keys + base + linked_keys + extras
+    return dkeys, ad_hoc_dkeys, occ_dkeys
 
 
 def unique_values(xs,field):
