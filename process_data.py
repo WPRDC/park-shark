@@ -1209,8 +1209,6 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
                 raise ValueError("Augmented mode has not been generalized to work with aggregating by {}".format(space_aggregate_by))
             if augment and inferred_occupancy is not None:
                 d['inferred_occupancy'] = inferred_occupancy[slot_start][zone]
-        #            if d['inferred_occupancy'] > 0:
-        #                print "Inferred occupancy:", slot_start,zone,d['inferred_occupancy']
             if augment and zone in zone_info.keys(): # This was originally just "if zone in temp_zone_info",
             # so I was deliberately adding these parameters to all rows (even when not computing 
             # augmented statistics). Probably this was being done to allow centroids to be 
@@ -1226,7 +1224,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
                 #        d['Longitude'] = extra['Longitude']
                 d['space_count'] = base['spaces']
                 d['zone_type'] = base['type']
-                #augmented.append(d)
+
             if augment and zone in zonelist: # By adding zone in zonelist, I'm boxing out the
             # "zone in stats_rows.keys()" condition below, that was letting in things like
             # zone = CMU Study.
