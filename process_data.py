@@ -1277,11 +1277,10 @@ def main(*args, **kwargs):
         # [ ] augment and update_live_map are a little entangled now since update_live_map = True
         # is assuming that augment = True, but there's nothing forcing that parameter to be
         # set when calling process_data.main(). Thus, some refactoring is in order. These are also
-        # entangled with raw_only. 
+        # entangled with raw_only.
         # raw_only means no calculated parameters should be output.
         # augment means that, in addition to calculated parameters, a separate augmented file
-        # with estimated occupancies and the kitchen sink (currently zone centroids, though 
-        # that's really not strictly needed) is output. 
+        # with estimated occupancies and the kitchen sink is output.
         # augmented mode is very compatible with updating the live map since both involve tracking
         # inferred occupancies.
 
@@ -1577,15 +1576,18 @@ def main(*args, **kwargs):
             t2 = time.time()
 
             # Condense to key statistics (including duration counts).
-            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, [], tz=pgh)
+            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, [], tz=pgh, transactions_only=True)
             # stats_rows is actually a dictionary, keyed by zone.
             if time_aggregation is None and space_aggregation == 'zone':  
-                ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', time_aggregation, parent_zones, tz=pgh)
+                ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', time_aggregation, parent_zones, tz=pgh, transactions_only=True)
 
             t3 = time.time()
             if time_aggregation is None and space_aggregation == 'zone':  
                 if not turbo_mode and augment:
                     inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
+                    # Since update_occupancies is not being fed the seeded purchases, I'm not sure that
+                    # these results are correct (unless you start the calculation in the middle of the night).
+
                 # We may eventually need to compute ad_hoc_inferred_occupancy.
             t4 = time.time()
 
@@ -1740,8 +1742,7 @@ def main(*args, **kwargs):
 # optionally coarse-grained aggregation (by month), spatial aggregations
 # (by meter or by zone or by ad hoc zone). Also naive transactions (Parking Transactions
 # (binned) by Transaction Time), regular (Parking Transactions (binned) by
-# Parking Times), and augmented (to include inferred occupancy and maybe
-# zone coordinates for mapping).
+# Parking Times), and augmented (to include inferred occupancy and other parameters).
 
 if __name__ == '__main__':
     main()
