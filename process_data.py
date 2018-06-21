@@ -1404,7 +1404,6 @@ def main(*args, **kwargs):
     # Therefore, (until the real reason is uncovered), slot_start and halting_time
     # will only be converted to UTC when using database caching.
 
-    inferred_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
     ad_hoc_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=use_cache,return_extra_zones=True)
     print("ad hoc zones = {}".format(ad_hoc_zones))
 
@@ -1555,7 +1554,7 @@ def main(*args, **kwargs):
                 if is_very_beginning_of_the_month(slot_start) and len(stats_rows) > 0: # Store the old stats_rows and then reset stats_rows
                     print("Found the very beginning of the month")
                     # Store old stats_rows
-                    list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment,transactions_only=True)
+                    list_of_dicts, augmented = package_for_output(stats_rows,zonelist,{},zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment,transactions_only=True)
                     if output_to_csv: 
                         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
@@ -1582,14 +1581,6 @@ def main(*args, **kwargs):
                 ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', time_aggregation, parent_zones, tz=pgh, transactions_only=True)
 
             t3 = time.time()
-            if time_aggregation is None and space_aggregation == 'zone':  
-                if not turbo_mode and augment:
-                    inferred_occupancy = update_occupancies(inferred_occupancy,stats_rows,slot_start,timechunk)
-                    # Since update_occupancies is not being fed the seeded purchases, I'm not sure that
-                    # these results are correct (unless you start the calculation in the middle of the night).
-
-                # We may eventually need to compute ad_hoc_inferred_occupancy.
-            t4 = time.time()
 
             if spacetime == 'zone': # The original idea for these clauses was to make them all
             # like 
@@ -1601,7 +1592,7 @@ def main(*args, **kwargs):
             # because of the ad hoc weirdness, which I am leaving out of meter-month aggregation, so for 
             # now, this clause is being governed by the value of spacetime.
 
-                list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,zone_info,pgh,slot_start,slot_end,'zone',None,augment,transactions_only=True)
+                list_of_dicts, augmented = package_for_output(stats_rows,zonelist,{},zone_info,pgh,slot_start,slot_end,'zone',None,augment,transactions_only=True)
 
                 if output_to_csv and len(list_of_dicts) > 0: # Write to files as
                 # often as necessary, since the associated delay is not as great as
@@ -1641,16 +1632,6 @@ def main(*args, **kwargs):
                     if success_a:
                         cumulated_ad_hoc_dicts = []
 
-                if update_live_map: # Optionally update the live map if the timing of the
-                    # current slot is correct.
-                    if slot_start <= datetime.now(pytz.utc) < slot_start+timechunk:
-                        update_map(dict(inferred_occupancy[slot_start]),zonelist,zone_info)
-
-            if spacetime != 'meter,month':
-                if slot_start in inferred_occupancy:
-                    del inferred_occupancy[slot_start] # Delete past inferred_occupancy dictionaries
-                    # to keep the data structure from growing without bound.
-
         slot_start += timechunk
         slot_end = slot_start + timechunk
         t8 = time.time()
@@ -1672,7 +1653,7 @@ def main(*args, **kwargs):
     print("spacetime = {}".format(spacetime))
     if spacetime == 'meter,month' and output_to_csv:
         print("len(stats_rows) = {}".format(len(stats_rows)))
-        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,inferred_occupancy,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment,transactions_only=True)
+        list_of_dicts, augmented = package_for_output(stats_rows,zonelist,{},zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,augment,transactions_only=True)
         print("len(list_of_dicts) = {}".format(len(list_of_dicts)))
         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
