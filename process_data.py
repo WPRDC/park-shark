@@ -1487,9 +1487,6 @@ def main(*args, **kwargs):
 
     print("time_aggregation = {}, space_aggregation = {}, spacetime = {}".format(time_aggregation, space_aggregation, spacetime))
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
-
-        t0 = time.time()
-
         # Get all parking events that start between slot_start and slot_end
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
@@ -1595,15 +1592,11 @@ def main(*args, **kwargs):
             elif time_aggregation is None:
                 stats_rows = {}
                         
-            t2 = time.time()
-
             # Condense to key statistics (including duration counts).
             stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, [], tz=pgh, transactions_only=True)
             # stats_rows is actually a dictionary, keyed by zone.
             if time_aggregation is None and space_aggregation == 'zone':  
                 ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', time_aggregation, parent_zones, tz=pgh, transactions_only=True)
-
-            t3 = time.time()
 
             if spacetime == 'zone': # The original idea for these clauses was to make them all
             # like 
@@ -1655,12 +1648,6 @@ def main(*args, **kwargs):
 
         slot_start += timechunk
         slot_end = slot_start + timechunk
-        t8 = time.time()
-        #if not skip_processing:
-        #    if len(reframed_ps) > 0:
-        #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.  (t8-t0)/len(rps) = {:1.1e} s".format(t8-t0, t1-t0, t2-t1, t3-t2, (t8-t0)/len(reframed_ps)))
-        #    else:
-        #        print("t8-t0 = {:1.1e} s. t1-t0 = {:1.1e} s. t2-t1 = {:1.1e} s. t3-t2 = {:1.1e} s.".format(t8-t0, t1-t0, t2-t1, t3-t2))
     if spacetime == 'zone':
         print("After the main processing loop, len(session_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(session_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
   
