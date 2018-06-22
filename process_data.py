@@ -1709,6 +1709,26 @@ def main(*args, **kwargs):
 
     try_to_infer_occupancies = (starting_time > (pytz.utc).localize(datetime(2018,6,19,9,0,0))) or len(all_unlinkable) == 0
     print("try_to_infer_occupancies = {}".format(try_to_infer_occupancies))
+    if try_to_infer_occupancies: # If it's really possible to infer occupancies...
+        # Now that all of the transactions have been given standard parking-segment start times and durations,
+        # use the corrected transactions, but with the new time field to figure out how many cars
+        # are parked in each zone in each slot.
+        ps_by_slot = defaultdict(list)
+        calculated_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
+        for session in session_dict.values():
+            # Iterate over every transaction, stick each in the appropriate time bin, and build up all the statistics and then output all at once.
+            for p in session:
+                # Round chosen time field to the beginning of one of the slots.
+                if 'parking_segment_start_utc' in p:
+                    rounded_to_slot = round_time(p['parking_segment_start_utc'],timechunk.seconds,"down")
+                    ps_by_slot[rounded_to_slot].append(p)
+                    #if starting_time <= rounded_to_slot <= halting_time: # To ensure that all relevant transactions
+                    #    # have been pre-seeded before pushing a new occupancy row to CKAN. # This doesn't make any sense.
+                    #    ps_by_slot[rounded_to_slot].append(p)
+
+                    print("{}Starting {}: {} minutes in {}".format(' '*2*p['segment_number'],p['parking_segment_start_utc'],p['Duration'],p['@TerminalID']))
+                else:
+                    print("No parking_segment_start_utc found for this transaction.")
 
     print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
     return success_transactions
