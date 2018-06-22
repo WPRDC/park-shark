@@ -218,7 +218,7 @@ def build_keys(space_aggregation,time_aggregation):
     # these field names.
 
 
-    # I just added 'utc_start' to ad_hoc_dkeys on April 25, 2017.
+    # I just added 'utc_start' to sampling_dkeys on April 25, 2017.
     if space_aggregation == 'zone':
         space_keys = ['zone']
     elif space_aggregation == 'meter':
@@ -235,9 +235,9 @@ def build_keys(space_aggregation,time_aggregation):
     extras = ['space_count', 'zone_type', 'inferred_occupancy']
 
     dkeys = space_keys + time_keys + base
-    ad_hoc_dkeys = space_keys + ['parent_zone'] + time_keys + base
+    sampling_dkeys = space_keys + ['parent_zone'] + time_keys + base
     occ_dkeys = space_keys + time_keys + base + linked_keys + extras
-    return dkeys, ad_hoc_dkeys, occ_dkeys
+    return dkeys, sampling_dkeys, occ_dkeys
 
 
 def unique_values(xs,field):
@@ -338,10 +338,10 @@ def numbered_reporting_groups(t):
             return reporting_group_names
     return []
 
-def ad_hoc_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
-    non_ad_hoc_zones = lot_list + pure_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
+def sampling_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
+    non_sampling_zones = lot_list + pure_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
     all_group_names = all_groups(t)
-    sgs = [name for name in all_group_names if name not in non_ad_hoc_zones]
+    sgs = [name for name in all_group_names if name not in non_sampling_zones]
     return sgs
 
 def group_by_code(code,t=None,group_lookup_addendum={}):

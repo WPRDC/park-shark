@@ -4,7 +4,7 @@ from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
-pure_zones_list, numbered_reporting_zones_list, ad_hoc_groups, \
+pure_zones_list, numbered_reporting_zones_list, sampling_groups, \
 add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
 build_keys
 from fetch_terminals import pull_terminals
@@ -367,7 +367,7 @@ def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_z
             row['Latitude'] = value_or_blank('Latitude',t)
             row['Longitude'] = value_or_blank('Longitude',t)
             # Maybe these should be value_or_none instead.
-            row['List_of_ad_hoc_groups'] = ad_hoc_groups(t,uncharted_n_zones,uncharted_e_zones)
+            row['List_of_sampling_groups'] = sampling_groups(t,uncharted_n_zones,uncharted_e_zones)
 
     row['Amount'] = float(p['@Amount'])
     if not transactions_only:
@@ -445,7 +445,7 @@ def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_
         # Durations list should equal the value in the car_minutes field. This field has been
         # changed to a list data structure until package_for_output, at which point it is
         # reformatted into a dictionary.
-    if space_aggregate_by == 'ad hoc zone':
+    if space_aggregate_by == 'sampling zone':
         stats['parent_zone'] = None
     if time_aggregate_by == 'month':
         stats['Year'] = start_time.astimezone(tz).strftime("%Y")
@@ -458,9 +458,9 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
     # Originally this function just aggregated information
     # between start_time and end_time to the zone level.
 
-    # Then it was modified to support ad hoc zones,
+    # Then it was modified to support sampling zones,
     # allowing the function to be called separately just to
-    # get ad-hoc-zone-level aggregation.
+    # get sampling-zone-level aggregation.
 
     # THEN it was modified to also allow aggregation by
     # meter ID instead of only by zone.
@@ -490,10 +490,10 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
 
             if zone is not None:
                 space_aggregation_keys = [zone]
-        elif space_aggregate_by == 'ad hoc zone':
-            if 'List_of_ad_hoc_groups' in rp and rp['List_of_ad_hoc_groups'] != []:
-                space_aggregation_keys = rp['List_of_ad_hoc_groups']
-# The problem with this is that a given purchase is associated with a terminal which may have MULTIPLE ad hoc zones. Therefore, each ad hoc zone must have its own parent zone(s).
+        elif space_aggregate_by == 'sampling zone':
+            if 'List_of_sampling_groups' in rp and rp['List_of_sampling_groups'] != []:
+                space_aggregation_keys = rp['List_of_sampling_groups']
+# The problem with this is that a given purchase is associated with a terminal which may have MULTIPLE sampling zones. Therefore, each sampling zone must have its own parent zone(s).
         elif space_aggregate_by == 'meter':
             space_aggregation_keys = [t_id] # Should this be GUID or just ID? ... Let's
                 # make it GUID (as it will not change), but store meter ID as
@@ -529,19 +529,19 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                     zone = a_key.split('|')[0]
                     stats_by[a_key]['zone'] = zone
 
-                    if space_aggregate_by == 'ad hoc zone':
+                    if space_aggregate_by == 'sampling zone':
                         if 'parent_zone' in stats_by[a_key]:
                             #for zone in space_aggregation_keys:
                             # There are now cases where getting the zone from space_aggregation_keys
-                            # for space_aggregate_by == 'ad hoc zone' results in multiple zones
-                            # since the value comes from rp['List_of_ad_hoc_groups']. Basically, 
+                            # for space_aggregate_by == 'sampling zone' results in multiple zones
+                            # since the value comes from rp['List_of_sampling_groups']. Basically, 
                             # a terminal group can be assigned to an arbitary number of Terminal
-                            # Groups, and we are getting the ones that are not ad hoc zones,
+                            # Groups, and we are getting the ones that are not sampling zones,
                             # so one terminal can be both in 'CMU Study' and 'Marathon/CMU', for
                             # instance. 
                             #
                             # It seems like the correct thing to do in this case is add the 
-                            # transactions to both ad hoc zones.
+                            # transactions to both sampling zones.
                             # This should actually happen naturally if the space part of the 
                             # aggregation key could be pulled off and used as the zone in 
                             # each case, which is what I've done. 
@@ -1122,7 +1122,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,transactions_only):
-    # This function works for zones and ad hoc zones. It has now been modified
+    # This function works for zones and sampling zones. It has now been modified
     # to do basic aggregating by meter, ignoring inferred occupancy and augmentation.
 
     # In some cases, the output of package_for_output can look very much like list(stats_rows.values())
@@ -1325,9 +1325,9 @@ def main(*args, **kwargs):
   #  timechunk = timedelta(seconds=1)
     #######
     # space_aggregate_by is a parameter used to tell distill_stats how to spatially aggregate
-    # data (by zone, ad hoc zone, or meter GUID). We need a different parameter to choose
+    # data (by zone, sampling zone, or meter GUID). We need a different parameter to choose
     # among spatiotemporal aggregations, including: 
-    # 1) default: by 10-minute interval and zone/ad hoc zone (TIMECHUNK = 10 minutes)
+    # 1) default: by 10-minute interval and zone/sampling zone (TIMECHUNK = 10 minutes)
     # 2) alternative: by 1-hour intervals and meter, but also summed over every day in a
     # month (the timechunk will be separately controlled by the 'timechunk' parameter).
 
@@ -1401,8 +1401,8 @@ def main(*args, **kwargs):
     # Therefore, (until the real reason is uncovered), slot_start and halting_time
     # will only be converted to UTC when using database caching.
 
-    ad_hoc_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=use_cache,return_extra_zones=True)
-    print("ad hoc zones = {}".format(ad_hoc_zones))
+    sampling_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=use_cache,return_extra_zones=True)
+    print("sampling zones = {}".format(sampling_zones))
 
     print("parent_zones = ...")
     pprint(parent_zones)
@@ -1420,7 +1420,7 @@ def main(*args, **kwargs):
     # global (manual) search and replace can be used.
 
     cumulated_dicts = []
-    cumulated_ad_hoc_dicts = []
+    cumulated_sampling_dicts = []
     session_dict = defaultdict(list) # hash-based sessions
     previous_session_dict = defaultdict(list)
 
@@ -1476,7 +1476,7 @@ def main(*args, **kwargs):
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
     warmup_unlinkable_count = len(purchases) - len(linkable)
-    dkeys, ad_hoc_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation)
+    dkeys, sampling_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation)
     
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
@@ -1596,7 +1596,7 @@ def main(*args, **kwargs):
             stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, [], tz=pgh, transactions_only=True)
             # stats_rows is actually a dictionary, keyed by zone.
             if time_aggregation is None and space_aggregation == 'zone':  
-                ad_hoc_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'ad hoc zone', time_aggregation, parent_zones, tz=pgh, transactions_only=True)
+                sampling_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'sampling zone', time_aggregation, parent_zones, tz=pgh, transactions_only=True)
 
             if spacetime == 'zone': # The original idea for these clauses was to make them all
             # like 
@@ -1604,8 +1604,8 @@ def main(*args, **kwargs):
             # or
             #       if time_aggregation is None
             # but there's a parameter in package_for_output which is sometimes 'meter' and sometimes 'zone'
-            # suggesting that it should be replaced with space_aggregation, but sometimes it's 'ad_hoc_zone'
-            # because of the ad hoc weirdness, which I am leaving out of meter-month aggregation, so for 
+            # suggesting that it should be replaced with space_aggregation, but sometimes it's 'sampling_zone'
+            # because of the sampling weirdness, which I am leaving out of meter-month aggregation, so for
             # now, this clause is being governed by the value of spacetime.
 
                 list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,'zone',None,transactions_only=True)
@@ -1625,31 +1625,30 @@ def main(*args, **kwargs):
                     if success:
                         cumulated_dicts = []
 
-                ad_hoc_list_of_dicts, _ = package_for_output(ad_hoc_stats_rows,ad_hoc_zones,None,{},pgh,slot_start,slot_end,'ad hoc zone',None,transactions_only=True)
+                sampling_list_of_dicts, _ = package_for_output(sampling_stats_rows,sampling_zones,None,{},pgh,slot_start,slot_end,'sampling zone',None,transactions_only=True)
                 # Sending the augment parameter here as "augment and False" to prevent 
                 # package_for_output from even trying to generate augmented output.
 
-                # Between the passed use_ad_hoc_zones boolean and other parameters, more
+                # Between the passed use_sampling_zones boolean and other parameters, more
                 # information is being passed than necessary to distinguish between
-                # ad hoc zones and regular zones.
+                # sampling zones and regular zones.
 
-                if output_to_csv and len(ad_hoc_list_of_dicts) > 0:
-                    write_or_append_to_csv('ad-hoc-transactions-1.csv',ad_hoc_list_of_dicts,ad_hoc_dkeys,overwrite)
-                    #print("Wrote some ad hoc data to a CSV file")
+                if output_to_csv and len(sampling_list_of_dicts) > 0:
+                    write_or_append_to_csv('sampling-transactions-1.csv',sampling_list_of_dicts,sampling_dkeys,overwrite)
 
-                cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
-                if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
+                cumulated_sampling_dicts += sampling_list_of_dicts
+                if push_to_CKAN and len(cumulated_sampling_dicts) >= threshold_for_uploading:
                     schema = SamplingTransactionsSchema
                     primary_keys = ['zone', 'utc_start']
-                    success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_ad_hoc_dicts,  primary_keys=primary_keys)
+                    success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_sampling_dicts,  primary_keys=primary_keys)
 
                     if success_a:
-                        cumulated_ad_hoc_dicts = []
+                        cumulated_sampling_dicts = []
 
         slot_start += timechunk
         slot_end = slot_start + timechunk
     if spacetime == 'zone':
-        print("After the main processing loop, len(session_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_ad_hoc_dicts) = {}".format(len(session_dict), len(cumulated_dicts), len(cumulated_ad_hoc_dicts)))
+        print("After the main processing loop, len(session_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_sampling_dicts) = {}".format(len(session_dict), len(cumulated_dicts), len(cumulated_sampling_dicts)))
   
     if caching_mode == 'db_caching':
         cached_dates,_ = get_tables_from_db(db)
@@ -1682,9 +1681,9 @@ def main(*args, **kwargs):
         if spacetime == 'zone':
             schema = SamplingTransactionsSchema
             primary_keys = ['zone', 'utc_start']
-            success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
+            success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_sampling_dicts, primary_keys=primary_keys)
             if success_a:
-                cumulated_ad_hoc_dicts = []
+                cumulated_sampling_dicts = []
                 print("Pushed the last batch of sampling-zone transactions to {}".format(sampling_transactions_resource_name))
             success_transactions = success and success_a # This will be true if the last two pushes of data to CKAN are true 
             # (and even if all previous pushes failed, the data should be sitting around in cumulated lists, and these last 
@@ -1745,7 +1744,7 @@ def main(*args, **kwargs):
 
 # Output/processing modes supported: fine-grained (10-minute or 1-hour) aggregation,
 # optionally coarse-grained aggregation (by month), spatial aggregations
-# (by meter or by zone or by ad hoc zone). Also naive transactions (Parking Transactions
+# (by meter or by zone or by sampling zone). Also naive transactions (Parking Transactions
 # (binned) by Transaction Time), regular (Parking Transactions (binned) by
 # Parking Times), and augmented (to include inferred occupancy and other parameters).
 

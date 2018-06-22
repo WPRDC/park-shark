@@ -94,7 +94,7 @@ server = "official-version"
 #pull_terminals(*args, **kwargs):
     # This function accepts keyword arguments use_cache (to
     # set whether cached data is used, for offline testing),
-    # return_extra_zones (to set whether the ad hoc and parent
+    # return_extra_zones (to set whether the sampling and parent
     # zones are returned rather than the table of terminals),
     # and push_to_CKAN and output_to_csv (to control those output
     # channels).

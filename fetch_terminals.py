@@ -54,7 +54,7 @@ def csv_file_path():
 def pull_terminals(*args, **kwargs):
     # This function accepts keyword arguments use_cache (to
     # set whether cached data is used, for offline testing),
-    # return_extra_zones (to set whether the ad hoc and parent
+    # return_extra_zones (to set whether the sampling and parent
     # zones are returned rather than the table of terminals),
     # and push_to_CKAN and output_to_csv (to control those output
     # channels).
@@ -261,24 +261,24 @@ def pull_terminals(*args, **kwargs):
     excluded_zones = ['TEST - South Craig - Reporting']
     excluded_zones = []
     print("Here is the list of all groups not already in lot_list or pure_zones_list or numbered_reporting_zones_list or exclude_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
-    maybe_ad_hoc_zones = set_of_all_groups - set(lot_list) - set(pure_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
-    ad_hoc_zones = censor(maybe_ad_hoc_zones)
-    pprint(ad_hoc_zones)
+    maybe_sampling_zones = set_of_all_groups - set(lot_list) - set(pure_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
+    sampling_zones = censor(maybe_sampling_zones)
+    pprint(sampling_zones)
 
     parent_zones = {}
-    for ahz in ad_hoc_zones:
-        if ahz not in parent_zones:
-            parent_zones[ahz] = []
+    for sz in sampling_zones:
+        if sz not in parent_zones:
+            parent_zones[sz] = []
         for t in terminals:
-            if ahz in all_groups(t):
+            if sz in all_groups(t):
                 parent, _, _ = numbered_zone(t['@Id']) # Now that group_lookup_addendum has been determined, should it be used here? It seems like it should.
-                if parent not in parent_zones[ahz]:
-                    parent_zones[ahz].append(parent)
+                if parent not in parent_zones[sz]:
+                    parent_zones[sz].append(parent)
 
     pprint(parent_zones)
 
     if return_extra_zones:
-        return list(ad_hoc_zones), parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum
+        return list(sampling_zones), parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum
     else:
         return list_of_dicts, dkeys # The data that was previously written to the payment_points.csv file.
 ############
