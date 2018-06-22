@@ -1707,6 +1707,9 @@ def main(*args, **kwargs):
         for et in sorted(end_times.keys()):
             print("{}: {}".format(et, end_times[et]))
 
+    try_to_infer_occupancies = (starting_time > (pytz.utc).localize(datetime(2018,6,19,9,0,0))) or len(all_unlinkable) == 0
+    print("try_to_infer_occupancies = {}".format(try_to_infer_occupancies))
+
     print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
     return success_transactions
 
