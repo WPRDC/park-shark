@@ -1730,6 +1730,20 @@ def main(*args, **kwargs):
                 else:
                     print("No parking_segment_start_utc found for this transaction.")
 
+        #for slot in sorted(ps_by_slot.keys()): # Iterating through this way only gives increases
+        # in occupancy and won't produce a new row for cases where parking sessions are only ending.
+        slot = copy(starting_time)
+        while slot <= datetime.now(pytz.utc) and slot < halting_time:
+            if slot in ps_by_slot:
+                ps = ps_by_slot[slot]
+            else:
+                ps = []
+            # Condense to key statistics (including duration counts).
+            reframed_ps = [hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=False,extend=False) for p in ps]
+            stats_by_zone = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot,slot+timechunk, {}, zone_kind, space_aggregation, time_aggregation, [], tz=pgh, transactions_only=False)
+            calculated_occupancy = update_occupancies(calculated_occupancy,stats_by_zone,slot,timechunk)
+            slot += timechunk
+
     print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
     return success_transactions
 
