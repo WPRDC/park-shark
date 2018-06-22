@@ -1138,8 +1138,12 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
 
     for aggregation_key in stats_rows.keys():
         if not transactions_only:
-            counted = Counter(stats_rows[aggregation_key]['Durations'])
+            counted = Counter(stats_rows[aggregation_key]['Durations']) # For a durations of [60], counted looks like this Counter({60: 1})
             stats_rows[aggregation_key]['durations'] = json.dumps(counted, sort_keys=True)
+            # However, json.dumps converts the integer keys to strings. JavaScript and JSON do not support integer strings.
+            # Thus, at present, our published JSON durations fields look like '{"60": 1}', necessitating a
+            # conversion of the keys back to integers. Also, sorting the keys sorts them alphabetically,
+            # not numerically.
         stats_rows[aggregation_key]['payments'] = float(round_to_cent(stats_rows[aggregation_key]['Payments']))
     #####
 
