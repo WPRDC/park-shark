@@ -1730,6 +1730,10 @@ def main(*args, **kwargs):
                 else:
                     print("No parking_segment_start_utc found for this transaction.")
 
+        fmt = "{:<16}   {:>18}: {:>4} {:>18}: {:>4} {:>18}: {:>4}"
+        zs = ['401 - Downtown 1', '407 - Oakland 1', '425 - Bakery Sq']
+        zs = ['404 - Strip Disctrict', '410 - Oakland 4', '425 - Bakery Sq']
+
         #for slot in sorted(ps_by_slot.keys()): # Iterating through this way only gives increases
         # in occupancy and won't produce a new row for cases where parking sessions are only ending.
         slot = copy(starting_time)
@@ -1742,6 +1746,15 @@ def main(*args, **kwargs):
             reframed_ps = [hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=False,extend=False) for p in ps]
             stats_by_zone = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot,slot+timechunk, {}, zone_kind, space_aggregation, time_aggregation, [], tz=pgh, transactions_only=False)
             calculated_occupancy = update_occupancies(calculated_occupancy,stats_by_zone,slot,timechunk)
+            if starting_time <= slot <= halting_time: # Only print/push to these.
+                # package_for_output barely seems necessary here.
+                list_of_dicts, augmented = package_for_output(stats_by_zone,zonelist,calculated_occupancy,zone_info,pgh,slot,slot+timechunk,'zone',None,transactions_only=False)
+                occ = calculated_occupancy[slot]
+                print(fmt.format(datetime.strftime(slot,"%Y-%m-%d %H:%M"), zs[0], occ[zs[0]], zs[1], occ[zs[1]], zs[2], occ[zs[2]]))
+            if output_to_csv and len(augmented) > 0: # Write to files as
+            # often as necessary, since the associated delay is not as great as
+            # for pushing data to CKAN.
+                write_or_append_to_csv('occupancy-1.csv',augmented,occ_dkeys,overwrite)
             slot += timechunk
 
     print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
