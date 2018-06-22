@@ -23,7 +23,7 @@ from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 from carto_util import update_map
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path, SETTINGS_FILE
-from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, OffshootTransactionsSchema
+from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, SamplingTransactionsSchema
 from pipe.gadgets import get_resource_data
 
 from nonchalance import add_hashes
@@ -1271,7 +1271,7 @@ def main(*args, **kwargs):
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
     server = kwargs.get('server', 'testbed') # 'sandbox'
 
-    offshoot_transactions_resource_name = 'Parking Transactions Grouped by Payment Time and Offshoot Zone'
+    sampling_transactions_resource_name = 'Parking Transactions Grouped by Payment Time and Sampling Zone'
     occupancy_resource_name = 'Parking Transactions and Durations Grouped by Parking Time and Zone'
 
         # [ ] augment and update_live_map are a little entangled now since update_live_map = True
@@ -1568,7 +1568,7 @@ def main(*args, **kwargs):
 
             ### Currently (instead) there is no abstraction to bin objects and the transactions-loop code is a more 
             ### complicated version of the occupancy-loop code (chiefly due to the different kinds of aggregations
-            ### and support for offshoot zones. The transactions-loop is simpler now that the occupancy and 
+            ### and support for sampling zones. The transactions-loop is simpler now that the occupancy and
             ### augmented stuff has been pulled out of it.
             if time_aggregation == 'month': 
                 if is_very_beginning_of_the_month(slot_start) and len(stats_rows) > 0: # Store the old stats_rows and then reset stats_rows
@@ -1639,9 +1639,9 @@ def main(*args, **kwargs):
 
                 cumulated_ad_hoc_dicts += ad_hoc_list_of_dicts
                 if push_to_CKAN and len(cumulated_ad_hoc_dicts) >= threshold_for_uploading:
-                    schema = OffshootTransactionsSchema
+                    schema = SamplingTransactionsSchema
                     primary_keys = ['zone', 'utc_start']
-                    success_a = send_data_to_pipeline(server, SETTINGS_FILE, offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts,  primary_keys=primary_keys)
+                    success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_ad_hoc_dicts,  primary_keys=primary_keys)
 
                     if success_a:
                         cumulated_ad_hoc_dicts = []
@@ -1680,12 +1680,12 @@ def main(*args, **kwargs):
             print("Pushed the last batch of transactions to {}".format(resource_name(spacetime)))
 
         if spacetime == 'zone':
-            schema = OffshootTransactionsSchema
+            schema = SamplingTransactionsSchema
             primary_keys = ['zone', 'utc_start']
-            success_a = send_data_to_pipeline(server, SETTINGS_FILE, offshoot_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
+            success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_ad_hoc_dicts, primary_keys=primary_keys)
             if success_a:
                 cumulated_ad_hoc_dicts = []
-                print("Pushed the last batch of offshoot-zone transactions to {}".format(offshoot_transactions_resource_name))
+                print("Pushed the last batch of sampling-zone transactions to {}".format(sampling_transactions_resource_name))
             success_transactions = success and success_a # This will be true if the last two pushes of data to CKAN are true 
             # (and even if all previous pushes failed, the data should be sitting around in cumulated lists, and these last 
             # two success Booleans will tell you whether the whole process succeeded).

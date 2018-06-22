@@ -40,7 +40,7 @@ class TransactionsSchema(pl.BaseSchema):
         data['utc_start'] = datetime.strptime(data['utc_start'],"%Y-%m-%d %H:%M:%S").isoformat()
 
 
-class OffshootTransactionsSchema(TransactionsSchema):
+class SamplingTransactionsSchema(TransactionsSchema):
     parent_zone = fields.String()
 
 class DurationsSchema(pl.BaseSchema):
