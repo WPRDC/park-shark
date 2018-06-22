@@ -43,7 +43,7 @@ class TransactionsSchema(pl.BaseSchema):
 class SamplingTransactionsSchema(TransactionsSchema):
     parent_zone = fields.String()
 
-class DurationsSchema(pl.BaseSchema):
+class OccupancySchema(pl.BaseSchema):
     zone = fields.String()
     start = fields.DateTime()
     end = fields.DateTime()
