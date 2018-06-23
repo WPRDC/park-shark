@@ -1259,13 +1259,13 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
 
 def resource_name(spacetime):
     if spacetime == 'zone':
-        return 'Parking Transactions Grouped by Payment Time and Zone'
+        return 'Transactions by Payment Time and Zone'
     elif spacetime in ['zone,month', 'month']:
-        return 'Parking Transactions Grouped by Month, Payment Time, and Zone'
+        return 'Transactions by Month, Payment Time, and Zone'
     elif spacetime == 'meter,month':
-        return 'Parking Transactions Grouped by Month, Payment Time, and Meter'
+        return 'Transactions by Month, Payment Time, and Meter'
     elif spacetime == 'meter':
-        return 'Parking Transactions Grouped by Payment Time and Meter'
+        return 'Transactions by Payment Time and Meter'
     raise ValueError("No resource name specified for spacetime = {}".format(spacetime))
 
 def main(*args, **kwargs):
@@ -1278,8 +1278,8 @@ def main(*args, **kwargs):
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
     server = kwargs.get('server', 'testbed') # 'sandbox'
 
-    sampling_transactions_resource_name = 'Parking Transactions Grouped by Payment Time and Sampling Zone'
-    occupancy_resource_name = 'Parking Transactions and Durations Grouped by Parking Time and Zone'
+    sampling_transactions_resource_name = 'Transactions by Payment Time and Sampling Zone'
+    occupancy_resource_name = 'Transactions and Durations by Parking Time and Zone'
 
         # [ ] augment and update_live_map are a little entangled now since update_live_map = True
         # is assuming that augment = True, but there's nothing forcing that parameter to be
