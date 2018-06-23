@@ -904,6 +904,9 @@ def parking_segment_start_of(p):
     # to be sure that it is sufficiently general.
     return (pytz.utc).localize(parser.parse(p['@EndDateUtc'])) - timedelta(minutes=p['Duration'])
 
+def keep_running(slot_start_time,halting_time):
+    return slot_start_time <= datetime.now(pytz.utc) and slot_start_time < halting_time
+
 def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
     # collecting data over two UTC days (from a function that 
