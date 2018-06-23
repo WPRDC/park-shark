@@ -1714,9 +1714,14 @@ def main(*args, **kwargs):
         for et in sorted(end_times.keys()):
             print("{}: {}".format(et, end_times[et]))
 
+
+
+    # A different metric for whether there's enough information to save transactions as completely
+    # regularized: Make sure that all Durations and Amounts make sense.
+
     try_to_infer_occupancies = (starting_time > (pytz.utc).localize(datetime(2018,6,19,9,0,0))) or len(all_unlinkable) == 0
     print("try_to_infer_occupancies = {}".format(try_to_infer_occupancies))
-    if try_to_infer_occupancies: # If it's really possible to infer occupancies...
+    if try_to_infer_occupancies and spacetime == 'zone': # If it's really possible to infer occupancies (and default aggregation is being used).
         # Now that all of the transactions have been given standard parking-segment start times and durations,
         # use the corrected transactions, but with the new time field to figure out how many cars
         # are parked in each zone in each slot.
