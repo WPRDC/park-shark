@@ -52,14 +52,23 @@ class OccupancySchema(pl.BaseSchema):
     car_minutes = fields.Integer()
     payments = fields.Float()
     durations = fields.Dict() # [ ] Verify that the deployed version of wprdc-etl can handle such Dict/JSON fields.
+    inferred_occupancy = fields.Integer()
 
     class Meta:
         ordered = True
 
     @pre_load
     def cast_fields(self,data):
-        data['durations'] = loads(data['durations'])
+        if data['durations'] is None:
+            data['durations'] = '{}'
+        data['durations'] = json.loads(data['durations'])
+
+        if data['payments'] is None:
+            data['payments'] = 0.0
         data['payments'] = float(data['payments'])
+
+        if data['car_minutes'] is None:
+            data['car_minutes'] = 0
         # This may not be necessary, but ensuring that datetimes are in
         # ISO format is the best way of preparing timestamps to be
         # sent to CKAN.
