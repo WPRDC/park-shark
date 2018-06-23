@@ -1744,7 +1744,8 @@ def main(*args, **kwargs):
         #for slot in sorted(ps_by_slot.keys()): # Iterating through this way only gives increases
         # in occupancy and won't produce a new row for cases where parking sessions are only ending.
         slot = copy(starting_time)
-        while slot <= datetime.now(pytz.utc) and slot < halting_time:
+        cumulated_dicts = []
+        while keep_running(slot,halting_time):
             if slot in ps_by_slot:
                 ps = ps_by_slot[slot]
             else:
@@ -1758,10 +1759,20 @@ def main(*args, **kwargs):
                 list_of_dicts, augmented = package_for_output(stats_by_zone,zonelist,calculated_occupancy,zone_info,pgh,slot,slot+timechunk,'zone',None,transactions_only=False)
                 occ = calculated_occupancy[slot]
                 print(fmt.format(datetime.strftime(slot,"%Y-%m-%d %H:%M"), zs[0], occ[zs[0]], zs[1], occ[zs[1]], zs[2], occ[zs[2]]))
-            if output_to_csv and len(augmented) > 0: # Write to files as
-            # often as necessary, since the associated delay is not as great as
-            # for pushing data to CKAN.
+            if output_to_csv and len(augmented) > 0: # Write to files as often as necessary,
+                # since the associated delay is not as great as for pushing data to CKAN.
                 write_or_append_to_csv('occupancy-1.csv',augmented,occ_dkeys,overwrite)
+            cumulated_dicts += augmented
+            if push_to_CKAN and (len(cumulated_dicts) >= threshold_for_uploading or not keep_running(slot + timechunk,halting_time)):
+                schema = OccupancySchema
+                primary_keys = ['zone', 'utc_start']
+                pprint(cumulated_dicts[0])
+                success = send_data_to_pipeline(server, SETTINGS_FILE, occupancy_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
+                print("success = {}".format(success))
+
+                if success:
+                    cumulated_dicts = []
+                    print("Pushed the last batch of transactions to {}".format(occupancy_resource_name))
             slot += timechunk
 
     print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
