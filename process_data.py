@@ -1767,7 +1767,8 @@ def main(*args, **kwargs):
             if output_to_csv and len(augmented) > 0: # Write to files as often as necessary,
                 # since the associated delay is not as great as for pushing data to CKAN.
                 write_or_append_to_csv('occupancy-1.csv',augmented,occ_dkeys,overwrite)
-            cumulated_dicts += augmented
+            if push_to_CKAN:
+                cumulated_dicts += augmented
             if push_to_CKAN and (len(cumulated_dicts) >= threshold_for_uploading or not keep_running(slot + timechunk,halting_time)):
                 schema = OccupancySchema
                 primary_keys = ['zone', 'utc_start']
@@ -1779,6 +1780,8 @@ def main(*args, **kwargs):
                     cumulated_dicts = []
                     print("Pushed the last batch of transactions to {}".format(occupancy_resource_name))
             slot += timechunk
+
+        assert len(cumulated_dicts) == 0
 
     print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
     return success_transactions
