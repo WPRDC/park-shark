@@ -1,17 +1,10 @@
-import os, re, csv, json, xmltodict
+import os, re, json, xmltodict
 
 from collections import OrderedDict, Counter, defaultdict
-from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
-lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
-pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
-pure_zones_list, numbered_reporting_zones_list, sampling_groups, \
-add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
-build_keys
-from fetch_terminals import pull_terminals
+from util import is_timezoneless, remove_field
 import requests
 import zipfile
 from io import BytesIO # Works only under Python 3
-from copy import copy
 
 import time, pytz
 from pprint import pprint
@@ -20,25 +13,12 @@ from dateutil import parser
 
 from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 
-from carto_util import update_map
 from parameters.credentials_file import CALE_API_user, CALE_API_password
-from parameters.local_parameters import path, SETTINGS_FILE
-from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, SamplingTransactionsSchema, OccupancySchema
-from pipe.gadgets import get_resource_data
+from parameters.local_parameters import path
 
 from nonchalance import add_hashes
 
 #from process_data import 
-DEFAULT_TIMECHUNK = timedelta(minutes=10)
-
-last_date_cache = None
-all_day_ps_cache = []
-dts_cache = []
-
-last_utc_date_cache = None
-utc_ps_cache = []
-utc_dts_cache = []
-
 
 def beginning_of_month(dt=None):
     """Takes a datetime and returns the first datetime before
