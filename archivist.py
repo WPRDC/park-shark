@@ -194,6 +194,21 @@ def get_doc_from_url_improved(url,pause=10):
 def generate_filename(dashless,directory="week_utc_json"):
     return path + directory + "/"+dashless+".json"
 
+def distribute_by_day(ps,days,date_format):
+    ps_by_day = defaultdict(list)
+    for p in ps:
+        day_by_db_creation = parser.parse(p['@DateCreatedUtc']).date()
+        ps_by_day[day_by_db_creation].append(p)
+
+    for day in days:
+        dashless = day.strftime('%y%m%d')
+        filename = generate_filename(dashless,"utc_json_2")
+        with open(filename, "w") as f:
+            json.dump(ps_by_day[day],f,indent=2)
+
+    print("Successfully distributed {} purchases over {} days.".format(len(ps),len(ps_by_day.keys())))
+
+
 def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
     """Caches parking once it's been downloaded and checks
     cache before redownloading.
@@ -218,6 +233,12 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
 
     dashless = slot_start.strftime('%y%m')
     dashless = "{}-{}".format(week_start.strftime('%y%m%d'),(week_end - timedelta(days=1)).strftime('%y%m%d'))
+
+    day = week_start
+    days = []
+    while day < week_end:
+        days.append(day.date())
+        day += timedelta(days=1)
 
     if tz == pytz.utc:
         filename = generate_filename(dashless)
@@ -276,6 +297,7 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
             with open(filename, "w") as f:
                 json.dump(purchases,f,indent=2)
                 print("Saved a week of data from the BatchDataExport endpoint in {}".format(filename))
+            distribute_by_day(purchases,days,date_format)
     else: # Load locally cached version
         with open(filename, "r", encoding="utf-8") as f:
             ps = json.load(f)
