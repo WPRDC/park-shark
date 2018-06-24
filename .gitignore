@@ -7,6 +7,7 @@
 *.swp
 json/
 utc_json/
+month_utc_json/
 csv/
 docs/
 sample-reports/
