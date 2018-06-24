@@ -931,7 +931,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
     #       on recency of the slot and then by caching method.
 
 
-    # As suggested by the name, this function is designed specifially
+    # As suggested by the name, this function is designed specifically
     # for the 'utc_json' caching mode.
     ###
     # Note that no matter what time of day is associated with slot_start,
@@ -1651,6 +1651,7 @@ def main(*args, **kwargs):
 
                     if success_a:
                         cumulated_sampling_dicts = []
+            # END if spacetime == 'zone'
 
         slot_start += timechunk
         slot_end = slot_start + timechunk
