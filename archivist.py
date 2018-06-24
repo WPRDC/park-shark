@@ -115,7 +115,7 @@ def cull_fields(ps):
 
     return purchases
 
-def get_doc_from_url(url,pause=10):
+def get_doc_from_url_improved(url,pause=10):
     r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
 
     if r.status_code == 403: # 403 = Forbidden, meaing that the CALE API
@@ -253,7 +253,7 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
         else:
             downloaded = False
             while not downloaded:
-                doc, downloaded = get_doc_from_url(url,pause=60)
+                doc, downloaded = get_doc_from_url_improved(url,pause=60)
                 print("!", end="", flush=True)
                 
 
@@ -338,7 +338,7 @@ def get_month_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
         else:
             downloaded = False
             while not downloaded:
-                doc, downloaded = get_doc_from_url(url,pause=60)
+                doc, downloaded = get_doc_from_url_improved(url,pause=60)
                 print("!", end="", flush=True)
                 
 
