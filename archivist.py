@@ -191,6 +191,9 @@ def get_doc_from_url_improved(url,pause=10):
     doc = xmltodict.parse(xml,encoding = 'utf-8')
     return doc, True
 
+def generate_filename(dashless,directory="week_utc_json"):
+    return path + directory + "/"+dashless+".json"
+
 def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
     """Caches parking once it's been downloaded and checks
     cache before redownloading.
@@ -217,7 +220,7 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
     dashless = "{}-{}".format(week_start.strftime('%y%m%d'),(week_end - timedelta(days=1)).strftime('%y%m%d'))
 
     if tz == pytz.utc:
-        filename = path + "week_utc_json/"+dashless+".json"
+        filename = generate_filename(dashless)
     else:
         raise ValueError("Only tz = pytz.utc is supported currently.")
    
