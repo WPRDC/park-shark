@@ -217,7 +217,7 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
     dashless = "{}-{}".format(week_start.strftime('%y%m%d'),(week_end - timedelta(days=1)).strftime('%y%m%d'))
 
     if tz == pytz.utc:
-        filename = path + "month_utc_json/"+dashless+".json"
+        filename = path + "week_utc_json/"+dashless+".json"
     else:
         raise ValueError("Only tz = pytz.utc is supported currently.")
    

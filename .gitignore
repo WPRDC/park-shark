@@ -7,7 +7,7 @@
 *.swp
 json/
 utc_json/
-month_utc_json/
+week_utc_json/
 csv/
 docs/
 sample-reports/
