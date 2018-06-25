@@ -86,7 +86,7 @@ yesterday = datetime.date.today() - datetime.timedelta(days=1)
 monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
 current_resource_name = 'Current Payment Points'
 
-server = "official-version"
+server = "official-terminals" # Note that this is the package ID just for terminal information.
 
 # Combined Data 
 #   primary keys: Meter ID and/or GUID and the year/month 
