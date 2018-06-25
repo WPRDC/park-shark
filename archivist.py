@@ -206,7 +206,7 @@ def distribute_by_day(ps,days,date_format):
         with open(filename, "w") as f:
             json.dump(ps_by_day[day],f,indent=2)
 
-    print("Successfully distributed {} purchases over {} days.".format(len(ps),len(ps_by_day.keys())))
+    print("Successfully distributed {} purchases over {} days.".format(len(ps),len(days)))
 
 
 def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
@@ -254,6 +254,8 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
     # and slot_end are separated by one day) and b) it uses the time zone tz 
     # (though that should be fine since slot_start has already been converted 
     # to time zone tz).
+
+    already_cached = os.path.isfile(filename) and os.stat(filename).st_size != 0
 
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
         if not mute:
@@ -305,7 +307,7 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
 
 
 
-    return True
+    return True, already_cached
 
 def get_month_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
     """Caches parking once it's been downloaded and checks
@@ -413,7 +415,7 @@ def main(*args, **kwargs):
     pgh = pytz.timezone('US/Eastern')
     use_cache = kwargs.get('use_cache', False)
     slot_start = pgh.localize(datetime(2012,7,23,0,0)) # The actual earliest available data.
-    slot_start = pgh.localize(datetime(2018,2,5,0,0)) 
+    slot_start = pgh.localize(datetime(2018,2,5,0,0) + 4*timedelta(days=7))
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
@@ -440,8 +442,11 @@ def main(*args, **kwargs):
     # Therefore, (until the real reason is uncovered), slot_start and halting_time
     # will only be converted to UTC when using database caching.
 
+    already_cached = True
+    while already_cached:
+        it_worked, already_cached = get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False)
+        slot_start += timedelta(days=7)
 
-    it_worked = get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False)
     return it_worked
 
 # Overview:
