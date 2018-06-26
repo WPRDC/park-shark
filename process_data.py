@@ -1295,6 +1295,7 @@ def main(*args, **kwargs):
     filename = kwargs.get('filename',default_filename)
     overwrite = kwargs.get('overwrite',False)
 
+    verbose = False
     turbo_mode = kwargs.get('turbo_mode',False)
     # When turbo_mode is true, skip time-consuming stuff,
     # like correct calculation of durations.
@@ -1542,7 +1543,7 @@ def main(*args, **kwargs):
                 if 'Duration' not in p or p['Duration'] is None:
                     if 'hash' in p and p['hash'] in session_dict.keys():
                         pprint(session_dict[p['hash']])
-                    else:
+                    elif verbose:
                         print("No hash found for the transaction ")
                         pprint(p)
                     #raise ValueError("Error!")
@@ -1706,14 +1707,15 @@ def main(*args, **kwargs):
     if len(all_unlinkable) != 0: # This is all that would be in the target time range
         # NOT considering the warm-up period (which is tracked by warmup_unlinkable_count).
         print("Unable to compute occupancy for all transactions with complete confidence due to {} unlinkable transactions.".format(len(all_unlinkable)))
-        print("Let's profile the unlinkable transactions by start and end times...")
-        end_times = defaultdict(int)
-        for p in all_unlinkable:
-            rounded_to_slot = round_time(p['payment_time_utc'],timechunk.seconds,"down")
-            end_times[rounded_to_slot] += 1
+        if verbose:
+            print("Let's profile the unlinkable transactions by start and end times...")
+            end_times = defaultdict(int)
+            for p in all_unlinkable:
+                rounded_to_slot = round_time(p['payment_time_utc'],timechunk.seconds,"down")
+                end_times[rounded_to_slot] += 1
 
-        for et in sorted(end_times.keys()):
-            print("{}: {}".format(et, end_times[et]))
+            for et in sorted(end_times.keys()):
+                print("{}: {}".format(et, end_times[et]))
 
 
 
