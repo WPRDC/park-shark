@@ -891,12 +891,15 @@ def payment_time_of(p):
     # recalculate it later maybe) and then also refactor payment_time_of
     # to always return datetimes instead of strings that need to be parsed.
 
+    time_field = {'mobile': p['@DateCreatedUtc'],
+            'meter': p['@PurchaseDateUtc']}
+
     if type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.
-        return p['@PurchaseDateUtc']
+        return time_field['meter']
     elif p['PurchasePayUnit']['@PayUnitName'] == 'Mobile Payment':
-        return p['@DateCreatedUtc']
+        return time_field['mobile']
     else:
-        return p['@PurchaseDateUtc']
+        return time_field['meter']
 
 def parking_segment_start_of(p):
     # Test this calculation for various cases (mobile vs. non-mobile,
