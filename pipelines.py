@@ -10,7 +10,7 @@ except:
         print("Trying Option 3")
         from pipe.gadgets import get_resource_parameter, get_package_parameter
 
-import os, json
+import os, json, traceback
 import datetime
 from marshmallow import fields, pre_dump, pre_load
 
@@ -19,8 +19,8 @@ import pipeline as pl # This comes from the wprdc-etl repository.
 
 from fetch_terminals import pull_terminals, csv_file_path
 
+from notify import send_to_slack
 from parameters.local_parameters import SETTINGS_FILE # This is yet another workaround.
-
 
 class MetersSchema(pl.BaseSchema):
     #ID,Location,LocationType,Latitude,Longitude,Status,Zone,ParentStructure,OldZone,AllGroups,GUID,Cost per hour,Rate information,Restrictions
@@ -52,7 +52,7 @@ class CumulativeMetersSchema(MetersSchema):
 #    def add_year_month(self):
 #        data['year_month'] = datetime.datetime.now().strftime("%Y-%m")
 
-def check_and_run_pipeline(pipe,key_fields,schema,package_id,resource_name,upsert_method):
+def check_and_run_pipeline(pipe,site,API_key,key_fields,schema,package_id,resource_name,upsert_method):
 
     fields_and_types = schema().serialize_to_ckan_fields()
     fieldnames = [ft['id'] for ft in fields_and_types]
@@ -67,10 +67,10 @@ def check_and_run_pipeline(pipe,key_fields,schema,package_id,resource_name,upser
     package_name = get_package_parameter(site,package_id,'name',API_key)
 
     if hasattr(pipe_output,'upload_complete') and pipe_output.upload_complete:
-        print("Data successfully piped to {}/{} via {}.".format(package_name,current_resource_name,upsert_method))
+        print("Data successfully piped to {}/{} via {}.".format(package_name,resource_name,upsert_method))
         return True
     else:
-        print("Data not successfully piped to {}/{}.".format(package_name,current_resource_name))
+        print("Data not successfully piped to {}/{}.".format(package_name,resource_name))
         return False
 
 def move_to_front(f,f_ts):
@@ -80,131 +80,147 @@ def move_to_front(f,f_ts):
     remaining_fs = [d for d in f_ts if d['id'] != f]
     return popped + remaining_fs
 
+def main():
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
 
-yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
+    current_resource_name = 'Current Payment Points'
 
-monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
-current_resource_name = 'Current Payment Points'
+    server = "official-terminals" # Note that this is the package ID just for terminal information.
 
-server = "official-terminals" # Note that this is the package ID just for terminal information.
+    # Combined Data 
+    #   primary keys: Meter ID and/or GUID and the year/month 
 
-# Combined Data 
-#   primary keys: Meter ID and/or GUID and the year/month 
+    #pull_terminals(*args, **kwargs):
+        # This function accepts keyword arguments use_cache (to
+        # set whether cached data is used, for offline testing),
+        # return_extra_zones (to set whether the sampling and parent
+        # zones are returned rather than the table of terminals),
+        # and push_to_CKAN and output_to_csv (to control those output
+        # channels).
 
-#pull_terminals(*args, **kwargs):
-    # This function accepts keyword arguments use_cache (to
-    # set whether cached data is used, for offline testing),
-    # return_extra_zones (to set whether the sampling and parent
-    # zones are returned rather than the table of terminals),
-    # and push_to_CKAN and output_to_csv (to control those output
-    # channels).
-
-    #use_cache = kwargs.get('use_cache',False)
-    #return_extra_zones = kwargs.get('return_extra_zones',True)
-    #output_to_csv = kwargs.get('output_to_csv',False)
-    #push_to_CKAN = kwargs.get('push_to_CKAN',True)
-
-
-# FunctionConnector specifications:
-#          target: a valid filepath to a file with Python code in it
-#            function: the function within the file to call (defaults
-#                to `main`)
-#            parameters: list of (unnamed) arguments to send to the
-#                function [essentially these would be args so
-#                this might need to be complemented by the argument
-#                kwparameters]
+        #use_cache = kwargs.get('use_cache',False)
+        #return_extra_zones = kwargs.get('return_extra_zones',True)
+        #output_to_csv = kwargs.get('output_to_csv',False)
+        #push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
 
-
-# Run the pull_terminals function to get the tabular data on parking
-# meter parameters, and also output that data to a CSV file.
-unfixed_list_of_dicts, unfixed_keys = pull_terminals(output_to_csv=True,return_extra_zones=False)
-
-csv_path = csv_file_path()
-
-# Load CKAN parameters to get the package name.
-with open(SETTINGS_FILE,'r') as f:
-    settings = json.load(f)
-    site = settings['loader'][server]['ckan_root_url']
-    API_key = settings['loader'][server]['ckan_api_key']
-    package_id = settings['loader'][server]['package_id']
-
-kwdict = {'return_extra_zones': False,
-    'output_to_csv': False,
-    'push_to_CKAN': True }
+    # FunctionConnector specifications:
+    #          target: a valid filepath to a file with Python code in it
+    #            function: the function within the file to call (defaults
+    #                to `main`)
+    #            parameters: list of (unnamed) arguments to send to the
+    #                function [essentially these would be args so
+    #                this might need to be complemented by the argument
+    #                kwparameters]
 
 
-########## CURRENT METERS ####################################
-# Current Meters Data # Maybe eventually switch to this approach,
-# once the FunctionConnector and NoOpExtractor are working.
-#   primary keys: Meter ID and/or GUID
-#current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
-#                                      'Current Meters Pipeline', log_status=False) \
-#    .connect(pl.FunctionConnector, 
-#             target=path+'fetch_terminals.py', 
-#             function='pull_terminals', 
-#             kwparameters=kwdict) \
-#    .extract(pl.NoOpExtractor) \
-#    .schema(MetersSchema) \
-#    .load(pl.CKANDatastoreLoader, 'ckan',
-#          fields=MetersSchema().serialize_to_ckan_fields(),
-#          package_id=package_id,
-#          resource_name=current_resource_name,
-#          method='upsert')
+
+    # Run the pull_terminals function to get the tabular data on parking
+    # meter parameters, and also output that data to a CSV file.
+    unfixed_list_of_dicts, unfixed_keys = pull_terminals(output_to_csv=True,return_extra_zones=False)
+
+    csv_path = csv_file_path()
+
+    # Load CKAN parameters to get the package name.
+    with open(SETTINGS_FILE,'r') as f:
+        settings = json.load(f)
+        site = settings['loader'][server]['ckan_root_url']
+        API_key = settings['loader'][server]['ckan_api_key']
+        package_id = settings['loader'][server]['package_id']
+
+    kwdict = {'return_extra_zones': False,
+        'output_to_csv': False,
+        'push_to_CKAN': True }
 
 
-schema = MetersSchema
-key_fields = ['id','guid']#['id']
-shoving_method = 'upsert'
+    ########## CURRENT METERS ####################################
+    # Current Meters Data # Maybe eventually switch to this approach,
+    # once the FunctionConnector and NoOpExtractor are working.
+    #   primary keys: Meter ID and/or GUID
+    #current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
+    #                                      'Current Meters Pipeline', log_status=False) \
+    #    .connect(pl.FunctionConnector, 
+    #             target=path+'fetch_terminals.py', 
+    #             function='pull_terminals', 
+    #             kwparameters=kwdict) \
+    #    .extract(pl.NoOpExtractor) \
+    #    .schema(MetersSchema) \
+    #    .load(pl.CKANDatastoreLoader, 'ckan',
+    #          fields=MetersSchema().serialize_to_ckan_fields(),
+    #          package_id=package_id,
+    #          resource_name=current_resource_name,
+    #          method='upsert')
 
-current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
-                                      'Current Meters Pipeline', 
-                                      settings_file=SETTINGS_FILE,
-                                      log_status=False) \
-    .connect(pl.FileConnector, csv_path) \
-    .extract(pl.CSVExtractor) \
-    .schema(schema) \
-    .load(pl.CKANDatastoreLoader, server,
-          fields=schema().serialize_to_ckan_fields(),
-          key_fields=key_fields,
-          package_id=package_id,
-          resource_name=current_resource_name,
-          method=shoving_method)
 
-check_and_run_pipeline(current_meters_pipeline,key_fields,schema,package_id,current_resource_name,shoving_method)
+    schema = MetersSchema
+    key_fields = ['id','guid']#['id']
+    shoving_method = 'upsert'
 
-# Will this script overwrite an existing CSV file (or just append to it)?
-########### CUMULATIVE METERS ARCHIVE #############################
-cumulative_resource_name = 'Payment Points (Monthly Archives)'
+    current_meters_pipeline = pl.Pipeline('current_meters_pipeline', 
+                                          'Current Meters Pipeline', 
+                                          settings_file=SETTINGS_FILE,
+                                          log_status=False) \
+        .connect(pl.FileConnector, csv_path) \
+        .extract(pl.CSVExtractor) \
+        .schema(schema) \
+        .load(pl.CKANDatastoreLoader, server,
+              fields=schema().serialize_to_ckan_fields(),
+              key_fields=key_fields,
+              package_id=package_id,
+              resource_name=current_resource_name,
+              method=shoving_method)
 
-schema = CumulativeMetersSchema
-key_fields = ['id','year_month','guid'] 
-shoving_method = 'upsert' # Here upserting means that every time we run this
-# script, we update that month's values with the freshest values. Since we 
-# are running this script every day, by the end of the month, it should have 
-# worked many times. Hence, this is a better approach than using the 'insert'
-# method (which doesn't like to be run more than once with the same key 
-# values).
+    check_and_run_pipeline(current_meters_pipeline,site,API_key,key_fields,schema,package_id,current_resource_name,shoving_method)
 
-reordered_fields_and_types = move_to_front('year_month',schema().serialize_to_ckan_fields())
+    # Will this script overwrite an existing CSV file (or just append to it)?
+    ########### CUMULATIVE METERS ARCHIVE #############################
+    cumulative_resource_name = 'Payment Points (Monthly Archives)'
 
-print(reordered_fields_and_types)
-cumulative_meters_pipeline = pl.Pipeline('cumulative_meters_pipeline', 
-                                      'Cumulative Meters Pipeline', 
-                                      settings_file=SETTINGS_FILE,
-                                      log_status=False) \
-    .connect(pl.FileConnector, csv_path) \
-    .extract(pl.CSVExtractor) \
-    .schema(schema) \
-    .load(pl.CKANDatastoreLoader, server,
-          fields=reordered_fields_and_types,
-          key_fields=key_fields,
-          package_id=package_id,
-          resource_name=cumulative_resource_name,
-          method=shoving_method)
+    schema = CumulativeMetersSchema
+    key_fields = ['id','year_month','guid'] 
+    shoving_method = 'upsert' # Here upserting means that every time we run this
+    # script, we update that month's values with the freshest values. Since we 
+    # are running this script every day, by the end of the month, it should have 
+    # worked many times. Hence, this is a better approach than using the 'insert'
+    # method (which doesn't like to be run more than once with the same key 
+    # values).
 
-check_and_run_pipeline(cumulative_meters_pipeline,key_fields,schema,package_id,cumulative_resource_name,shoving_method)
+    reordered_fields_and_types = move_to_front('year_month',schema().serialize_to_ckan_fields())
 
-##################################################################
-os.remove(csv_path) # In any event, delete the CSV file. 
+    print(reordered_fields_and_types)
+    cumulative_meters_pipeline = pl.Pipeline('cumulative_meters_pipeline', 
+                                          'Cumulative Meters Pipeline', 
+                                          settings_file=SETTINGS_FILE,
+                                          log_status=False) \
+        .connect(pl.FileConnector, csv_path) \
+        .extract(pl.CSVExtractor) \
+        .schema(schema) \
+        .load(pl.CKANDatastoreLoader, server,
+              fields=reordered_fields_and_types,
+              key_fields=key_fields,
+              package_id=package_id,
+              resource_name=cumulative_resource_name,
+              method=shoving_method)
+
+    check_and_run_pipeline(cumulative_meters_pipeline,site,API_key,key_fields,schema,package_id,cumulative_resource_name,shoving_method)
+
+    ##################################################################
+    os.remove(csv_path) # In any event, delete the CSV file. 
+
+if __name__ == '__main__':
+    try:
+        main()
+    except:
+        e = sys.exc_info()[0]
+        print("Error: {} : ".format(e))
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        traceback_msg = ''.join('!! ' + line for line in lines)
+        print(traceback_msg)  # Log it or whatever here
+        msg = "pipelines.py ran into an error: {}.\nHere's the traceback:\n{}".format(e,traceback_msg)
+        #mute_alerts = kwargs.get('mute_alerts',False)
+        mute_alerts = False
+        if not mute_alerts:
+            send_to_slack(msg,username='Leaky Pipe',channel='@david',icon=':droplet:')
 
