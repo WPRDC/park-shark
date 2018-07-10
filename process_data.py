@@ -894,9 +894,9 @@ def payment_time_of(p):
     time_field = {'mobile': p['@DateCreatedUtc'],
             'meter': p['@PurchaseDateUtc']}
 
-# If the 'PurchasePayUnit' field cannot be found, use the terminal ID
-# to detect whether it's a virtual payment and then decide how to define
-# the payment time.
+    # If the 'PurchasePayUnit' field cannot be found, use the terminal ID
+    # to detect whether it's a virtual payment and then decide how to define
+    # the payment time.
     if 'PurchasePayUnit' not in p:
         terminal_id = p['@TerminalID']
         if terminal_id[:3] == 'PBP':
