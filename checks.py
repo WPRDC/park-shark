@@ -13,9 +13,6 @@ pprint(only_json_files)
 
 meters_to_check = ['324541-FMURRY0001', '324542-FMURRY0002', '325543-JCCLOT0001']
 
-counts = defaultdict(int)
-meter_payments = 0
-
 def is_meter(p):
     if 'PurchasePayUnit' not in p:
         terminal_id = p['@TerminalID']
@@ -33,7 +30,10 @@ def is_meter(p):
         else:
             return True
 
+all_records = []
 for filename in only_json_files:
+    counts = defaultdict(int)
+    meter_payments = 0
     filepath = json_path + filename
     with open(filepath, 'r') as f:
         ps = json.load(f) 
@@ -47,5 +47,9 @@ for filename in only_json_files:
 
     if meter_payments > 0:
         for m in meters_to_check:
-            print("{},{},{},{},{}".format(filename.split('.')[0], m, counts[m]/meter_payments, counts[m], meter_payments))
+            if counts[m] == 0:
+                print("{},{},{},{},{}".format(filename.split('.')[0], m, counts[m]/meter_payments, counts[m], meter_payments))
+            csv_line = "{},{},{},{},{}".format(filename.split('.')[0], m, counts[m]/meter_payments, counts[m], meter_payments)
+            all_records.append(csv_line)
+
 
