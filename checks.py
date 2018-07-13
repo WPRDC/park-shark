@@ -52,4 +52,7 @@ for filename in only_json_files:
             csv_line = "{},{},{},{},{}".format(filename.split('.')[0], m, counts[m]/meter_payments, counts[m], meter_payments)
             all_records.append(csv_line)
 
-
+with open("all_checks.csv", 'w') as g:
+    g.write("file,meter,fraction,meter_transactions,all_meter_payments"+'\n')
+    for line in all_records:
+        g.write(line+'\n')
