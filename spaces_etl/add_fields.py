@@ -11,7 +11,6 @@ def main(input_filename,as_of):
     #input_filename = 'Lease_counts_2018-unprocessed.csv'
     if re.search('-unprocessed',input_filename) is not None:
         output_filename = re.sub('-unprocessed','',input_filename)
-        print(input_filename,output_filename)
     else:
         output_filename = 'output.csv'
 
@@ -61,7 +60,7 @@ def main(input_filename,as_of):
 
     keys += ['zone','as_of']
 
-    print("output_filename = {}".format(output_filename))
+    print("Writing processed data to {}".format(output_filename))
     write_to_csv(output_filename,list_of_dicts,keys)
 
 if __name__ == '__main__':
