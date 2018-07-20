@@ -58,7 +58,7 @@ def main(input_filename,as_of):
         d['zone'] = zone
         d['as_of'] = as_of
 
-    keys += ['zone','as_of']
+    keys = ['zone','as_of'] + keys
 
     print("Writing processed data to {}".format(output_filename))
     write_to_csv(output_filename,list_of_dicts,keys)
