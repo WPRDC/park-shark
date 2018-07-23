@@ -917,6 +917,9 @@ def parking_segment_start_of(p):
     # Test this calculation for various cases (mobile vs. non-mobile,
     # before parking hours, during parking hours, and after parking hours)
     # to be sure that it is sufficiently general.
+
+    # Note that this is only usable when the duration of the transaction
+    # can be determined.
     return (pytz.utc).localize(parser.parse(p['@EndDateUtc'])) - timedelta(minutes=p['Duration'])
 
 def keep_running(slot_start_time,halting_time):
