@@ -18,7 +18,7 @@ from parameters.local_parameters import path
 
 from nonchalance import add_hashes
 
-#from process_data import 
+from process_data import build_url, convert_doc_to_purchases
 
 def beginning_of_month(dt=None):
     """Takes a datetime and returns the first datetime before
@@ -33,51 +33,6 @@ def beginning_of_week(dt=None):
     offset = dt.weekday()
     dt.replace(hour=0, minute=0, second=0, microsecond=0)
     return dt - timedelta(days = offset)
-
-def build_url(base_url,slot_start,slot_end):
-    """This function takes the bounding datetimes, checks that
-    they have time zones, and builds the appropriate URL,
-    converting the datetimes to UTC (which is what the CALE
-    API expects).
-
-    This function is called by get_batch_parking_for_day 
-    (and was also used by get_recent_parking_events)."""
-
-    if is_timezoneless(slot_start) or is_timezoneless(slot_end):
-        raise ValueError("Whoa, whoa, whoa! One of those times is unzoned!")
-    # Since a slot_end that is too far in the future results 
-    # in a 400 (reason = "Bad Request"), limit how far in 
-    # the future slot_end may be.
-    arbitrary_limit = datetime.now(pytz.utc) + timedelta(hours = 1)
-    if slot_end.astimezone(pytz.utc) > arbitrary_limit:
-        slot_end = arbitrary_limit
-
-    date_format = '%Y-%m-%d'
-    time_format = '%H%M%S'
-    url_parts = [slot_start.astimezone(pytz.utc).strftime(date_format),
-        slot_start.astimezone(pytz.utc).strftime(time_format),
-        slot_end.astimezone(pytz.utc).strftime(date_format),
-        slot_end.astimezone(pytz.utc).strftime(time_format)]
-
-    url = base_url + '/'.join(url_parts)
-    return url
-
-def convert_doc_to_purchases(doc,slot_start,date_format):
-    if 'Purchases' not in doc:
-        print("Failed to retrieve records for UTC time {}".format(slot_start.astimezone(pytz.utc).strftime(date_format)))
-        # Possibly an exception should be thrown here.
-        return None
-    if doc['Purchases']['@Records'] == '0':
-        return []
-    ps = doc['Purchases']['Purchase']
-    if type(ps) == list:
-        #print "Found a list!"
-        return ps
-    if type(ps) == type(OrderedDict()):
-        #print "It's just one OrderedDict. Let's convert it to a list!"
-        return [ps]
-    print("Found something else of type {}".format(type(ps)))
-    return []
 
 def cull_fields(ps):
     """Remove a bunch of unneeded fields."""

@@ -80,7 +80,7 @@ def move_to_front(f,f_ts):
     remaining_fs = [d for d in f_ts if d['id'] != f]
     return popped + remaining_fs
 
-def main():
+def main(keep_archive):
     yesterday = datetime.date.today() - datetime.timedelta(days=1)
 
     monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
@@ -206,11 +206,17 @@ def main():
     check_and_run_pipeline(cumulative_meters_pipeline,site,API_key,key_fields,schema,package_id,cumulative_resource_name,shoving_method)
 
     ##################################################################
-    os.remove(csv_path) # In any event, delete the CSV file. 
+    if not keep_archive:
+        os.remove(csv_path) # In any event, delete the CSV file.
 
 if __name__ == '__main__':
+    keep_archive = False
+    if len(sys.argv) > 1:
+        to_store = sys.argv[1]
+        if to_store in ['keep','store','archive']:
+            keep_archive = True
     try:
-        main()
+        main(keep_archive=keep_archive)
     except:
         e = sys.exc_info()[0]
         print("Error: {} : ".format(e))
