@@ -182,7 +182,7 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
     month_start = beginning_of_month(slot_start)
     month_end = beginning_of_month(month_start + timedelta(days = 32))
     week_start = beginning_of_week(slot_start)
-    week_end = beginning_of_week(slot_start + timedelta(days=8))
+    week_end = beginning_of_week(slot_start + timedelta(days=7))
 
     date_format = '%Y-%m-%d'
 
