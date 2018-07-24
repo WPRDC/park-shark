@@ -405,6 +405,18 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
             # of apparent occupancy. This will work perfectly if the
             # timechunk is one minute (i.e., no occupancy will be lost
             # due to rounding errors).
+
+
+            # [ ] What if instead of rounding, we use fractional cars?
+            # A car that is parked for 3 minutes out of a 10-minute
+            # slot is 0.3 cars. But for this to really work well, we'd
+            # need to know not just the durations for each slot, but
+            # the start time for each duration. Using rounded occupancies
+            # is good for generating occupancy estimates from
+            # aggregated statitistics.
+
+            # [ ] Compare this method to an exact transaction-by-transaction
+            # calculation of occupancy.
             for k in range(0,bins):
                 inferred_occupancy[slot_start+k*timechunk][zone] += 1 
                 # inferred_occupancy is measured in cars (or used parking spaces),
@@ -999,7 +1011,8 @@ def parking_segment_start_of(p):
     # to be sure that it is sufficiently general.
 
     # Note that this is only usable when the duration of the transaction
-    # can be determined.
+    # can be determined. For historical data, this is easy for mobile
+    # transactions and hard for meter transactions.
     return (pytz.utc).localize(parser.parse(p['@EndDateUtc'])) - timedelta(minutes=p['Duration'])
 
 def keep_running(slot_start_time,halting_time):
