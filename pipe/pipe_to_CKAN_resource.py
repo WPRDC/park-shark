@@ -212,23 +212,16 @@ def send_data_to_pipeline(server,settings_file_path,resource_name,schema,list_of
     package_name = get_package_parameter(site,package_id,'title',API_key)
 
     log = open('uploaded.log', 'w+')
-    if specify_resource_by_name:
-        if hasattr(pipe_output,'upload_complete') and pipe_output.upload_complete:
-            print("Data successfully piped to {}/{}.".format(package_name,resource_name))
-            success = True
-            log.write("Finished upserting {} at {} \n".format(kwargs['resource_name'],datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        else:
-            print("Data not successfully piped to {}/{}.".format(package_name,resource_name))
-            success = False
 
+    if specify_resource_by_name:
+        print("Data successfully piped to {}/{}.".format(package_name,resource_name))
+        success = True
+        log.write("Finished upserting {} at {} \n".format(kwargs['resource_name'],datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     else:
-        if hasattr(pipe_output,'upload_complete') and pipe_output.upload_complete:
-            print("Data successfully piped to {}/{}.".format(package_name,kwargs['resource_id']))
-            success = True
-            log.write("Finished upserting {} at {} \n".format(kwargs['resource_id'],datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        else:
-            print("Data not successfully piped to {}/{}.".format(package_name,kwargs['resource_id']))
-            success = False
+        print("Data successfully piped to {}/{}.".format(package_name,kwargs['resource_id']))
+        success = True
+        log.write("Finished upserting {} at {} \n".format(kwargs['resource_id'],datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
     log.close()
     ntf.close()
     assert not os.path.exists(target)
