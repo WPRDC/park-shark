@@ -179,10 +179,8 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
 
 
     slot_start = slot_start.astimezone(tz)
-    month_start = beginning_of_month(slot_start)
-    month_end = beginning_of_month(month_start + timedelta(days = 32))
     week_start = beginning_of_week(slot_start)
-    week_end = beginning_of_week(slot_start + timedelta(days=8))
+    week_end = beginning_of_week(slot_start + timedelta(days=7))
 
     date_format = '%Y-%m-%d'
 
@@ -212,7 +210,7 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
 
     already_cached = os.path.isfile(filename) and os.stat(filename).st_size != 0
 
-    if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
+    if not already_cached:
         if not mute:
             print("Sigh! {} not found, so I'm pulling the data from the API...".format(filename))
 
@@ -257,12 +255,10 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
             distribute_by_day(purchases,days,date_format)
     else: # Load locally cached version
         with open(filename, "r", encoding="utf-8") as f:
-            ps = json.load(f)
-            raise ValueError("get_week_... needs to be altered to actually return these purchases.")
+            purchases = json.load(f)
 
 
-
-    return True, already_cached
+    return purchases, True, already_cached
 
 def get_month_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
     """Caches parking once it's been downloaded and checks
@@ -399,7 +395,8 @@ def main(*args, **kwargs):
 
     already_cached = True
     while already_cached:
-        it_worked, already_cached = get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False)
+        print("Trying {}.".format(slot_start))
+        ps, it_worked, already_cached = get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False)
         slot_start += timedelta(days=7)
 
     return it_worked

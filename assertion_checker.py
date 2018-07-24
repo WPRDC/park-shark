@@ -19,7 +19,7 @@ import pytz
 
 from process_data import last_date_cache, all_day_ps_cache, dts, \
 beginning_of_day, roundTime, get_batch_parking, get_parking_events, \
-get_batch_parking_for_day
+get_batch_parking_for_day, hybrid_parking_segment_start_of
 
 def cast_string_to_dt(s):
     try:
@@ -146,6 +146,17 @@ def main(*args, **kwargs):
         #print(purchases[0]['@PaymentServiceType'])
         for k,p in enumerate(sorted(purchases, key = lambda x: x['@DateCreatedUtc'])):
             ref_field = '@DateCreatedUtc' #'@PurchaseDateUtc'
+
+            # Just adding calculation of hybrid parking segment start here to
+            # see when (if ever) it gets violated.
+            try:
+                hybrid_parking_segment_start_of(p)
+            except:
+                print("\n\nThe following purchase triggered an exception... Let's see if we can work out why.")
+                pprint(p)
+                raise ValueError("Z")
+                pprint(p)
+
             if '@StartDateUtc' in p and ref_field in p:
                 delta = time_difference(p,ref_field)#,'%Y-%m-%dT%H:%M:%S.%f')
                 if delta > start_created_max:

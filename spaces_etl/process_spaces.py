@@ -133,8 +133,15 @@ def main(input_filename_1,input_filename_2,as_of):
         zone = zone_by_location[d['location']]
         d['zone'] = zone
         d['as_of'] = as_of
+        rate_text = d['rate_description']
+        if re.match('\$', rate_text) is not None and re.search('/HR', rate_text) is not None:
+            rate = re.sub('/HR','',re.sub('\$','',rate_text))
+            print(rate)
+            d['rate'] = float(rate)
 
     keys = ['zone','as_of'] + keys
+    keys.insert(keys.index('rate_description'), 'rate')
+    keys.remove('location')
 
     print("Writing processed data to {}".format(output_filename))
     write_to_csv(output_filename,list_of_dicts,keys)

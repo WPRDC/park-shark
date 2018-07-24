@@ -913,10 +913,93 @@ def payment_time_of(p):
     else:
         return time_field['meter']
 
+def hybrid_parking_segment_start_of(p):
+    time_field = {'mobile': p['@DateCreatedUtc'],
+            'meter': p['@PurchaseDateUtc']}
+
+
+
+    # If the 'PurchasePayUnit' field cannot be found, use the terminal ID
+    # to detect whether it's a virtual payment and then decide how to define
+    # the payment time.
+    if 'PurchasePayUnit' not in p:
+        terminal_id = p['@TerminalID']
+        if terminal_id[:3] == 'PBP':
+            payment_type = 'mobile' #eturn time_field['mobile']
+        elif terminal_id[0] in ['3','4']:
+            return time_field['meter']
+        else:
+            raise ValueError("Unknown terminal type for terminal ID {} from payment {}.".format(terminal_id,p))
+
+    else:
+        if type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.
+            return time_field['meter']
+        elif p['PurchasePayUnit']['@PayUnitName'] == 'Mobile Payment':
+            payment_type = 'mobile' #return time_field['mobile']
+        else:
+            return time_field['meter']
+
+    assert payment_type == 'mobile'
+    # Check whether the payment was purchased inside or outside of regular parking hours.
+    pdl = p['@PurchaseDateLocal']
+    sdl = p['@StartDateLocal']
+    edl = p['@EndDateLocal']
+    amount = p['@Amount']
+    units = p['@Units']
+
+    if amount == '0':
+        pass
+    #    print(" ******** Amount = '0' ***********")
+    #    pprint(p)
+        # What should we return if Amount == 0. It doesn't really matter since there
+        # are no dollars associated with that transaction. Maybe the real time...
+        # which we don't exactly know. Maybe we could use parking_segment_start_of
+        # here. (If duration can be calculated...) Maybe it's not so critical.
+
+
+    if pdl[11:13] in ['07','06','05','04','03','02','01','00']:
+        # Nowhere is marking metered after midnight, so any purchases between
+        # midnight at 8am can be assumed to take effect at 8am.
+
+        #dt_pdu = (pytz.utc).localize(parser.parse(p['@PurchaseDateUtc']))
+        pgh = pytz.timezone('US/Eastern')
+        dt_pdl = (pgh).localize(parser.parse(p['@PurchaseDateLocal']))
+        dt_8am = dt_pdl.replace(hour=8, minute=0, second=0, microsecond=0)
+        #offset = dt_8am - dt_pdl
+        dt_utc = dt_8am.astimezone(pytz.utc)
+
+        #print("A time that definitely needs to be coerced: {}. It shall be coerced to {}, which is {} in UTC.".format(pdl,dt_8am,dt_utc))
+        #pprint(p)
+        back_to_string = dt_utc.strftime("%Y-%m-%dT%H:%M:%S")
+        return back_to_string
+    elif pdl[11:13] in ['23','22','21','20','19','18']:
+        if edl[11:13] in ['23','22','21','20','19','18']:
+            if amount != '0':
+                #print("Start = {}, End = {}, Units = {}. This looks OK.".format(sdl,edl,units))
+                return time_field['meter']
+            else:
+                pass
+#                print("Amount = '0!'")
+#                pprint(p)
+        else:
+            print("Start = {}, End = {}, Units = {}, Amount = {}. This looks weird.".format(sdl,edl,units,amount))
+        #print("It's not clear if {} needs to be coereced.".format(pdl))
+            pprint(p)
+            raise ValueError("This is what we were looking for.")
+    else:
+        #print("{} should be fine.".format(pdl))
+        return time_field['meter']
+
+
+
+
 def parking_segment_start_of(p):
     # Test this calculation for various cases (mobile vs. non-mobile,
     # before parking hours, during parking hours, and after parking hours)
     # to be sure that it is sufficiently general.
+
+    # Note that this is only usable when the duration of the transaction
+    # can be determined.
     return (pytz.utc).localize(parser.parse(p['@EndDateUtc'])) - timedelta(minutes=p['Duration'])
 
 def keep_running(slot_start_time,halting_time):
