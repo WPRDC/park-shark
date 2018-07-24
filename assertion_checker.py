@@ -17,7 +17,7 @@ from pprint import pprint
 from datetime import datetime, timedelta
 import pytz
 
-from process_data import last_date_cache, all_day_ps_cache, dts, \
+from process_data import last_date_cache, all_day_ps_cache, \
 beginning_of_day, roundTime, get_batch_parking, get_parking_events, \
 get_batch_parking_for_day, hybrid_parking_segment_start_of
 
@@ -79,11 +79,11 @@ def main(*args, **kwargs):
     halting_time = slot_start + timedelta(hours=24)
 
     halting_time = beginning_of_day(datetime.now(pgh) - timedelta(days=7))
-    halting_time = pgh.localize(datetime(2017,6,1,0,0)) 
+    #halting_time = pgh.localize(datetime(2017,6,1,0,0)) 
     #halting_time = pgh.localize(datetime(2015,1,1,0,0)) 
     halting_time = kwargs.get('halting_time',halting_time)
 
-    sampling_zones, parent_zones = pull_terminals(use_cache,return_extra_zones=True)
+    sampling_zones, parent_zones, _, _, _ = pull_terminals(use_cache,return_extra_zones=True)
 
     slot_start = beginning_of_day(slot_start)
     slot_end = beginning_of_day(slot_start + timedelta(hours = 26)) 
@@ -129,7 +129,7 @@ def main(*args, **kwargs):
         # so that assertion results don't get lost in the noise.
 
         if deactivate_filter:
-            purchases = get_batch_parking_for_day(slot_start,cache=False,mute=False)
+            purchases = get_batch_parking_for_day(slot_start,pytz.utc,cache=False,mute=False)
         else:
             if caching_mode in ['db_caching', 'utc_json']:
                 purchases = get_parking_events(db,slot_start,slot_end,True,True,caching_mode) 
