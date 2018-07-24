@@ -1683,9 +1683,8 @@ def main(*args, **kwargs):
             #for p in unlinkable: # Actually, I think that durations should not be added to
             #    add_duration(p)  # unlinkable (hash-free) transactions, since the value
                                   # is deceptive.
-
-            print("{} | {} purchases, len(linkable) = {}, len(unlinkable) = {}".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), 
-                len(purchases),len(linkable), len(unlinkable)))
+            print("{} | {} purchases, ${}, len(linkable) = {}, len(unlinkable) = {}".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"),
+                len(purchases),sum([float(p['@Amount']) for p in purchases]),len(linkable), len(unlinkable)))
 
             for p in linkable + unlinkable:
                 if 'Duration' not in p or p['Duration'] is None:
@@ -1888,7 +1887,7 @@ def main(*args, **kwargs):
                     #    # have been pre-seeded before pushing a new occupancy row to CKAN. # This doesn't make any sense.
                     #    ps_by_slot[rounded_to_slot].append(p)
 
-                    print("{}Starting {}: {} minutes in {}".format(' '*2*p['segment_number'],p['parking_segment_start_utc'],p['Duration'],p['@TerminalID']))
+                    #print("{}Starting {}: {} minutes in {}".format(' '*2*p['segment_number'],p['parking_segment_start_utc'],p['Duration'],p['@TerminalID']))
                 else:
                     print("No parking_segment_start_utc found for this transaction.")
 
@@ -1932,6 +1931,15 @@ def main(*args, **kwargs):
             slot += timechunk
 
         assert len(cumulated_dicts) == 0
+        print("len(ps_by_slot) = {}".format(len(ps_by_slot)))
+        print("len(calculated_occupancy) = {}".format(len(calculated_occupancy)))
+
+        # Do the below but differently (find the correct calculated_occupancy entry and use it).
+        #if update_live_map: # Optionally update the live map if the timing of the
+        #    # current slot is correct.
+        #    if slot_start <= datetime.now(pytz.utc) < slot_start+timechunk:
+        #        update_map(dict(calculated_occupancy[slot_start]),zonelist,zone_info)
+
 
     print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
     return success_transactions
