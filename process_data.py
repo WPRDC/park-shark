@@ -985,7 +985,7 @@ def hybrid_parking_segment_start_of(p):
         back_to_string = dt_utc.strftime("%Y-%m-%dT%H:%M:%S")
         return back_to_string
     elif pdl[11:13] in ['23','22','21','20','19','18']:
-        if edl[11:13] in ['23','22','21','20','19','18']:
+        if edl[11:13] in ['00','23','22','21','20','19','18']:
             if amount != '0':
                 #print("Start = {}, End = {}, Units = {}. This looks OK.".format(sdl,edl,units))
                 return time_field['meter']
