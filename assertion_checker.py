@@ -16,6 +16,7 @@ import time
 from pprint import pprint
 from datetime import datetime, timedelta
 import pytz
+from dateutil import parser
 
 from process_data import last_date_cache, all_day_ps_cache, \
 beginning_of_day, roundTime, get_batch_parking, get_parking_events, \
@@ -23,17 +24,15 @@ get_batch_parking_for_day, hybrid_parking_segment_start_of
 
 def cast_string_to_dt(s):
     try:
-        dt = datetime.strptime(s,'%Y-%m-%dT%H:%M:%S')
+        dt = parser.parse(s)
     except:
-        try:
-            dt = datetime.strptime(s,'%Y-%m-%dT%H:%M:%S.%f')
-        except:
-            raise ValueError("Unable to cast {} to a datetime".format(s))
+        raise ValueError("Unable to cast {} to a datetime".format(s))
     return dt
 
 
 def time_difference(p,ref_field='@PurchaseDateUtc',dt_fmt='%Y-%m-%dT%H:%M:%S'):
-    p['start_date_utc'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
+    #p['start_date_utc'] = datetime.strptime(p['@StartDateUtc'],'%Y-%m-%dT%H:%M:%S')
+    p['start_date_utc'] = parser.parse(p['@StartDateUtc'])
     try:
         p['ref_field'] = datetime.strptime(p[ref_field],dt_fmt)
     except:
