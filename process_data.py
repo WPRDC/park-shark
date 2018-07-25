@@ -970,7 +970,7 @@ def hybrid_parking_segment_start_of(p):
 
 
     if pdl[11:13] in ['07','06','05','04','03','02','01','00']:
-        # Nowhere is marking metered after midnight, so any purchases between
+        # Nowhere is parking metered after midnight, so any purchases between
         # midnight at 8am can be assumed to take effect at 8am.
 
         #dt_pdu = (pytz.utc).localize(parser.parse(p['@PurchaseDateUtc']))
