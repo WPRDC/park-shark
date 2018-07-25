@@ -2,7 +2,7 @@
 # assertions about the structure of the parking data (e.g., the value of a 
 # given field is always one of three strings or one timestamp for a 
 # given transactions is always after some other timestamp).
-import os, re, math, json
+import sys, os, re, math, json
 from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
@@ -223,5 +223,15 @@ def main(*args, **kwargs):
     print("start_created_min = {}, start_created_max = {}".format(start_created_min,start_created_max))
     print("Distribution of DateCreatedUTC - StartTimeUTC (in hours): ")
     pprint(hours)
+
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        pgh = pytz.timezone('US/Eastern')
+        slot_start_string = sys.argv[1]
+        try:
+            slot_start = pgh.localize(datetime.strptime(slot_start_string,'%Y-%m-%d'))
+        except:
+            slot_start = pgh.localize(datetime.strptime(slot_start_string,'%Y-%m-%dT%H:%M:%S'))
+        main(slot_start=slot_start)
+    else:
+        main()
