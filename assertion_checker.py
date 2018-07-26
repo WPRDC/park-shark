@@ -20,7 +20,7 @@ from dateutil import parser
 
 from process_data import last_date_cache, all_day_ps_cache, \
 beginning_of_day, roundTime, get_batch_parking, get_parking_events, \
-get_batch_parking_for_day, hybrid_parking_segment_start_of
+get_batch_parking_for_day, hybrid_parking_segment_start_of, is_mobile_payment
 
 def cast_string_to_dt(s):
     try:
@@ -106,6 +106,7 @@ def main(*args, **kwargs):
     # get_batch_parking_for_day must be used to avoid timestamp filtering:
     deactivate_filter = True
 
+    assertion_7 = lambda p: p['@Units'] == '0' or p['@PurchaseTypeName'] == 'Manual' or int(round((cast_string_to_dt(p['@EndDateUtc']) - cast_string_to_dt(p['@StartDateUtc'])).total_seconds()/60)) == int(p['@Units'])
     first_seen = {}
 
     start_purchase_max = start_created_max = -10000000
@@ -117,6 +118,7 @@ def main(*args, **kwargs):
         db = dataset.connect('sqlite:///'+db_filename)
 
     hours = defaultdict(int)
+
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
         if slot_end > datetime.now(pytz.utc): # Clarify the true time 
@@ -143,32 +145,41 @@ def main(*args, **kwargs):
         # without a particular field, the assertion will not be tested.
         #pprint(purchases[0])
         #print(purchases[0]['@PaymentServiceType'])
+        ref_field = '@DateCreatedUtc' #'@PurchaseDateUtc'
         for k,p in enumerate(sorted(purchases, key = lambda x: x['@DateCreatedUtc'])):
-            ref_field = '@DateCreatedUtc' #'@PurchaseDateUtc'
+
+
+            #if not assertion_7(p):
+            #    print("   EndDate - StartDate != Units:")
+            #    pprint(p)
 
             # Just adding calculation of hybrid parking segment start here to
             # see when (if ever) it gets violated.
-            try:
-                hybrid_parking_segment_start_of(p)
-            except:
-                print("\n\nThe following purchase triggered an exception... Let's see if we can work out why.")
-                pprint(p)
-                raise ValueError("Z")
-                pprint(p)
+            #try:
+            #    hybrid_parking_segment_start_of(p)
+            #except:
+            #    print("\n\nThe following purchase triggered an exception... Let's see if we can work out why.")
+            #    pprint(p)
+            #    raise ValueError("Z")
+            #    pprint(p)
 
-            if '@StartDateUtc' in p and ref_field in p:
-                delta = time_difference(p,ref_field)#,'%Y-%m-%dT%H:%M:%S.%f')
-                if delta > start_created_max:
-                    start_created_max = delta
-                    print("Now max = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
-                if delta < start_created_min:
-                    start_created_min = delta
-                    print("Now min = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
-                delta_in_hours = int(math.floor(delta/3600))
-                hours[delta_in_hours] += 1
-                if delta_in_hours*delta_in_hours > 2000*2000:
-                    print("Here's one of the most anomalously large time differences:")
-                    pprint(p)
+            if False: # Check time differences?
+                if '@StartDateUtc' in p and ref_field in p:
+                    delta = time_difference(p,ref_field)#,'%Y-%m-%dT%H:%M:%S.%f')
+                    if delta > start_created_max:
+                        start_created_max = delta
+                        print("\nNow max = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
+                        pprint(p)
+                    if delta < start_created_min:
+                        start_created_min = delta
+                        print("\nNow min = {} (StartDateUtc = {})".format(delta, p['@StartDateUtc']))
+                        pprint(p)
+
+                    delta_in_hours = int(math.floor(delta/3600))
+                    hours[delta_in_hours] += 1
+                    if delta_in_hours*delta_in_hours > 2000*2000:
+                        print("Here's one of the most anomalously large time differences:")
+                        pprint(p)
 
                 #if not assertion_5(p):
                 #    print("Assertion 5 has been violated. Some events have a big time gap between StartDate and DateCreated, like this one:")
@@ -221,7 +232,7 @@ def main(*args, **kwargs):
     print("first_seen = {}".format(first_seen))
 
     print("start_created_min = {}, start_created_max = {}".format(start_created_min,start_created_max))
-    print("Distribution of DateCreatedUTC - StartTimeUTC (in hours): ")
+    print("Distribution of {} - StartTimeUTC (in hours): ".format(ref_field))
     pprint(hours)
 
 if __name__ == '__main__':
