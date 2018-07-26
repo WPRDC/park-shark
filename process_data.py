@@ -1191,8 +1191,9 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
         for purchase_i,datetime_i in zip(ps_for_whole_day,datetimes):
             if start_of_day <= datetime_i < start_of_next_day:
-                ps.append(purchase_i)
-                dts.append(datetime_i)
+                if get_payment_type(purchase_i) != 'manual': # Filter out payments that are neither meter nor mobile payments.
+                    ps.append(purchase_i)
+                    dts.append(datetime_i)
             #if purchase_i['@PurchaseGuid'] == 'EE37C59D-F9AD-97E8-D296-1C0A5A683A67':
             #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             #    print("start_of_day <= datetime_i < start_of_next_day = {}".format(start_of_day <= datetime_i < start_of_next_day))
