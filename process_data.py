@@ -902,7 +902,7 @@ def get_payment_type(p):
     else: # In addition to "Mobile Payment" and "Coin" and "Card", there's also now "Manual", which is ignorable.
         if pay_unit_name == 'Manual':
             return 'manual'
-        elif pay_unit_name in ['Coin', 'Card']:
+        elif pay_unit_name in ['Coin', 'Card', 'None']:
             return 'meter'
         else:
             raise ValueError("Unknown payment type for @PayUnitName {} from payment {}.".format(pay_unit_name,p))
