@@ -882,6 +882,50 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
     return ps
 
 ########################
+def get_payment_type(p):
+    # If the 'PurchasePayUnit' field cannot be found, use the terminal ID
+    # to detect whether it's a virtual payment.
+    if 'PurchasePayUnit' not in p:
+        terminal_id = p['@TerminalID']
+        if terminal_id[:3] == 'PBP':
+            return 'mobile'
+        elif terminal_id[0] in ['3','4']:
+            return 'meter'
+        else:
+            raise ValueError("Unknown terminal type for terminal ID {} from payment {}.".format(terminal_id,p))
+
+    if type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.
+        return 'meter'
+    pay_unit_name = p['PurchasePayUnit']['@PayUnitName']
+    if pay_unit_name == 'Mobile Payment':
+        return 'mobile'
+    else: # In addition to "Mobile Payment" and "Coin" and "Card", there's also now "Manual", which is ignorable.
+        if pay_unit_name == 'Manual':
+            return 'manual'
+        elif pay_unit_name in ['Coin', 'Card']:
+            return 'meter'
+        else:
+            raise ValueError("Unknown payment type for @PayUnitName {} from payment {}.".format(pay_unit_name,p))
+
+def is_mobile_payment(p):
+    return get_payment_type(p) == 'mobile'
+#    # If the 'PurchasePayUnit' field cannot be found, use the terminal ID
+#    # to detect whether it's a virtual payment.
+#    if 'PurchasePayUnit' not in p:
+#        terminal_id = p['@TerminalID']
+#        if terminal_id[:3] == 'PBP':
+#            return True
+#        elif terminal_id[0] in ['3','4']:
+#            return False
+#        else:
+#            raise ValueError("Unknown terminal type for terminal ID {} from payment {}.".format(terminal_id,p))
+#
+#    if type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.
+#        return False
+#    elif p['PurchasePayUnit']['@PayUnitName'] == 'Mobile Payment':
+#        return True
+#    else: # In addition to "Mobile Payment" and "Coin" and "Card", there's also now "Manual", which is ignorable.
+#        return False
 
 def payment_time_of(p):
     # Establish a standard time field used for deciding which slot a
