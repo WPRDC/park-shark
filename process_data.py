@@ -928,6 +928,10 @@ def is_mobile_payment(p):
 #        return False
 
 def payment_time_of(p):
+    # This function is now deprecated because there are problems with
+    # using either DateCreatedUtc or PurchaseDateUtc as the time field.
+
+    ###################################################################
     # Establish a standard time field used for deciding which slot a
     # transaction should fit into.
 
@@ -947,7 +951,8 @@ def payment_time_of(p):
     # recalculate it later maybe) and then also refactor payment_time_of
     # to always return datetimes instead of strings that need to be parsed.
 
-    time_field = {'mobile': p['@DateCreatedUtc'],
+    time_field = {'mobile': p['@DateCreatedUtc'], # It turns out that DateCreatedUtc can
+            # be quite wrong (far from StartDateUtc) even for mobile purchases.
             'meter': p['@PurchaseDateUtc']}
 
     # If the 'PurchasePayUnit' field cannot be found, use the terminal ID
