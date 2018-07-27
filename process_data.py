@@ -1696,6 +1696,17 @@ def main(*args, **kwargs):
 ###########################################
     stats_rows = {} # This is only needed for the extra time aggregation modes.
 
+
+
+    # Occupancy calculations are currently broken for long pulls (since session_dict is incomplete and all_unlinkable 
+    # grows to beyond the computer's memory limits).
+
+    estimate_occupancy = False
+    if not estimate_occupancy:
+        print("Occupancy estimation is turned off.")
+    else:
+        print("Occupancy estimation (currently on) needs to be fixed.")
+
     print("time_aggregation = {}, space_aggregation = {}, spacetime = {}".format(time_aggregation, space_aggregation, spacetime))
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
@@ -1715,6 +1726,8 @@ def main(*args, **kwargs):
             reframed_ps = []
             unlinkable = []
             linkable = []
+            if not estimate_occupancy: # This is a temporary hack to keep all_unlinkable from growing without bound
+                all_unlinkable = [ ] # until a proper fix for estimating occupancy can be made.
             
             if slot_start.date() != current_day:
                 print("Moving session_dict to previous_session_dict at {}.".format(slot_start))
@@ -1905,99 +1918,107 @@ def main(*args, **kwargs):
         success_transactions = None # The success Boolean should be defined when push_to_CKAN is false.
 
 
-    ###
-    if len(all_unlinkable) != 0: # This is all that would be in the target time range
-        # NOT considering the warm-up period (which is tracked by warmup_unlinkable_count).
-        print("Unable to compute occupancy for all transactions with complete confidence due to {} unlinkable transactions.".format(len(all_unlinkable)))
-        if verbose:
-            print("Let's profile the unlinkable transactions by start and end times...")
-            end_times = defaultdict(int)
-            for p in all_unlinkable:
-                rounded_to_slot = round_time(p['payment_time_utc'],timechunk.seconds,"down")
-                end_times[rounded_to_slot] += 1
+    if estimate_occupancy:
+        ###
+        if len(all_unlinkable) != 0: # This is all that would be in the target time range
+            # NOT considering the warm-up period (which is tracked by warmup_unlinkable_count).
+            print("Unable to compute occupancy for all transactions with complete confidence due to {} unlinkable transactions.".format(len(all_unlinkable)))
+            if verbose:
+                print("Let's profile the unlinkable transactions by start and end times...")
+                end_times = defaultdict(int)
+                for p in all_unlinkable:
+                    rounded_to_slot = round_time(p['payment_time_utc'],timechunk.seconds,"down")
+                    end_times[rounded_to_slot] += 1
 
-            for et in sorted(end_times.keys()):
-                print("{}: {}".format(et, end_times[et]))
+                for et in sorted(end_times.keys()):
+                    print("{}: {}".format(et, end_times[et]))
 
 
 
-    # A different metric for whether there's enough information to save transactions as completely
-    # regularized: Make sure that all Durations and Amounts make sense.
+        # A different metric for whether there's enough information to save transactions as completely
+        # regularized: Make sure that all Durations and Amounts make sense.
 
-    try_to_infer_occupancies = (starting_time > (pytz.utc).localize(datetime(2018,6,19,9,0,0))) or len(all_unlinkable) == 0
-    print("try_to_infer_occupancies = {}".format(try_to_infer_occupancies))
-    if try_to_infer_occupancies and spacetime == 'zone': # If it's really possible to infer occupancies (and default aggregation is being used).
-        # Now that all of the transactions have been given standard parking-segment start times and durations,
-        # use the corrected transactions, but with the new time field to figure out how many cars
-        # are parked in each zone in each slot.
-        ps_by_slot = defaultdict(list)
-        calculated_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
-        for session in session_dict.values():
-            # Iterate over every transaction, stick each in the appropriate time bin, and build up all the statistics and then output all at once.
-            for p in session:
-                # Round chosen time field to the beginning of one of the slots.
-                if 'parking_segment_start_utc' in p:
-                    rounded_to_slot = round_time(p['parking_segment_start_utc'],timechunk.seconds,"down")
-                    ps_by_slot[rounded_to_slot].append(p)
-                    #if starting_time <= rounded_to_slot <= halting_time: # To ensure that all relevant transactions
-                    #    # have been pre-seeded before pushing a new occupancy row to CKAN. # This doesn't make any sense.
-                    #    ps_by_slot[rounded_to_slot].append(p)
+        try_to_infer_occupancies = (starting_time > (pytz.utc).localize(datetime(2018,6,19,9,0,0))) or len(all_unlinkable) == 0
+        print("try_to_infer_occupancies = {}".format(try_to_infer_occupancies))
+        if try_to_infer_occupancies and spacetime == 'zone': # If it's really possible to infer occupancies (and default aggregation is being used).
+            # Now that all of the transactions have been given standard parking-segment start times and durations,
+            # use the corrected transactions, but with the new time field to figure out how many cars
+            # are parked in each zone in each slot.
+            ps_by_slot = defaultdict(list)
+            calculated_occupancy = defaultdict(lambda: defaultdict(int)) # Number of cars for each time slot and zone.
+            for session in session_dict.values():
+                # Iterate over every transaction, stick each in the appropriate time bin, and build up all the statistics and then output all at once.
+                for p in session:
+                    # Round chosen time field to the beginning of one of the slots.
+                    if 'parking_segment_start_utc' in p:
+                        rounded_to_slot = round_time(p['parking_segment_start_utc'],timechunk.seconds,"down")
+                        ps_by_slot[rounded_to_slot].append(p)
+                        #if starting_time <= rounded_to_slot <= halting_time: # To ensure that all relevant transactions
+                        #    # have been pre-seeded before pushing a new occupancy row to CKAN. # This doesn't make any sense.
+                        #    ps_by_slot[rounded_to_slot].append(p)
 
-                    #print("{}Starting {}: {} minutes in {}".format(' '*2*p['segment_number'],p['parking_segment_start_utc'],p['Duration'],p['@TerminalID']))
+                        #print("{}Starting {}: {} minutes in {}".format(' '*2*p['segment_number'],p['parking_segment_start_utc'],p['Duration'],p['@TerminalID']))
+                    else:
+                        print("No parking_segment_start_utc found for this transaction.")
+
+            fmt = "{:<16}   {:>18}: {:>4} {:>18}: {:>4} {:>18}: {:>4}"
+            zs = ['401 - Downtown 1', '407 - Oakland 1', '425 - Bakery Sq']
+            zs = ['404 - Strip Disctrict', '410 - Oakland 4', '425 - Bakery Sq']
+
+            #for slot in sorted(ps_by_slot.keys()): # Iterating through this way only gives increases
+            # in occupancy and won't produce a new row for cases where parking sessions are only ending.
+            slot = copy(starting_time)
+            cumulated_dicts = []
+            while keep_running(slot,halting_time):
+                if slot in ps_by_slot:
+                    ps = ps_by_slot[slot]
                 else:
-                    print("No parking_segment_start_utc found for this transaction.")
+                    ps = []
+                # Condense to key statistics (including duration counts).
+                reframed_ps = [hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=False,extend=False) for p in ps]
+                stats_by_zone = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot,slot+timechunk, {}, zone_kind, space_aggregation, time_aggregation, [], tz=pgh, transactions_only=False)
+                calculated_occupancy = update_occupancies(calculated_occupancy,stats_by_zone,slot,timechunk)
+                if starting_time <= slot <= halting_time: # Only print/push to these.
+                    # package_for_output barely seems necessary here.
+                    list_of_dicts, augmented = package_for_output(stats_by_zone,zonelist,calculated_occupancy,zone_info,pgh,slot,slot+timechunk,'zone',None,transactions_only=False)
+                    occ = calculated_occupancy[slot]
+                    print(fmt.format(datetime.strftime(slot,"%Y-%m-%d %H:%M"), zs[0], occ[zs[0]], zs[1], occ[zs[1]], zs[2], occ[zs[2]]))
+                if output_to_csv and len(augmented) > 0: # Write to files as often as necessary,
+                    # since the associated delay is not as great as for pushing data to CKAN.
+                    write_or_append_to_csv('occupancy-1.csv',augmented,occ_dkeys,overwrite)
+                if push_to_CKAN:
+                    cumulated_dicts += augmented
+                if push_to_CKAN and (len(cumulated_dicts) >= threshold_for_uploading or not keep_running(slot + timechunk,halting_time)):
+                    schema = OccupancySchema
+                    primary_keys = ['zone', 'utc_start']
+                    pprint(cumulated_dicts[0])
+                    success = send_data_to_pipeline(server, SETTINGS_FILE, occupancy_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
+                    print("success = {}".format(success))
 
-        fmt = "{:<16}   {:>18}: {:>4} {:>18}: {:>4} {:>18}: {:>4}"
-        zs = ['401 - Downtown 1', '407 - Oakland 1', '425 - Bakery Sq']
-        zs = ['404 - Strip Disctrict', '410 - Oakland 4', '425 - Bakery Sq']
+                    if success:
+                        cumulated_dicts = []
+                        print("Pushed the last batch of transactions to {}".format(occupancy_resource_name))
+                slot += timechunk
 
-        #for slot in sorted(ps_by_slot.keys()): # Iterating through this way only gives increases
-        # in occupancy and won't produce a new row for cases where parking sessions are only ending.
-        slot = copy(starting_time)
-        cumulated_dicts = []
-        while keep_running(slot,halting_time):
-            if slot in ps_by_slot:
-                ps = ps_by_slot[slot]
-            else:
-                ps = []
-            # Condense to key statistics (including duration counts).
-            reframed_ps = [hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=False,extend=False) for p in ps]
-            stats_by_zone = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot,slot+timechunk, {}, zone_kind, space_aggregation, time_aggregation, [], tz=pgh, transactions_only=False)
-            calculated_occupancy = update_occupancies(calculated_occupancy,stats_by_zone,slot,timechunk)
-            if starting_time <= slot <= halting_time: # Only print/push to these.
-                # package_for_output barely seems necessary here.
-                list_of_dicts, augmented = package_for_output(stats_by_zone,zonelist,calculated_occupancy,zone_info,pgh,slot,slot+timechunk,'zone',None,transactions_only=False)
-                occ = calculated_occupancy[slot]
-                print(fmt.format(datetime.strftime(slot,"%Y-%m-%d %H:%M"), zs[0], occ[zs[0]], zs[1], occ[zs[1]], zs[2], occ[zs[2]]))
-            if output_to_csv and len(augmented) > 0: # Write to files as often as necessary,
-                # since the associated delay is not as great as for pushing data to CKAN.
-                write_or_append_to_csv('occupancy-1.csv',augmented,occ_dkeys,overwrite)
-            if push_to_CKAN:
-                cumulated_dicts += augmented
-            if push_to_CKAN and (len(cumulated_dicts) >= threshold_for_uploading or not keep_running(slot + timechunk,halting_time)):
-                schema = OccupancySchema
-                primary_keys = ['zone', 'utc_start']
-                pprint(cumulated_dicts[0])
-                success = send_data_to_pipeline(server, SETTINGS_FILE, occupancy_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
-                print("success = {}".format(success))
+            assert len(cumulated_dicts) == 0
+            print("len(ps_by_slot) = {}".format(len(ps_by_slot)))
+            print("len(calculated_occupancy) = {}".format(len(calculated_occupancy)))
 
-                if success:
-                    cumulated_dicts = []
-                    print("Pushed the last batch of transactions to {}".format(occupancy_resource_name))
-            slot += timechunk
-
-        assert len(cumulated_dicts) == 0
-        print("len(ps_by_slot) = {}".format(len(ps_by_slot)))
-        print("len(calculated_occupancy) = {}".format(len(calculated_occupancy)))
-
-        # Do the below but differently (find the correct calculated_occupancy entry and use it).
-        #if update_live_map: # Optionally update the live map if the timing of the
-        #    # current slot is correct.
-        #    if slot_start <= datetime.now(pytz.utc) < slot_start+timechunk:
-        #        update_map(dict(calculated_occupancy[slot_start]),zonelist,zone_info)
+            # Do the below but differently (find the correct calculated_occupancy entry and use it).
+            #if update_live_map: # Optionally update the live map if the timing of the
+            #    # current slot is correct.
+            #    if slot_start <= datetime.now(pytz.utc) < slot_start+timechunk:
+            #        update_map(dict(calculated_occupancy[slot_start]),zonelist,zone_info)
 
 
-    print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
+        print("warmup_unlinkable_count = {}, len(all_unlinkable) = {}".format(warmup_unlinkable_count,len(all_unlinkable)))
+
+
+    if not estimate_occupancy:
+        print("Occupancy estimation is turned off.")
+    else:
+        print("Occupancy estimation (currently on) needs to be fixed.")
+
     return success_transactions
 
 # Overview:
