@@ -20,6 +20,8 @@ from nonchalance import add_hashes
 
 from process_data import build_url, convert_doc_to_purchases
 
+#, cull_fields
+
 def beginning_of_month(dt=None):
     """Takes a datetime and returns the first datetime before
     that that corresponds to LOCAL midnight (00:00)."""
@@ -71,34 +73,38 @@ def cull_fields(ps):
     return purchases
 
 def get_doc_from_url_improved(url,pause=10):
-    r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
+    attempts = 0
+    url2 = None
 
-    if r.status_code == 403: # 403 = Forbidden, meaing that the CALE API
-        # has decided to shut down for a while (maybe for four hours
-        # after the last query of historical data).
-        raise RuntimeError("The CALE API is returning a 403 Forbidden error, making it difficult to accomplish anything.")
+    while url2 is None and attempts < 10:
+        r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
+        if r.status_code == 403: # 403 = Forbidden, meaing that the CALE API
+            # has decided to shut down for a while (maybe for four hours
+            # after the last query of historical data).
+            raise RuntimeError("The CALE API is returning a 403 Forbidden error, making it difficult to accomplish anything.")
 
-    # Convert Cale's XML into a Python dictionary
-    doc = xmltodict.parse(r.text,encoding = r.encoding)
-    
-    try:
-        # This try-catch clause is only protecting one of the three cases where
-        # the function is reading into doc without being sure that the fields
-        # are there (occasionally in practice they are not because of unknown
-        # stuff on the API end). 
+        # Convert Cale's XML into a Python dictionary
+        doc = xmltodict.parse(r.text,encoding = r.encoding)
+        attempts += 1
+        if 'BatchDataExportResponse' in doc and 'Url' in doc['BatchDataExportResponse']:
+            url2 = doc['BatchDataExportResponse']['Url']
+            print("url2 = {}".format(url2))
+        else:
+            if attempts % 5 == 0:
+                print("|", end="", flush=True)
+            else:
+                print("~", end="", flush=True)
+            time.sleep(pause)
 
-        # The next time such an exception is thrown, it might make sense to 
-        # look at what has been printed from doc and maybe put the call
-        # to get_doc_from_url into a try-catch clause.
-        url2 = doc['BatchDataExportResponse']['Url']
-        print("url2 = {}".format(url2))
-    except:
+    if url2 is None:
         print("The CALE API response looks like this:")
         pprint(doc)
         print("Unable to get the first URL ({}) by using the command url2 = doc['BatchDataExportResponse']['Url'].".format(url))
         print("Waiting {} seconds and restarting.".format(pause))
         time.sleep(pause)
         return None, False
+        # It might make sense to put the call
+        # to get_doc_from_url into a try-catch clause.
 
     r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
     if r2.status_code == 403:
@@ -108,6 +114,12 @@ def get_doc_from_url_improved(url,pause=10):
 
     delays = 0
     while not r2.ok or doc['BatchDataExportFileResponse']['ExportStatus'] != 'Processed':
+        if 'ExportStatus' in doc['BatchDataExportFileResponse']:
+            status = doc['BatchDataExportFileResponse']['ExportStatus']
+            if status not in ['Requested']:
+                print("Status = {}".format(status))
+                # This ExportStatus can come back as "Failed" for unknown reasons.
+
         time.sleep(pause)
         r2 = requests.get(url2, auth=(CALE_API_user, CALE_API_password))
         doc = xmltodict.parse(r2.text,encoding = r2.encoding)
@@ -231,13 +243,15 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
             raise ValueError("Unable to pull entire week from Batch Data endpoint if the end of that week is {}".format(week_end))
         else:
             downloaded = False
-            while not downloaded:
-                doc, downloaded = get_doc_from_url_improved(url,pause=60)
-                print("!", end="", flush=True)
-                
+            #attempts = 0
+            #while not downloaded and attempts < 20:
+            #    doc, downloaded = get_doc_from_url_improved(url,pause=60)
+            #    print("!", end="", flush=True)
+            #    attempts += 1
+            doc, downloaded = get_doc_from_url_improved(url,pause=60)
 
-                if not downloaded:
-                    raise ValueError("Unable to download a week of historical data after first attempt.")
+            if not downloaded:
+                raise ValueError("Unable to download a week of historical data after {} attempts.".format(attempts))
 
             ps = convert_doc_to_purchases(doc['BatchExportRoot'],slot_start,date_format)
 
@@ -366,7 +380,8 @@ def main(*args, **kwargs):
     pgh = pytz.timezone('US/Eastern')
     use_cache = kwargs.get('use_cache', False)
     slot_start = pgh.localize(datetime(2012,7,23,0,0)) # The actual earliest available data.
-    slot_start = pgh.localize(datetime(2018,2,5,0,0) + 4*timedelta(days=7))
+    slot_start = pgh.localize(datetime(2017,12,25,0,0) + 0*timedelta(days=7))
+
     slot_start = kwargs.get('slot_start',slot_start)
 
 ########
