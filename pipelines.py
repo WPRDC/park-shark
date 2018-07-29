@@ -45,7 +45,7 @@ class MetersSchema(pl.BaseSchema):
 class CumulativeMetersSchema(MetersSchema):
     year_month = fields.String(dump_only=True,dump_to='year_month',default=datetime.datetime.now().strftime("%Y-%m")) 
     # The year and month for which the meters data was pulled.
-    as_of = fields.DateTime(dump_only=True,dump_to='as_of',default=datetime.datetime.now().isoformat())
+    as_of = fields.DateTime(dump_only=True,dump_to='as_of',default=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
     # The datetime when the meters data was pulled.
 
 #    @pre_load()
