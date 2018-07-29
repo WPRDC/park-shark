@@ -927,53 +927,6 @@ def is_mobile_payment(p):
 #    else: # In addition to "Mobile Payment" and "Coin" and "Card", there's also now "Manual", which is ignorable.
 #        return False
 
-def payment_time_of(p):
-    # This function is now deprecated because there are problems with
-    # using either DateCreatedUtc or PurchaseDateUtc as the time field.
-
-    ###################################################################
-    # Establish a standard time field used for deciding which slot a
-    # transaction should fit into.
-
-    # This function must only return UTC time fields to work
-    # correctly in cache_in_memory_and_filter.
-
-
-    # Possible improvements:
-    # 1) Define a payment-time-utc field that stores the standardized
-    # time field (as defined below)
-    #if 'payment-time-utc' in p: # This could be used to define the time
-    #    # field used for binning the transaction for cases where
-    #    # session-clustering and true transaction start and end times
-    #    # can be correctly and reliably deduced.
-    #    return p['payment-time-utc']
-    # 2) Store payment-time-utc as a datetime (avoiding having to
-    # recalculate it later maybe) and then also refactor payment_time_of
-    # to always return datetimes instead of strings that need to be parsed.
-
-    time_field = {'mobile': p['@DateCreatedUtc'], # It turns out that DateCreatedUtc can
-            # be quite wrong (far from StartDateUtc) even for mobile purchases.
-            'meter': p['@PurchaseDateUtc']}
-
-    # If the 'PurchasePayUnit' field cannot be found, use the terminal ID
-    # to detect whether it's a virtual payment and then decide how to define
-    # the payment time.
-    if 'PurchasePayUnit' not in p:
-        terminal_id = p['@TerminalID']
-        if terminal_id[:3] == 'PBP':
-            return time_field['mobile']
-        elif terminal_id[0] in ['3','4']:
-            return time_field['meter']
-        else:
-            raise ValueError("Unknown terminal type for terminal ID {} from payment {}.".format(terminal_id,p))
-
-    if type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.
-        return time_field['meter']
-    elif p['PurchasePayUnit']['@PayUnitName'] == 'Mobile Payment':
-        return time_field['mobile']
-    else:
-        return time_field['meter']
-
 def hybrid_parking_segment_start_of(p):
     # In the CALE API, @Units == @EndDateUtc - @StartDateUtc.
     # The same relation does not hold for @PurchaseDateUtc, which in rare
