@@ -31,8 +31,8 @@ class MetersSchema(pl.BaseSchema):
     longitude = fields.String(dump_to='longitude',allow_none=True)
     status = fields.String(dump_to='status',allow_none=True)
     zone = fields.String(dump_to='zone',allow_none=True)
-    parentstructure = fields.String(dump_to='parent_structure',allow_none=True)
-    oldzone = fields.String(dump_to='old_zone',allow_none=True)
+    #parentstructure = fields.String(dump_to='parent_structure',allow_none=True)
+    #oldzone = fields.String(dump_to='old_zone',allow_none=True)
     allgroups = fields.String(dump_to='all_groups',allow_none=True) # Should this be JSON?
     guid = fields.String(dump_to='guid')
     cost_per_hour = fields.Float(dump_to='cost_per_hour',allow_none=True)
