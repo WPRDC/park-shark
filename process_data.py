@@ -1183,12 +1183,11 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
                     #if edl[11:13] in ['23','22','21','20','19','18']:
                     print("{}   {}   {}   {}".format(sdl[11:15],edl[11:15],amount,units))
 
-            hpss = hybrid_parking_segment_start_of(p)
         ######## DELETE ALL OF THE DIAGNOSTIC CODE ABOVE ###############
 
-            p['payment_time_utc'] = (pytz.utc).localize(parser.parse(payment_time_of(p)))
-            datetimes.append(p['payment_time_utc'])
-        #datetimes = [(pytz.utc).localize(parser.parse(payment_time_of(p))) for p in ps_for_whole_day]
+            hybrid_start = hybrid_parking_segment_start_of(p)
+            p['hybrid_parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(hybrid__start))
+            datetimes.append(p['hybrid_parking_segment_start_of'])
 
         ######## DELETE ALL OF THE DIAGNOSTIC CODE BELOW ###############
         if len(ps_for_whole_day) > 0:
@@ -1212,7 +1211,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         if len(ps) > 0:
             print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
         ps_all += ps
-        dts_all += datetimes
+        #dts_all += datetimes # [ ] It looks like this should actually be dts_all += dts.
 
     return ps_all
 
@@ -1230,19 +1229,19 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     # This function handles the situation where slot_start and slot_end are on different days
     # by calling get_ps_for_day in a loop.
 
-    # The function "payment_time_of" determines which of the timestamps is used for calculating
+    # The function "hybrid_parking_segment_start_of" determines the timestamp used for calculating
     # the datetime values used to filter purchases down to those between slot_start
     # and start_end.
 
 
-    # Note that the time zone tz and the field produced by payment_time_of must be consistent
+    # Note that the time zone tz and the field produced by hybrid_parking_segment_start_of must be consistent
     # for this to work properly.
     tz = pytz.utc
     # The old sanity check looked like this:
         #if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): # This does an XOR
                                                                            # between these values.
         #    raise RuntimeError("It looks like the time_field may not be consistent with the provided time zone")
-    # At present, it's not so easy to verify that payment_time_of() returns a UTC time.
+    # At present, it's not so easy to verify that hybrid_parking_segment_start_of() returns a UTC time.
 
     global last_utc_date_cache, utc_ps_cache, utc_dts_cache
     if last_utc_date_cache != slot_start.date():
@@ -1270,7 +1269,9 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
         # wind up in this cache at any one time.
         #utc_dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all] # This may break for StartDateUtc!!!!!
 
-        utc_dts_cache = [tz.localize(parser.parse(payment_time_of(p))) for p in ps_all] # This may break for StartDateUtc!!!!!
+        utc_dts_cache = [tz.localize(parser.parse(hybrid_parking_segment_start_of(p))) for p in ps_all] # This may break for StartDateUtc!!!!!
+        # [ ] return dts from get_utc_ps_for_day_from_json and use it here.
+        #       (* It's not necessary to calculate all these datetimes again!)
     else:
         ps_all = utc_ps_cache
     #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
@@ -1927,7 +1928,7 @@ def main(*args, **kwargs):
                 print("Let's profile the unlinkable transactions by start and end times...")
                 end_times = defaultdict(int)
                 for p in all_unlinkable:
-                    rounded_to_slot = round_time(p['payment_time_utc'],timechunk.seconds,"down")
+                    rounded_to_slot = round_time(p['hybrid_parking_segment_start_utc'],timechunk.seconds,"down")
                     end_times[rounded_to_slot] += 1
 
                 for et in sorted(end_times.keys()):
