@@ -412,7 +412,7 @@ def main(*args, **kwargs):
     while already_cached:
         print("Trying {}.".format(slot_start))
         ps, it_worked, already_cached = get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False)
-        slot_start += timedelta(days=7)
+        slot_start -= timedelta(days=7)
 
     return it_worked
 
