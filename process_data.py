@@ -1110,7 +1110,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         for p in ps_for_whole_day:
             hybrid_start = hybrid_parking_segment_start_of(p)
             p['hybrid_parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(hybrid_start))
-            datetimes.append(p['hybrid_parking_segment_start_of'])
+            datetimes.append(p['hybrid_parking_segment_start_utc'])
 
         #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
         start_of_day = beginning_of_day(slot_start)
@@ -1129,9 +1129,9 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         if len(ps) > 0:
             print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
         ps_all += ps
-        #dts_all += datetimes # [ ] It looks like this should actually be dts_all += dts.
+        dts_all += dts
 
-    return ps_all
+    return ps_all, dts_all
 
 # ~~~~~~~~~~~~~~~~
 
@@ -1167,15 +1167,17 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
             print("last_utc_date_cache ({}) doesn't match slot_start.date() ({})".format(last_utc_date_cache, slot_start.date()))
 
         ps_all = []
+        dts_all = []
         dt_start_i = slot_start
         while dt_start_i < slot_end:
             if caching_mode == 'utc_json':
-                ps_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,cache,mute)
+                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,cache,mute)
             elif caching_mode == 'db_caching':
                 ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
             else:
                 raise ValueError("Behavior for caching_mode = {} is undefined".format(caching_mode))
             ps_all += ps_for_whole_day
+            dts_all += dts_for_whole_day
             dt_start_i += timedelta(days = 1)
             if not mute:
                 print("Now there are {} transactions in ps_all".format(len(ps_all)))
@@ -1187,9 +1189,8 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
         # wind up in this cache at any one time.
         #utc_dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all] # This may break for StartDateUtc!!!!!
 
-        utc_dts_cache = [tz.localize(parser.parse(hybrid_parking_segment_start_of(p))) for p in ps_all] # This may break for StartDateUtc!!!!!
-        # [ ] return dts from get_utc_ps_for_day_from_json and use it here.
-        #       (* It's not necessary to calculate all these datetimes again!)
+        #utc_dts_cache = [tz.localize(parser.parse(hybrid_parking_segment_start_of(p))) for p in ps_all] # This may break for StartDateUtc!!!!!
+        utc_dts_cache = dts_all
     else:
         ps_all = utc_ps_cache
     #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
