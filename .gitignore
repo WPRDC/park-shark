@@ -4,7 +4,9 @@
 *.tsv
 *.webloc
 *.docx
+*.xlsx
 *.swp
+*.log
 json/
 utc_json/
 utc_json_2/
