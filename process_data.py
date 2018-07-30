@@ -1107,45 +1107,10 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 
         # Filter down to the events in the slot #
         datetimes = []
-
-
-        ######## DELETE ALL OF THE DIAGNOSTIC CODE BELOW ###############
-        zero_amounts = 0
-
         for p in ps_for_whole_day:
-            sdl = p['@StartDateLocal']
-            edl = p['@EndDateLocal']
-            amount = p['@Amount']
-            units = p['@Units']
-
-            if amount == '0':
-                zero_amounts += 1
-
-            payment_type = None
-            if 'PurchasePayUnit' not in p:
-                terminal_id = p['@TerminalID']
-                if terminal_id[:3] == 'PBP':
-                    payment_type = 'mobile' #eturn time_field['mobile']
-            elif type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.
-                payment_type = 'meter'
-            elif p['PurchasePayUnit']['@PayUnitName'] == 'Mobile Payment':
-                payment_type = 'mobile' #return time_field['mobile']
-
-            if payment_type == 'mobile':
-                if sdl[11:13] in ['23','22','21','20','19','18']:
-                    #if edl[11:13] in ['23','22','21','20','19','18']:
-                    print("{}   {}   {}   {}".format(sdl[11:15],edl[11:15],amount,units))
-
-        ######## DELETE ALL OF THE DIAGNOSTIC CODE ABOVE ###############
-
             hybrid_start = hybrid_parking_segment_start_of(p)
             p['hybrid_parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(hybrid_start))
             datetimes.append(p['hybrid_parking_segment_start_of'])
-
-        ######## DELETE ALL OF THE DIAGNOSTIC CODE BELOW ###############
-        if len(ps_for_whole_day) > 0:
-            print("     offset = {}, len(zero_amounts) = {}, len(ps_for_whole_day) = {}, zero_amounts/all = {}".format(offset, zero_amounts, len(ps_for_whole_day), zero_amounts/len(ps_for_whole_day)))
-        ######## DELETE ALL OF THE DIAGNOSTIC CODE ABOVE ###############
 
         #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
         start_of_day = beginning_of_day(slot_start)
