@@ -1139,7 +1139,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
         ######## DELETE ALL OF THE DIAGNOSTIC CODE ABOVE ###############
 
             hybrid_start = hybrid_parking_segment_start_of(p)
-            p['hybrid_parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(hybrid__start))
+            p['hybrid_parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(hybrid_start))
             datetimes.append(p['hybrid_parking_segment_start_of'])
 
         ######## DELETE ALL OF THE DIAGNOSTIC CODE BELOW ###############
