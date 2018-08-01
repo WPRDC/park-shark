@@ -22,6 +22,14 @@ from fetch_terminals import pull_terminals, csv_file_path
 from notify import send_to_slack
 from parameters.local_parameters import SETTINGS_FILE # This is yet another workaround.
 
+def find_resource_id(site,package_id,resource_name,API_key=None):
+    # Get the resource ID given the package ID and resource name.
+    resources = get_package_parameter(site,package_id,'resources',API_key)
+    for r in resources:
+        if r['name'] == resource_name:
+            return r['id']
+    return None
+
 class MetersSchema(pl.BaseSchema):
     #ID,Location,LocationType,Latitude,Longitude,Status,Zone,ParentStructure,OldZone,AllGroups,GUID,Cost per hour,Rate information,Restrictions
     id = fields.String(dump_to='id')
@@ -152,6 +160,12 @@ def main(keep_archive):
     #          resource_name=current_resource_name,
     #          method='upsert')
 
+    # Set clear_first based on whether the resource is already there.
+    resource_id = find_resource_id(site,package_id,current_resource_name,API_key)
+    clear_first = (resource_id is not None)
+    # This will clear the Current Meters resource so that no rogue meters
+    # get left in that table.
+    print("clear_first = {}".format(clear_first))
 
     schema = MetersSchema
     key_fields = ['id','guid']#['id']
@@ -167,6 +181,7 @@ def main(keep_archive):
         .load(pl.CKANDatastoreLoader, server,
               fields=schema().serialize_to_ckan_fields(),
               key_fields=key_fields,
+              clear_first=clear_first,
               package_id=package_id,
               resource_name=current_resource_name,
               method=shoving_method)
@@ -176,7 +191,8 @@ def main(keep_archive):
     # Will this script overwrite an existing CSV file (or just append to it)?
     ########### CUMULATIVE METERS ARCHIVE #############################
     cumulative_resource_name = 'Payment Points (Monthly Archives)'
-
+    clear_first = False # Setting this variable here is just a precaution
+    # since clear_first is not specified in the pipeline call below.
     schema = CumulativeMetersSchema
     key_fields = ['id','year_month','guid'] 
     shoving_method = 'upsert' # Here upserting means that every time we run this
