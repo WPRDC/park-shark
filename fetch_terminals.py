@@ -132,6 +132,8 @@ def pull_terminals(*args, **kwargs):
     uncharted_numbered_zones = []
     uncharted_enforcement_zones = []
     group_lookup_addendum = {}
+
+    ids_to_ignore = ['Friendship Ave RPP']
     for k,t in enumerate(terminals):
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
@@ -208,7 +210,8 @@ def pull_terminals(*args, **kwargs):
         if t['@Guid'] in restrictions:
             new_entry['Restrictions'] = restrictions[t['@Guid']]
 
-        list_of_dicts.append(new_entry)
+        if t['@Id'] not in ids_to_ignore:
+            list_of_dicts.append(new_entry)
 
     #dkeys = list(list_of_dicts[0].keys()) # This does not set the correct order for the field names.
     dkeys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
