@@ -122,6 +122,7 @@ def main(input_filename_1,input_filename_2,as_of):
             'NORTH SHORE': "422 - Northshore",
             'WEST END': "423 - West End",
             'TECHNOLOGY DRIVE': "424 - Technology Drive",
+            '*TECHNOLOGY DRIVE': "424 - Technology Drive",
             'BAKERY SQUARE': "425 - Bakery Sq",
             'HILL DISTRICT': "426 - Hill District"
             }
