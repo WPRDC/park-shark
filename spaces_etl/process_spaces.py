@@ -129,6 +129,7 @@ def main(input_filename_1,input_filename_2,as_of):
 
     list_of_dicts = off_street + on_street
     for d in list_of_dicts:
+        d['location'] = re.sub("\s+$","",d['location'])
         if d['location'] not in zone_by_location:
             raise ValueError("Unable to find zone with designation {} in zone_by_location".format(d['location']))
         zone = zone_by_location[d['location']]
