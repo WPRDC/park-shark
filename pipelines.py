@@ -34,14 +34,14 @@ class MetersSchema(pl.BaseSchema):
     #ID,Location,LocationType,Latitude,Longitude,Status,Zone,ParentStructure,OldZone,AllGroups,GUID,Cost per hour,Rate information,Restrictions
     id = fields.String(dump_to='id')
     location = fields.String(dump_to='location',allow_none=True)
-    locationtype = fields.String(dump_to='location_type',allow_none=True)
+    location_type = fields.String(dump_to='location_type',allow_none=True)
     latitude = fields.String(dump_to='latitude',allow_none=True)
     longitude = fields.String(dump_to='longitude',allow_none=True)
     status = fields.String(dump_to='status',allow_none=True)
     zone = fields.String(dump_to='zone',allow_none=True)
     #parentstructure = fields.String(dump_to='parent_structure',allow_none=True)
     #oldzone = fields.String(dump_to='old_zone',allow_none=True)
-    allgroups = fields.String(dump_to='all_groups',allow_none=True) # Should this be JSON?
+    all_groups = fields.String(dump_to='all_groups',allow_none=True) # Should this be JSON?
     guid = fields.String(dump_to='guid')
     cost_per_hour = fields.Float(dump_to='cost_per_hour',allow_none=True)
     rate_information = fields.String(dump_to='rate_information',allow_none=True)
