@@ -1,7 +1,7 @@
 import os, re, csv, json, xmltodict
 
 from collections import OrderedDict, Counter, defaultdict
-from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
+from util.util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
 pure_zones_list, numbered_reporting_zones_list, sampling_groups, \
@@ -18,9 +18,9 @@ from pprint import pprint
 from datetime import datetime, timedelta
 from dateutil import parser
 
-from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
+from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 
-from carto_util import update_map
+from util.carto_util import update_map
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path, SETTINGS_FILE
 from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, SamplingTransactionsSchema, OccupancySchema
@@ -1544,7 +1544,7 @@ def main(*args, **kwargs):
     # There are presently two to three places to change the names
     # of fields to allow them to be pushed to CKAN (or even written
     # to a CSV file):
-    # 1) util.py/build_keys()
+    # 1) util/util.py/build_keys()
     # 2) maybe in process_data.py/package_for_output()
     # 3) the Marshmallow schema
     # and if changing the field names within the script as well,
