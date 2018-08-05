@@ -94,7 +94,8 @@ def main(keep_archive):
     monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
     current_resource_name = 'Current Payment Points'
 
-    server = "official-terminals" # Note that this is the package ID just for terminal information.
+    #server = "official-terminals" # Note that this is the package ID just for terminal information.
+    server = "meters-etl" # The new repository, intended for publication
 
     # Combined Data 
     #   primary keys: Meter ID and/or GUID and the year/month 
