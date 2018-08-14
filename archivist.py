@@ -1,7 +1,7 @@
 import os, re, json, xmltodict
 
 from collections import OrderedDict, Counter, defaultdict
-from util import is_timezoneless, remove_field
+from util.util import is_timezoneless, remove_field
 import requests
 import zipfile
 from io import BytesIO # Works only under Python 3
@@ -11,7 +11,7 @@ from pprint import pprint
 from datetime import datetime, timedelta
 from dateutil import parser
 
-from db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
+from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path
