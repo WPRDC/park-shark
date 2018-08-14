@@ -1676,7 +1676,7 @@ def main(*args, **kwargs):
                 print("{} | {} purchases, ${}, len(linkable) = {}, len(unlinkable) = {}".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"),
                     len(purchases),sum([float(p['@Amount']) for p in purchases]),len(linkable), len(unlinkable)))
 
-            for p in linkable + unlinkable:
+            for p in purchases: # This was previously "for p in linkable + unlinkable" before the estimate_occupancy hack was put in place.
                 if estimate_occupancy:
                     if 'Duration' not in p or p['Duration'] is None:
                         if 'hash' in p and p['hash'] in session_dict.keys():
