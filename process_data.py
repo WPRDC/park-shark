@@ -1193,6 +1193,10 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
         utc_dts_cache = dts_all
     else:
         ps_all = utc_ps_cache
+
+        # [ ]  Why is utc_ps_cache needed here at all? Was this just duplicating needlessly a pattern from another parallel function?
+
+
     #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
     # execute each time for busy days since the time calculations
     # are on the scale of tens of microseconds.
