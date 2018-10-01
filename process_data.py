@@ -867,7 +867,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
         # since filtering is done further down in this function, this should not represent a 
         # problem. There should be no situations where more than two days of transactions will
         # wind up in this cache at any one time.
-        dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all]
+        dts_cache = [tz.localize(parser.parse(p[time_field])) for p in ps_all]
         time.sleep(3)
     else:
         ps_all = all_day_ps_cache
