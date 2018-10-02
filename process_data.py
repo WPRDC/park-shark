@@ -1126,7 +1126,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
             #    pprint(purchase_i)
 
         t_end_fetch = time.time()
-        if len(ps) > 0:
+        if len(ps_for_whole_day) > 0:
             print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
         ps_all += ps
         dts_all += dts
