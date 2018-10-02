@@ -239,7 +239,9 @@ def is_very_beginning_of_the_month(dt):
 
 def beginning_of_day(dt=None):
     """Takes a datetime and returns the first datetime before
-    that that corresponds to LOCAL midnight (00:00)."""
+    that that corresponds to LOCAL midnight (00:00).
+    
+    This function is time-zone agnostic."""
     if dt == None : dt = datetime.now()
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -740,10 +742,15 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
     Caching by date ties this approach to a particular time zone. This
     is why transactions are dropped if we send this function a UTC
-    slot_start (I think)."""
+    slot_start (I think).
+    
+    This function seems to give the same result whether slot_start is
+    localized for UTC or Eastern, so long as tz is pytz.utc."""
 
     date_format = '%Y-%m-%d'
-    slot_start = slot_start.astimezone(tz)
+    slot_start = slot_start.astimezone(tz) # slot_start needs to already 
+    # have a time zone associated with it. This line forces slot_start to be 
+    # in timezone tz, even if it wasn't before. 
 
     dashless = slot_start.strftime('%y%m%d')
     if tz == pytz.utc:
