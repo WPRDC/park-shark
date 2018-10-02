@@ -1033,7 +1033,7 @@ def parking_segment_start_of(p):
 def keep_running(slot_start_time,halting_time):
     return slot_start_time <= datetime.now(pytz.utc) and slot_start_time < halting_time
 
-def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
+def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
     # collecting data over two UTC days (from a function that 
     # caches API query results as raw JSON files) and then filtering
@@ -1098,7 +1098,17 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 
     #pgh = pytz.timezone('US/Eastern') # This time zone no longer needs to be hard-coded 
     # since get_batch_parking_for_day has been fixed to work for different time zones 
-    # (I think).
+    # (I think). [Actually, we do need to use the local time zone so that beginning_of_day
+    # returns the correct time. This time zone is now being passed up to this function
+    # using the local_tz variable.]
+    slot_start = slot_start.astimezone(local_tz)
+
+    # Time-zone-sensitivity problem: This function gives different results for
+    # slot_start = 2018-09-23 04:00:00+00:00
+    # and
+    # slot_start = 2018-09-23 00:00:00-04:00
+    # even though these are two different representations of the same time.
+
 
     ps_all = []
     dts_all = []
@@ -1143,7 +1153,7 @@ def get_utc_ps_for_day_from_json(slot_start,cache=True,mute=False):
 # ~~~~~~~~~~~~~~~~
 
 
-def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_mode='utc_json'):
+def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,caching_mode='utc_json'):
     # Basically, this function gets all the parking events between slot_start and start_end (using time_field)
     # to choose the field to filter on, and maintains an in-memory global cache of all parking events for the
     # entire day corresponding to the last date called. Thus, when slot_start moves from January 1st to
@@ -1161,7 +1171,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
 
     # Note that the time zone tz and the field produced by hybrid_parking_segment_start_of must be consistent
     # for this to work properly.
-    tz = pytz.utc
+    #tz = pytz.utc
     # The old sanity check looked like this:
         #if (re.search('Utc',time_field) is not None) != (tz == pytz.utc): # This does an XOR
                                                                            # between these values.
@@ -1178,7 +1188,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
         dt_start_i = slot_start
         while dt_start_i < slot_end:
             if caching_mode == 'utc_json':
-                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,cache,mute)
+                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,cache,mute)
             elif caching_mode == 'db_caching':
                 ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
             else:
@@ -1227,7 +1237,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute=False,caching_m
     last_utc_date_cache = slot_start.date()
     return ps
 
-def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mode='utc_json'):
+def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,caching_mode='utc_json'):
     # slot_start and slot_end must have time zones so that they
     # can be correctly converted into UTC times for interfacing
     # with the /Cah LAY/ API.
@@ -1249,7 +1259,7 @@ def get_parking_events(db,slot_start,slot_end,cache=False,mute=False,caching_mod
     if caching_mode == 'utc_json' or recent:
         #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live" 
         # (recent transactions) API.
-        return cache_in_memory_and_filter(db,slot_start,slot_end,cache,mute,caching_mode)
+        return cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute,caching_mode)
     else: # Currently utc_json mode is considered the default and the get_batch_parking
         # functions are considered to be deprecated.
 
@@ -1644,7 +1654,7 @@ def main(*args, **kwargs):
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
 
-        purchases = get_parking_events(db,slot_start,slot_end,True,False,caching_mode)
+        purchases = get_parking_events(db,slot_start,slot_end,pgh,True,False,caching_mode)
         t1 = time.time()
 
         #print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
