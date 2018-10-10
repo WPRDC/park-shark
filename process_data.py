@@ -1612,7 +1612,7 @@ def main(*args, **kwargs):
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
-        purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,True,False,caching_mode)
+        purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,pgh,True,False,caching_mode)
         for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
             if 'hash' in p:
                 session_dict[p['hash']].append(p)
