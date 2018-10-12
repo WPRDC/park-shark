@@ -19,7 +19,7 @@ import pytz
 from dateutil import parser
 
 from process_data import last_date_cache, all_day_ps_cache, \
-beginning_of_day, roundTime, get_batch_parking, get_parking_events, \
+beginning_of_day, get_batch_parking, get_parking_events, \
 get_batch_parking_for_day, hybrid_parking_segment_start_of, is_mobile_payment
 
 def cast_string_to_dt(s):

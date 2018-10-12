@@ -15,8 +15,8 @@ import process_data
 def main(use_cache):
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
-    slot_start = process_data.roundTime(datetime.now(pgh) - timedelta(minutes=10), slot_width) 
-    halting_time = datetime.now(pgh) #process_data.roundTime(datetime.now(pgh), slot_width)
+    slot_start = process_data.round_time(datetime.now(pgh) - timedelta(minutes=10), slot_width) 
+    halting_time = datetime.now(pgh) #process_data.round_time(datetime.now(pgh), slot_width)
 
     slot_start = pgh.localize(process_data.beginning_of_day(datetime(2012,7,23,0,0)))
 #    slot_start = pgh.localize(process_data.beginning_of_day(datetime(2016,9,29,0,0)))

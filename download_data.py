@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timedelta
 import pytz
 
-from process_data import roundTime, convert_doc_to_purchases, get_parking_events, get_batch_parking_for_day
+from process_data import round_time, convert_doc_to_purchases, get_parking_events, get_batch_parking_for_day
 
 last_date_cache = None
 all_day_ps_cache = []
@@ -64,7 +64,7 @@ def main():
 
 ########
     halting_time = slot_start + timedelta(hours=2)
-    halting_time = roundTime(datetime.now(pgh), 24*60*60)
+    halting_time = round_time(datetime.now(pgh), 24*60*60)
     halting_time = pgh.localize(datetime(2017,5,1,0,0))
 
     slot_end = slot_start + timechunk

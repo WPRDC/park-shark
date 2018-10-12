@@ -202,20 +202,6 @@ def get_zone_info(server):
     write_or_append_to_csv(zone_info_cache_file,list_of_ds,keys,actually_overwrite=True)
     return zone_info
 
-def roundTime(dt=None, roundTo=60):
-    # Deprecated in favor of the more flexible round_time function.
-    # (but previously, this has mainly only been used in functions that
-    # contain example parameters and call process_data).
-    """Round a datetime object to any time laps[e] in seconds
-    dt : datetime.datetime object, default now.
-    roundTo : Closest number of seconds to round to, default 1 minute.
-    Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-    """
-    if dt == None : dt = datetime.now()
-    seconds = (dt.replace(tzinfo=None) - dt.min).seconds
-    rounding = (seconds+roundTo/2) // roundTo * roundTo
-    return dt + timedelta(0,rounding-seconds,-dt.microsecond)
-
 def round_time(dt=None, round_to=60, method="half up"):
     """Round a datetime object to any time laps[e] in seconds
     dt : datetime.datetime object, default now.
@@ -1508,10 +1494,6 @@ def main(*args, **kwargs):
     if skip_processing:
         timechunk = timedelta(hours=24)
 
-    #slot_start = roundTime(datetime.now() - timedelta(hours=24), 60*60)
-    # Start 24 hours ago (rounded to the nearest hour).
-    # This is a naive (timezoneless) datetime, so let's try it this way:
-    #slot_start = roundTime(datetime.now(pytz.utc) - timedelta(hours=24), 60*60)
     # It is recommended that all work be done in UTC time and that the
     # conversion to a local time zone only happen at the end, when
     # presenting something to humans.

@@ -12,7 +12,6 @@ def main():
     slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=53)) + timedelta(hours=8)
     slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=5)) + timedelta(hours=8)
     slot_start = process_data.beginning_of_day(datetime.now(pgh)) + timedelta(hours=8)
-    #halting_time = process_data.roundTime(slot_start + timedelta(minutes=10), 10)
     halting_time = process_data.beginning_of_day(datetime.now(pgh)) + timedelta(hours=8) + timedelta(minutes=1)
     script_start = datetime.now()
     print("Started processing at {}. (Processing transactions between {} and {})".format(script_start, slot_start, halting_time))
