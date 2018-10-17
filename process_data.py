@@ -1123,9 +1123,9 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                 if get_payment_type(purchase_i) != 'manual': # Filter out payments that are neither meter nor mobile payments.
                     ps.append(purchase_i)
                     dts.append(datetime_i)
-            #if purchase_i['@PurchaseGuid'] == 'EE37C59D-F9AD-97E8-D296-1C0A5A683A67':
+            #if purchase_i['@PurchaseGuid'] == '53F693C2-4BF9-4E70-89B5-5B9532461B8C':
             #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            #    print("start_of_day <= datetime_i < start_of_next_day = {}".format(start_of_day <= datetime_i < start_of_next_day))
+            #    print("start_of_day ({}) <= datetime_i ({})< start_of_next_day ({}) = {}".format(start_of_day, datetime_i, start_of_next_day, start_of_day <= datetime_i < start_of_next_day))
             #    pprint(purchase_i)
 
         t_end_fetch = time.time()
