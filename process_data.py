@@ -152,8 +152,7 @@ temp_zone_info = {'344 - 18th & Carson Lot': {'Latitude': 40.428484093957401,
 
 def get_zone_info(server):
     """Gather useful parameters about each zone (or lot) into a zone_info dictionary."""
-    spot_counts_resource_id = "f9b65c53-ee4f-4585-8d81-b8531b688d06"
-    lease_counts_resource_id = "f92ac002-7739-46f8-8fa9-d4668f9a54fd"
+    from parameters.remote_parameters import spot_counts_resource_id, lease_counts_resource_id
     zone_info_cache_file = 'zone_info.csv'
     try:
         settings, site, package_id, API_key = get_connection_parameters(server, SETTINGS_FILE)
@@ -176,7 +175,7 @@ def get_zone_info(server):
         leases[l['zone']] = l['active_leases']
     for r in records:
         zone = r['zone']
-        zone_info[zone] = {'spaces': r['spaces'], 'type': 'On street' if r['on_street'] == 'true' else 'Lot'}
+        zone_info[zone] = {'spaces': r['spaces'], 'type': 'On street' if r['type'] == 'on-street' else 'Lot'}
         if zone in leases.keys():
             try:
                 zone_info[zone]['leases'] = int(leases[zone])
