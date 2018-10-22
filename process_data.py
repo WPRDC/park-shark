@@ -1728,7 +1728,7 @@ def main(*args, **kwargs):
 
                     if push_to_CKAN:
                         schema = TransactionsSchema
-                        primary_keys = ['zone', 'utc_start']
+                        primary_keys = ['zone', 'utc_start', 'start']
                         success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, list_of_dicts, primary_keys=primary_keys)
                         print("success = {}".format(success))
 
@@ -1767,7 +1767,7 @@ def main(*args, **kwargs):
                 if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
                     print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
                     schema = TransactionsSchema
-                    primary_keys = ['zone', 'utc_start']
+                    primary_keys = ['zone', 'utc_start', 'start']
                     success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, cumulated_dicts, primary_keys=primary_keys)
                     print("success = {}".format(success))
                     if success:
@@ -1787,8 +1787,8 @@ def main(*args, **kwargs):
                 cumulated_sampling_dicts += sampling_list_of_dicts
                 if push_to_CKAN and len(cumulated_sampling_dicts) >= threshold_for_uploading:
                     schema = SamplingTransactionsSchema
-                    primary_keys = ['zone', 'utc_start']
-                    success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_sampling_dicts,  primary_keys=primary_keys)
+                    primary_keys = ['zone', 'utc_start', 'start']
+                    success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_sampling_dicts, primary_keys=primary_keys)
 
                     if success_a:
                         cumulated_sampling_dicts = []
@@ -1819,7 +1819,7 @@ def main(*args, **kwargs):
         else:
             filtered_list_of_dicts = list_of_dicts
         schema = TransactionsSchema
-        primary_keys = ['zone', 'utc_start']
+        primary_keys = ['zone', 'utc_start', 'start']
         success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, filtered_list_of_dicts, primary_keys=primary_keys)
 
         if success:
@@ -1829,7 +1829,7 @@ def main(*args, **kwargs):
 
         if spacetime == 'zone':
             schema = SamplingTransactionsSchema
-            primary_keys = ['zone', 'utc_start']
+            primary_keys = ['zone', 'utc_start', 'start']
             success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_sampling_dicts, primary_keys=primary_keys)
             if success_a:
                 cumulated_sampling_dicts = []
@@ -1915,7 +1915,7 @@ def main(*args, **kwargs):
                     cumulated_dicts += augmented
                 if push_to_CKAN and (len(cumulated_dicts) >= threshold_for_uploading or not keep_running(slot + timechunk,halting_time)):
                     schema = OccupancySchema
-                    primary_keys = ['zone', 'utc_start']
+                    primary_keys = ['zone', 'utc_start', 'start']
                     pprint(cumulated_dicts[0])
                     success = send_data_to_pipeline(server, SETTINGS_FILE, occupancy_resource_name, schema, cumulated_dicts, primary_keys=primary_keys)
                     print("success = {}".format(success))
