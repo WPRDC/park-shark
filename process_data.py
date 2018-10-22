@@ -1094,6 +1094,13 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
     # slot_start = 2018-09-23 00:00:00-04:00
     # even though these are two different representations of the same time.
 
+    print("############# slot_start = {}, beginning_of_day(slot_start) = {}, slot_start.utcoffset().total_seconds() = {}".format(slot_start,beginning_of_day(slot_start),slot_start.utcoffset().total_seconds()))
+
+    reference_time = 'hybrid'
+    reference_time = 'purchase_time' # Switching to PurchaseDate as a reference for
+    # comparison with CALE Web Office results (even though this timestamp is
+    # sometimes problematically different from StartDate).
+    print("Using {} reference-time mode.".format(reference_time))
 
     ps_all = []
     dts_all = []
@@ -1111,8 +1118,15 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
         datetimes = []
         for p in ps_for_whole_day:
             hybrid_start = hybrid_parking_segment_start_of(p)
-            p['hybrid_parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(hybrid_start))
-            datetimes.append(p['hybrid_parking_segment_start_utc'])
+            p['hybrid_parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(hybrid_start)) # This is being used for estimating occupancy.
+            # [ ] Could parking_segment_start_utc be used instead?
+            if reference_time == 'hybrid':
+                datetimes.append(p['hybrid_parking_segment_start_utc'])
+            elif reference_time == 'purchase_time':
+                purchase_dt = (pytz.utc).localize(parser.parse(p['@PurchaseDateUtc']))
+                #purchase_dt = (pytz.timezone('US/Eastern')).localize(parser.parse(p['@PurchaseDateLocal']))
+                #purchase_dt = purchase_dt.astimezone(pytz.utc) #Using PurchaseDateLocal gives the same results.
+                datetimes.append(purchase_dt)
 
         #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
         start_of_day = beginning_of_day(slot_start)
@@ -1149,10 +1163,11 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
     # This function handles the situation where slot_start and slot_end are on different days
     # by calling get_ps_for_day in a loop.
 
-    # The function "hybrid_parking_segment_start_of" determines the timestamp used for calculating
-    # the datetime values used to filter purchases down to those between slot_start
-    # and start_end.
-
+    # When reference_time == 'hybrid', the function "hybrid_parking_segment_start_of" determines 
+    # the timestamp used for calculating the datetime values used to filter purchases 
+    # down to those between slot_start and start_end. When reference_time == 'purchase_time',
+    # @PurchaseDateUtc is used instead. (reference_time is set in get_utc_ps_for_day_from_json,
+    # which is called below.)
 
     # Note that the time zone tz and the field produced by hybrid_parking_segment_start_of must be consistent
     # for this to work properly.
