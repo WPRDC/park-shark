@@ -28,3 +28,5 @@ parameters/
 linked/
 linkable/
 unlinkable/
+proto_get_revenue.py
+credentials.py
