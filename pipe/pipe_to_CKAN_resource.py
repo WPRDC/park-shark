@@ -18,16 +18,18 @@ from pprint import pprint
 
 DEFAULT_CKAN_INSTANCE = 'https://data.wprdc.org'
 
-class TransactionsSchema(pl.BaseSchema):
+class BaseTransactionsSchema(pl.BaseSchema):
     zone = fields.String()
     start = fields.DateTime()
     end = fields.DateTime()
     utc_start = fields.DateTime()
-    transactions = fields.Integer()
-    payments = fields.Float()
 
     class Meta:
         ordered = True
+
+class TransactionsSchema(BaseTransactionsSchema):
+    transactions = fields.Integer()
+    payments = fields.Float()
 
     @pre_load
     def cast_fields(self,data):
@@ -39,6 +41,24 @@ class TransactionsSchema(pl.BaseSchema):
         data['end'] = datetime.strptime(data['end'],"%Y-%m-%d %H:%M:%S").isoformat()
         data['utc_start'] = datetime.strptime(data['utc_start'],"%Y-%m-%d %H:%M:%S").isoformat()
 
+class SplitTransactionsSchema(BaseTransactionsSchema):
+    """The split transactions schema handles the case where transactions are to be split between
+    mobile transactions and meter transactions."""
+    meter_transactions = fields.Integer()
+    meter_payments = fields.Float()
+    mobile_transactions = fields.Integer()
+    mobile_payments = fields.Float()
+
+    @pre_load
+    def cast_fields(self,data):
+        data['meter_payments'] = float(data['meter_payments'])
+        data['mobile_payments'] = float(data['mobile_payments'])
+        # This may not be necessary, but ensuring that datetimes are in
+        # ISO format is the best way of preparing timestamps to be
+        # sent to CKAN.
+        data['start'] = datetime.strptime(data['start'],"%Y-%m-%d %H:%M:%S").isoformat()
+        data['end'] = datetime.strptime(data['end'],"%Y-%m-%d %H:%M:%S").isoformat()
+        data['utc_start'] = datetime.strptime(data['utc_start'],"%Y-%m-%d %H:%M:%S").isoformat()
 
 class SamplingTransactionsSchema(TransactionsSchema):
     parent_zone = fields.String()
