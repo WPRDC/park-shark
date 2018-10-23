@@ -210,9 +210,11 @@ def write_to_csv(filename,list_of_dicts,keys):
         dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
 
-def build_keys(space_aggregation,time_aggregation,payment_aggregation):
-    """Based on the types of spatial, temporal, and payment aggregation, synthesize and return
-    the dictionary keys (used for writing a bunch of dictionaries to a CSV file."""
+def build_keys(space_aggregation,time_aggregation,split_by_mode):
+    """Based on the types of spatial and temporal aggregation (and now whether
+    transactions should be split by payment mode into mobile and meter purchases),
+    synthesize and return the dictionary keys (used for writing a bunch of
+    dictionaries to a CSV file."""
     # Given that these fields appear elsewhere in the process_data.py code, it might 
     # be a good idea to refactor things some more so that there is one source for 
     # these field names.
@@ -229,9 +231,9 @@ def build_keys(space_aggregation,time_aggregation,payment_aggregation):
     elif time_aggregation == 'month':
         time_keys = ['Year', 'Month', 'Hour', 'UTC Hour']
     payment_keys = ['transactions', 'payments']
-    if payment_aggregation is None:
+    if not split_by_mode:
         base = payment_keys
-    elif payment_aggregation == 'mode':
+    else:
         base = ['meter_transactions', 'meter_payments', 'mobile_transactions', 'mobile_payments']
     linked_keys = ['car_minutes', 'durations'] # These keys are valid when
     # the transactions have been linked and durations can be correctly

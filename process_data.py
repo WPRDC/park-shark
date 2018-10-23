@@ -460,7 +460,7 @@ def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_
         stats['UTC Hour'] = start_time.astimezone(pytz.utc).strftime("%-H")
     return stats
 
-def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,end_time, stats_by={},zone_kind='old', space_aggregate_by='zone', time_aggregate_by=None, payment_aggregation=None, parent_zones=[], tz=pytz.timezone('US/Eastern'), transactions_only=True):
+def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,end_time, stats_by={},zone_kind='old', space_aggregate_by='zone', time_aggregate_by=None, split_by_mode=False, parent_zones=[], tz=pytz.timezone('US/Eastern'), transactions_only=True):
     # Originally this function just aggregated information
     # between start_time and end_time to the zone level.
 
@@ -530,7 +530,7 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
             if aggregation_keys != []:
                 for a_key in aggregation_keys:
                     if a_key not in stats_by:
-                        stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,split_by_mode = (payment_aggregation=='mode'), tz=pytz.timezone('US/Eastern'), transactions_only=transactions_only)
+                        stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,split_by_mode, tz=pytz.timezone('US/Eastern'), transactions_only=transactions_only)
 
                     zone = a_key.split('|')[0]
                     stats_by[a_key]['zone'] = zone
@@ -561,18 +561,16 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                         nz, _, _ = numbered_zone(t_id,None,group_lookup_addendum)
                         stats_by[a_key]['zone'] = nz
  
-                    if payment_aggregation is None:
+                    if not split_by_mode: 
                         stats_by[a_key]['transactions'] += 1
                         stats_by[a_key]['Payments'] += rp['Amount']
-                    elif payment_aggregation == 'mode':
+                    else: # Split payments into mobile and meter payments
                         if rp['Is Mobile Payment']:
                             stats_by[a_key]['mobile_transactions'] += 1
                             stats_by[a_key]['Mobile Payments'] += rp['Amount']
                         else:
                             stats_by[a_key]['meter_transactions'] += 1
                             stats_by[a_key]['Meter Payments'] += rp['Amount']
-                    else:
-                        raise ValueError('distill_stats has no provisions for handing payment_aggregation == {}'.format(payment_aggregation))
 
                     if not transactions_only and 'Duration' in rp and rp['Duration'] is not None:
                         stats_by[a_key]['car_minutes'] += rp['Duration']
@@ -1287,7 +1285,7 @@ def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,ca
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
-def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,payment_aggregation,transactions_only):
+def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,split_by_mode,transactions_only):
     # This function works for zones and sampling zones. It has now been modified
     # to do basic aggregating by meter, ignoring inferred occupancy and augmentation.
 
@@ -1310,13 +1308,11 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             # Thus, at present, our published JSON durations fields look like '{"60": 1}', necessitating a
             # conversion of the keys back to integers. Also, sorting the keys sorts them alphabetically,
             # not numerically.
-        if payment_aggregation is None:
+        if not split_by_mode:
             stats_rows[aggregation_key]['payments'] = float(round_to_cent(stats_rows[aggregation_key]['Payments']))
-        elif payment_aggregation == 'mode':
+        else:
             stats_rows[aggregation_key]['mobile_payments'] = float(round_to_cent(stats_rows[aggregation_key]['Mobile Payments']))
             stats_rows[aggregation_key]['meter_payments'] = float(round_to_cent(stats_rows[aggregation_key]['Meter Payments']))
-        else:
-            raise ValueError('package_for_output has not been provisioned to handle payment_aggregation = {}'.format(payment_aggregation))
     #####
 
     #print("space_aggregate_by = {}, time_aggregate_by = {}, len(stats_rows) = {}".format(space_aggregate_by,time_aggregate_by,len(stats_rows)))
@@ -1369,7 +1365,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             elif augment: # This part is only necessary for the augmented list (which should
             # have inferred occupancy for each zone for each slot (even if there were
             # no transactions during that slot), unlike list_of_dicts).
-                d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,time_aggregate_by,split_by_mode = (payment_aggregation=='mode'), tz=tz,transactions_only=True)
+                d = initialize_zone_stats(slot_start,slot_end,space_aggregate_by,time_aggregate_by,split_by_mode,tz,transactions_only=True)
             #d['zone'] = zone # This is no longer necessary.
             # Elaboration: That line seemed to be unnecessary when aggregation keys were invented
             # as they explicitly put the zone (or whatever the spatial aggregation was) in the key,
@@ -1510,7 +1506,7 @@ def main(*args, **kwargs):
 
     # spacetime = 'zone' for case 1 and 'meter,month' for case 2
     spacetime = kwargs.get('spacetime','zone') # This is the spatiotemporal aggregation mode.
-    payment_aggregation = 'mode' # If payment_aggregation == 'mode', split transactions
+    split_by_mode = True # If this is True,split transactions
     # into meter transactions and mobile transactions. If not, don't.
     if spacetime == 'zone':
         space_aggregation = 'zone'
@@ -1651,7 +1647,7 @@ def main(*args, **kwargs):
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
     warmup_unlinkable_count = len(purchases) - len(linkable)
-    dkeys, sampling_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation, payment_aggregation)
+    dkeys, sampling_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation, split_by_mode)
     
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
@@ -1671,7 +1667,7 @@ def main(*args, **kwargs):
     else:
         print("Occupancy estimation (currently on) needs to be fixed.")
 
-    print("time_aggregation = {}, space_aggregation = {}, spacetime = {}, payment_aggregation = {}".format(time_aggregation, space_aggregation, spacetime, payment_aggregation))
+    print("time_aggregation = {}, space_aggregation = {}, spacetime = {}, split_by_mode = {}".format(time_aggregation, space_aggregation, spacetime, split_by_mode))
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
         # Get all parking events that start between slot_start and slot_end
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
@@ -1764,7 +1760,7 @@ def main(*args, **kwargs):
                 if is_very_beginning_of_the_month(slot_start) and len(stats_rows) > 0: # Store the old stats_rows and then reset stats_rows
                     print("Found the very beginning of the month")
                     # Store old stats_rows
-                    list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,payment_aggregation,transactions_only=True)
+                    list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,split_by_mode,transactions_only=True)
                     if output_to_csv: 
                         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
@@ -1783,10 +1779,10 @@ def main(*args, **kwargs):
                 stats_rows = {}
                         
             # Condense to key statistics (including duration counts).
-            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, payment_aggregation, [], tz=pgh, transactions_only=True)
+            stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, split_by_mode, [], tz=pgh, transactions_only=True)
             # stats_rows is actually a dictionary, keyed by zone.
             if time_aggregation is None and space_aggregation == 'zone':  
-                sampling_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'sampling zone', time_aggregation, payment_aggregation, parent_zones, tz=pgh, transactions_only=True)
+                sampling_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'sampling zone', time_aggregation, split_by_mode, parent_zones, tz=pgh, transactions_only=True)
 
             if spacetime == 'zone': # The original idea for these clauses was to make them all
             # like 
@@ -1798,7 +1794,7 @@ def main(*args, **kwargs):
             # because of the sampling weirdness, which I am leaving out of meter-month aggregation, so for
             # now, this clause is being governed by the value of spacetime.
 
-                list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,'zone',None,payment_aggregation,transactions_only=True)
+                list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,'zone',None,split_by_mode,transactions_only=True)
 
                 if output_to_csv and len(list_of_dicts) > 0: # Write to files as
                 # often as necessary, since the associated delay is not as great as
@@ -1815,7 +1811,7 @@ def main(*args, **kwargs):
                     if success:
                         cumulated_dicts = []
 
-                sampling_list_of_dicts, _ = package_for_output(sampling_stats_rows,sampling_zones,None,{},pgh,slot_start,slot_end,'sampling zone',None,payment_aggregation,transactions_only=True)
+                sampling_list_of_dicts, _ = package_for_output(sampling_stats_rows,sampling_zones,None,{},pgh,slot_start,slot_end,'sampling zone',None,split_by_mode,transactions_only=True)
                 # Sending the augment parameter here as "augment and False" to prevent 
                 # package_for_output from even trying to generate augmented output.
 
@@ -1851,7 +1847,7 @@ def main(*args, **kwargs):
     print("spacetime = {}".format(spacetime))
     if spacetime == 'meter,month' and output_to_csv:
         print("len(stats_rows) = {}".format(len(stats_rows)))
-        list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,payment_aggregation,transactions_only=True)
+        list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,split_by_mode,transactions_only=True)
         print("len(list_of_dicts) = {}".format(len(list_of_dicts)))
         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
@@ -1943,12 +1939,12 @@ def main(*args, **kwargs):
                     ps = []
                 # Condense to key statistics (including duration counts).
                 reframed_ps = [hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=False,extend=False) for p in ps]
-                stats_by_zone = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot,slot+timechunk, {}, zone_kind, space_aggregation, time_aggregation, None, [], tz=pgh, transactions_only=False) # payment_aggregation is set to None here, but the transactions_only variable could be used to override a non-None value.
+                stats_by_zone = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot,slot+timechunk, {}, zone_kind, space_aggregation, time_aggregation, False, [], tz=pgh, transactions_only=False) # split_by_mode is set to False here, but the transactions_only variable could be used to override a non-None value in this case.
                 calculated_occupancy = update_occupancies(calculated_occupancy,stats_by_zone,slot,timechunk)
                 if starting_time <= slot <= halting_time: # Only print/push to these.
                     # package_for_output barely seems necessary here.
-                    list_of_dicts, augmented = package_for_output(stats_by_zone,zonelist,calculated_occupancy,zone_info,pgh,slot,slot+timechunk,'zone',None,None,transactions_only=False)
-                    # payment_aggregation is set to None here when calling package_for_output, but the transactions_only variable could be used to override a non-None value.
+                    list_of_dicts, augmented = package_for_output(stats_by_zone,zonelist,calculated_occupancy,zone_info,pgh,slot,slot+timechunk,'zone',None,False,transactions_only=False)
+                    # split_by_mode is set to False here when calling package_for_output, but the transactions_only variable could be used to override a non-None value in this case.
                     occ = calculated_occupancy[slot]
                     print(fmt.format(datetime.strftime(slot,"%Y-%m-%d %H:%M"), zs[0], occ[zs[0]], zs[1], occ[zs[1]], zs[2], occ[zs[2]]))
                 if output_to_csv and len(augmented) > 0: # Write to files as often as necessary,
