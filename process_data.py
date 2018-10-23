@@ -362,7 +362,7 @@ def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_z
             row['Duration'] = p['Duration']
         else:
             row['Duration'] = None
-   
+    row['Is Mobile Payment'] = is_mobile_payment(p)
     return row
 
 def find_biggest_value(d_of_ds,field='transactions'):
