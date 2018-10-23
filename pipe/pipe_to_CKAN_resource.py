@@ -18,6 +18,11 @@ from pprint import pprint
 
 DEFAULT_CKAN_INSTANCE = 'https://data.wprdc.org'
 
+def convert_none_to(x,new_value):
+    if x is None:
+        return new_value
+    return x
+
 class BaseTransactionsSchema(pl.BaseSchema):
     zone = fields.String()
     start = fields.DateTime()
@@ -51,8 +56,13 @@ class SplitTransactionsSchema(BaseTransactionsSchema):
 
     @pre_load
     def cast_fields(self,data):
-        data['meter_payments'] = float(data['meter_payments'])
-        data['mobile_payments'] = float(data['mobile_payments'])
+        # If there are zero meter payments in a time slot when there are some
+        # mobile payments, convert the None values for meter-payment parameters
+        # to appropriately typed zeros.
+        data['meter_payments'] = float(convert_none_to(data['meter_payments'],0.0))
+        data['mobile_payments'] = float(convert_none_to(data['mobile_payments'],0.0))
+        data['meter_transactions'] = convert_none_to(data['meter_transactions'],0)
+        data['mobile_transactions'] = convert_none_to(data['mobile_transactions'],0)
         # This may not be necessary, but ensuring that datetimes are in
         # ISO format is the best way of preparing timestamps to be
         # sent to CKAN.
