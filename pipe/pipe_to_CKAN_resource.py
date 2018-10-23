@@ -73,6 +73,9 @@ class SplitTransactionsSchema(BaseTransactionsSchema):
 class SamplingTransactionsSchema(TransactionsSchema):
     parent_zone = fields.String()
 
+class SplitSamplingTransactionsSchema(SplitTransactionsSchema):
+    parent_zone = fields.String()
+
 class OccupancySchema(pl.BaseSchema):
     zone = fields.String()
     start = fields.DateTime()
