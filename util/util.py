@@ -210,8 +210,8 @@ def write_to_csv(filename,list_of_dicts,keys):
         dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
 
-def build_keys(space_aggregation,time_aggregation):
-    """Based on the types of spatial and temporal aggregation, synthesize and return
+def build_keys(space_aggregation,time_aggregation,payment_aggregation):
+    """Based on the types of spatial, temporal, and payment aggregation, synthesize and return
     the dictionary keys (used for writing a bunch of dictionaries to a CSV file."""
     # Given that these fields appear elsewhere in the process_data.py code, it might 
     # be a good idea to refactor things some more so that there is one source for 
@@ -228,7 +228,11 @@ def build_keys(space_aggregation,time_aggregation):
         time_keys = ['start', 'end', 'utc_start']
     elif time_aggregation == 'month':
         time_keys = ['Year', 'Month', 'Hour', 'UTC Hour']
-    base = ['transactions', 'payments']
+    payment_keys = ['transactions', 'payments']
+    if payment_aggregation is None:
+        base = payment_keys
+    elif payment_aggregation == 'mode':
+        base = ['meter_transactions', 'meter_payments', 'mobile_transactions', 'mobile_payments']
     linked_keys = ['car_minutes', 'durations'] # These keys are valid when
     # the transactions have been linked and durations can be correctly
     # calculated.
@@ -236,7 +240,7 @@ def build_keys(space_aggregation,time_aggregation):
 
     dkeys = space_keys + time_keys + base
     sampling_dkeys = space_keys + ['parent_zone'] + time_keys + base
-    occ_dkeys = space_keys + time_keys + base + linked_keys + extras
+    occ_dkeys = space_keys + time_keys + payment_keys + linked_keys + extras
     return dkeys, sampling_dkeys, occ_dkeys
 
 
