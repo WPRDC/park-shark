@@ -23,7 +23,7 @@ from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for
 from util.carto_util import update_map
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path, SETTINGS_FILE
-from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, SamplingTransactionsSchema, OccupancySchema
+from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, SplitTransactionsSchema, SamplingTransactionsSchema, SplitSamplingTransactionsSchema, OccupancySchema
 from pipe.gadgets import get_resource_data
 
 from nonchalance import add_hashes
@@ -1765,7 +1765,10 @@ def main(*args, **kwargs):
                         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
                     if push_to_CKAN:
-                        schema = TransactionsSchema
+                        if split_by_mode:
+                            schema = SplitTransactionsSchema
+                        else:
+                            schema = TransactionsSchema
                         primary_keys = ['zone', 'utc_start', 'start']
                         success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, list_of_dicts, primary_keys=primary_keys)
                         print("success = {}".format(success))
@@ -1804,7 +1807,10 @@ def main(*args, **kwargs):
                 cumulated_dicts += list_of_dicts
                 if push_to_CKAN and len(cumulated_dicts) >= threshold_for_uploading:
                     print("len(cumulated_dicts) = {}".format(len(cumulated_dicts)))
-                    schema = TransactionsSchema
+                    if split_by_mode:
+                        schema = SplitTransactionsSchema
+                    else:
+                        schema = TransactionsSchema
                     primary_keys = ['zone', 'utc_start', 'start']
                     success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, cumulated_dicts, primary_keys=primary_keys)
                     print("success = {}".format(success))
@@ -1824,7 +1830,10 @@ def main(*args, **kwargs):
 
                 cumulated_sampling_dicts += sampling_list_of_dicts
                 if push_to_CKAN and len(cumulated_sampling_dicts) >= threshold_for_uploading:
-                    schema = SamplingTransactionsSchema
+                    if split_by_mode:
+                        schema = SplitSamplingTransactionsSchema
+                    else:
+                        schema = SamplingTransactionsSchema
                     primary_keys = ['zone', 'utc_start', 'start']
                     success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_sampling_dicts, primary_keys=primary_keys)
 
@@ -1856,7 +1865,11 @@ def main(*args, **kwargs):
             filtered_list_of_dicts = cumulated_dicts
         else:
             filtered_list_of_dicts = list_of_dicts
-        schema = TransactionsSchema
+
+        if split_by_mode:
+            schema = SplitTransactionsSchema
+        else:
+            schema = TransactionsSchema
         primary_keys = ['zone', 'utc_start', 'start']
         success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, filtered_list_of_dicts, primary_keys=primary_keys)
 
@@ -1866,7 +1879,10 @@ def main(*args, **kwargs):
             print("Pushed the last batch of transactions to {}".format(resource_name(spacetime)))
 
         if spacetime == 'zone':
-            schema = SamplingTransactionsSchema
+            if split_by_mode:
+                schema = SplitSamplingTransactionsSchema
+            else:
+                schema = SamplingTransactionsSchema
             primary_keys = ['zone', 'utc_start', 'start']
             success_a = send_data_to_pipeline(server, SETTINGS_FILE, sampling_transactions_resource_name, schema, cumulated_sampling_dicts, primary_keys=primary_keys)
             if success_a:
