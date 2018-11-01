@@ -648,7 +648,7 @@ def cull_fields(ps):
     purchases = remove_field(purchases,'@TicketNumber')
     purchases = remove_field(purchases,'@TariffPackageID')
     purchases = remove_field(purchases,'@ExternalID')#
-    purchases = remove_field(purchases,'@PurchaseStateName')
+    #purchases = remove_field(purchases,'@PurchaseStateName')
     purchases = remove_field(purchases,'@PurchaseTriggerTypeName')
     #purchases = remove_field(purchases,'@PurchaseTypeName')#
     purchases = remove_field(purchases,'@MaskedPAN','PurchasePayUnit')
