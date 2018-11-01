@@ -13,6 +13,7 @@ utc_json_2/
 week_utc_json/
 csv/
 docs/
+meters_etl/
 sample-reports/
 batch-data/
 scratch/
