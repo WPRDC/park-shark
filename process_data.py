@@ -1309,9 +1309,12 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
     # sometimes problematically different from StartDate).
     print("Using {} reference-time mode.".format(reference_time))
 
+    ps_by_day = defaultdict(list)
+    dts_by_day = defaultdict(list)
     ps_all = []
     dts_all = []
     #for offset in range(-1,2):
+    recent = datetime.now(local_tz) - slot_start <= timedelta(days = 5)
     for offset in range(0,2):
         #query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pgh)
         query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pytz.utc)
@@ -1330,6 +1333,7 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
             if reference_time == 'hybrid':
                 datetimes.append(p['hybrid_parking_segment_start_utc'])
             elif reference_time == 'purchase_time':
+                utc_reference_field, local_reference_field = time_to_field(reference_time)
                 purchase_dt = (pytz.utc).localize(parser.parse(p['@PurchaseDateUtc']))
                 #purchase_dt = (pytz.timezone('US/Eastern')).localize(parser.parse(p['@PurchaseDateLocal']))
                 #purchase_dt = purchase_dt.astimezone(pytz.utc) #Using PurchaseDateLocal gives the same results.
@@ -1343,6 +1347,11 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                 if get_payment_type(purchase_i) != 'manual': # Filter out payments that are neither meter nor mobile payments.
                     ps.append(purchase_i)
                     dts.append(datetime_i)
+            if get_payment_type(purchase_i) != 'manual': # Filter out payments that are neither meter nor mobile payments.
+                day = datetime_i.astimezone(local_tz).date()
+                ps_by_day[day].append(purchase_i)
+                dts_by_day[day].append(datetime_i)
+
             #if purchase_i['@PurchaseGuid'] == '53F693C2-4BF9-4E70-89B5-5B9532461B8C':
             #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             #    print("start_of_day ({}) <= datetime_i ({})< start_of_next_day ({}) = {}".format(start_of_day, datetime_i, start_of_next_day, start_of_day <= datetime_i < start_of_next_day))
@@ -1351,8 +1360,14 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
         t_end_fetch = time.time()
         if len(ps_for_whole_day) > 0:
             print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
+
+        if offset == 0 and not recent:
+            for day in ps_by_day.keys():
+                # Upsert purchases in batches to reduce write time.
+                bulk_upsert_to_sqlite(ps_by_day[day], dts_by_day[day], day, reference_time)
         ps_all += ps
         dts_all += dts
+
 
     return ps_all, dts_all
 
