@@ -189,7 +189,7 @@ def get_zone_info(server):
         except:
             pass
 
-    
+
         if zone in temp_zone_info.keys():
             zone_info[zone]['latitude'] = temp_zone_info[zone]['Latitude']
             zone_info[zone]['longitude'] = temp_zone_info[zone]['Longitude']
@@ -219,13 +219,13 @@ def round_time(dt=None, round_to=60, method="half up"):
         raise ValueError("round_time doesn't know how to round {}".format(method))
     return dt + timedelta(0,rounding-seconds,-dt.microsecond)
 
-def is_very_beginning_of_the_month(dt): 
+def is_very_beginning_of_the_month(dt):
    return dt.day == 1 and dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0
 
 def beginning_of_day(dt=None):
     """Takes a datetime and returns the first datetime before
     that that corresponds to LOCAL midnight (00:00).
-    
+
     This function is time-zone agnostic."""
     if dt == None : dt = datetime.now()
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -305,18 +305,18 @@ def fix_durations(session,raw_only=False):
     for k,p in enumerate(ps):
         # Subtract the durations of the previous payments.
         # If the minutes purchased are 10, 30, 5,
-        # the Units fields will have values 10, 40, and 45, when 
+        # the Units fields will have values 10, 40, and 45, when
         # sorted in chronological order.
 
-        # Reversing this process, we start with the most recent 
-        # transaction (45) and subtract the previous (40) to 
+        # Reversing this process, we start with the most recent
+        # transaction (45) and subtract the previous (40) to
         # get the minutes purchased (5).
 
         if k+1 != len(ps):
             # Subtract off the cumulative minutes purchased by the most recent
             # predecessor, so that the Duration field represents just the Duration
             # of this transaction. (Duration is the incremental number of minutes
-            # purchased, while the '@Units' field is the CUMULATIVE number of 
+            # purchased, while the '@Units' field is the CUMULATIVE number of
             # minutes.)
             p['Duration'] -= int(ps[k+1]['@Units'])
 
@@ -333,7 +333,7 @@ def fix_durations(session,raw_only=False):
 def hash_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zones,uncharted_e_zones,turbo_mode,raw_only,transactions_only,extend=True):
     """Take a dictionary and generate a new dictionary from it that samples
     the appropriate keys and renames and transforms as desired.
-    
+
     In contrast with reframe, which used ps_dict with its uncertain linking between transactions,
     hash_reframe is hashing unique identifiers to take the guesswork out of linking transactions
     into sessions (at the cost of preventing past transactions from being linked)."""
@@ -370,14 +370,14 @@ def find_biggest_value(d_of_ds,field='transactions'):
 
 def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
     """This function uses the parking durations inferred by trying to piece
-    together sessions from individual transactions to synthesize an 
+    together sessions from individual transactions to synthesize an
     estimated count of parked cars for each zone and time chunk,
     starting at slot_start and going forward.
 
     No correction factors have been applied yet."""
     delta_minutes = timechunk.total_seconds()/60.0
     for zone in stats_by_zone:
-        #durations = json.loads(stats_by_zone[zone]['Durations']) # No longer necessary 
+        #durations = json.loads(stats_by_zone[zone]['Durations']) # No longer necessary
         # since this field is going to be a list of integers until package_for_output
         # is called.
         durations = stats_by_zone[zone]['Durations']
@@ -405,7 +405,7 @@ def update_occupancies(inferred_occupancy,stats_by_zone,slot_start,timechunk):
             # [ ] Compare this method to an exact transaction-by-transaction
             # calculation of occupancy.
             for k in range(0,bins):
-                inferred_occupancy[slot_start+k*timechunk][zone] += 1 
+                inferred_occupancy[slot_start+k*timechunk][zone] += 1
                 # inferred_occupancy is measured in cars (or used parking spaces),
                 # though a more useful metric would be percent_occupied.
 #        if len(durations) > 0:
@@ -421,7 +421,7 @@ def format_a_key(meter_id,year,month,hour):
 def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,split_by_mode,tz=pytz.timezone('US/Eastern'), transactions_only=True):
     stats = {}
 
-    # This is where it would be nice to maybe do some different formatting based on the 
+    # This is where it would be nice to maybe do some different formatting based on the
     # time_aggregation parameter (since now a bin is not defined just by start and end
     # but also by year-month. The other possibility would be to do it when the month
     # is archived (from the loop in main()).
@@ -503,11 +503,11 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
         elif space_aggregate_by == 'meter':
             space_aggregation_keys = [t_id] # Should this be GUID or just ID? ... Let's
                 # make it GUID (as it will not change), but store meter ID as
-                # an additional field   
+                # an additional field
                 #       I've decided to switch to ID for nicer sorting, and because
                 # maybe it actually makes a little more sense to highlight the changes
-                # associated with an ID change. (Sometimes this is fixing a typo or 
-                # a small change but it might be a larger change. In any event, 
+                # associated with an ID change. (Sometimes this is fixing a typo or
+                # a small change but it might be a larger change. In any event,
                 # the user would have both ID and GUID in this meter-month-hour
                 # aggregation mode.
 
@@ -540,17 +540,17 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                             #for zone in space_aggregation_keys:
                             # There are now cases where getting the zone from space_aggregation_keys
                             # for space_aggregate_by == 'sampling zone' results in multiple zones
-                            # since the value comes from rp['List_of_sampling_groups']. Basically, 
+                            # since the value comes from rp['List_of_sampling_groups']. Basically,
                             # a terminal group can be assigned to an arbitary number of Terminal
                             # Groups, and we are getting the ones that are not sampling zones,
                             # so one terminal can be both in 'CMU Study' and 'Marathon/CMU', for
-                            # instance. 
+                            # instance.
                             #
-                            # It seems like the correct thing to do in this case is add the 
+                            # It seems like the correct thing to do in this case is add the
                             # transactions to both sampling zones.
-                            # This should actually happen naturally if the space part of the 
-                            # aggregation key could be pulled off and used as the zone in 
-                            # each case, which is what I've done. 
+                            # This should actually happen naturally if the space part of the
+                            # aggregation key could be pulled off and used as the zone in
+                            # each case, which is what I've done.
                             # This output seems to be the same as before space-time aggregation
                             # was added.
                             stats_by[a_key]['parent_zone'] = '|'.join(parent_zones[zone])
@@ -560,8 +560,8 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                         stats_by[a_key]['Meter ID'] = t_id
                         nz, _, _ = numbered_zone(t_id,None,group_lookup_addendum)
                         stats_by[a_key]['zone'] = nz
- 
-                    if not split_by_mode: 
+
+                    if not split_by_mode:
                         stats_by[a_key]['transactions'] += 1
                         stats_by[a_key]['Payments'] += rp['Amount']
                     else: # Split payments into mobile and meter payments
@@ -585,13 +585,13 @@ def build_url(base_url,slot_start,slot_end):
     converting the datetimes to UTC (which is what the CALE
     API expects).
 
-    This function is called by get_batch_parking_for_day 
+    This function is called by get_batch_parking_for_day
     (and was also used by get_recent_parking_events)."""
 
     if is_timezoneless(slot_start) or is_timezoneless(slot_end):
         raise ValueError("Whoa, whoa, whoa! One of those times is unzoned!")
-    # Since a slot_end that is too far in the future results 
-    # in a 400 (reason = "Bad Request"), limit how far in 
+    # Since a slot_end that is too far in the future results
+    # in a 400 (reason = "Bad Request"), limit how far in
     # the future slot_end may be
     arbitrary_limit = datetime.now(pytz.utc) + timedelta(hours = 1)
     if slot_end.astimezone(pytz.utc) > arbitrary_limit:
@@ -675,9 +675,9 @@ def get_doc_from_url(url):
         # This try-catch clause is only protecting one of the three cases where
         # the function is reading into doc without being sure that the fields
         # are there (occasionally in practice they are not because of unknown
-        # stuff on the API end). 
+        # stuff on the API end).
 
-        # The next time such an exception is thrown, it might make sense to 
+        # The next time such an exception is thrown, it might make sense to
         # look at what has been printed from doc and maybe put the call
         # to get_doc_from_url into a try-catch clause.
         url2 = doc['BatchDataExportResponse']['Url']
@@ -739,35 +739,35 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
     Note that no matter what time of day is associated with slot_start,
     this function will get all of the transactions for that entire day.
-    Filtering the results down to the desired time range is handled 
+    Filtering the results down to the desired time range is handled
     elsewhere (in the calling function (e.g., get_utc_ps_for_day_from_json)).
 
     Caching by date ties this approach to a particular time zone. This
     is why transactions are dropped if we send this function a UTC
     slot_start (I think).
-    
+
     This function seems to give the same result whether slot_start is
     localized for UTC or Eastern, so long as tz is pytz.utc."""
 
     date_format = '%Y-%m-%d'
-    slot_start = slot_start.astimezone(tz) # slot_start needs to already 
-    # have a time zone associated with it. This line forces slot_start to be 
-    # in timezone tz, even if it wasn't before. 
+    slot_start = slot_start.astimezone(tz) # slot_start needs to already
+    # have a time zone associated with it. This line forces slot_start to be
+    # in timezone tz, even if it wasn't before.
 
     dashless = slot_start.strftime('%y%m%d')
     if tz == pytz.utc:
         filename = path + "utc_json/"+dashless+".json"
     else:
         filename = path + "json/"+dashless+".json"
-   
+
     too_soon = slot_start.date() >= datetime.now(tz).date()
     # If the day that is being requested is today, definitely don't cache it.
 
-    recent = datetime.now(tz) - slot_start <= timedelta(days = 5) # This 
-    # definition of recent is a little different since a) it uses slot_start 
+    recent = datetime.now(tz) - slot_start <= timedelta(days = 5) # This
+    # definition of recent is a little different since a) it uses slot_start
     # rather than slot_end (which is fine here, as we know that slot_start
-    # and slot_end are separated by one day) and b) it uses the time zone tz 
-    # (though that should be fine since slot_start has already been converted 
+    # and slot_end are separated by one day) and b) it uses the time zone tz
+    # (though that should be fine since slot_start has already been converted
     # to time zone tz).
 
     if not os.path.isfile(filename) or os.stat(filename).st_size == 0:
@@ -776,12 +776,12 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
         slot_start = beginning_of_day(slot_start)
         slot_end = slot_start + timedelta(days = 1)
-        
+
         if recent:
             base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
         else:
             base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
-            
+
         url = build_url(base_url,slot_start,slot_end)
 
         if not mute:
@@ -827,14 +827,14 @@ def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False):
 
     Note that no matter what time of day is associated with slot_start,
     this function will get all of the transactions for that entire day.
-    Filtering the results down to the desired time range is handled 
+    Filtering the results down to the desired time range is handled
     elsewhere (in the calling function (get_batch_parking)).
 
 
     Caching by date ties this approach to a particular time zone. This
     is why transactions are dropped if we send this function a UTC
-    slot_start (I think) and try to use the Eastern Time Zone JSON 
-    files. This has been fixed by specifying the timezone 
+    slot_start (I think) and try to use the Eastern Time Zone JSON
+    files. This has been fixed by specifying the timezone
     and distinguishing between JSON-file folders."""
 
     ps = get_day_from_json_or_api(slot_start,tz,cache,mute)
@@ -852,7 +852,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
 
     Note that the time zone tz and the time_field must be consistent for this to work properly."""
     # Here is a little sanity check:
-    
+
     if (re.search('Utc',time_field) is not None) != (tz == pytz.utc):
         # This does an XOR between these values.
         raise RuntimeError("It looks like time_field may not be consistent with the provided time zone")
@@ -872,8 +872,8 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
                 print("Now there are {} transactions in ps_all.".format(len(ps_all)))
 
         all_day_ps_cache = ps_all # Note that if slot_start and slot_end are not on the same day,
-        # all_day_ps_cache will hold transactions for more than just the date of slot_start, but 
-        # since filtering is done further down in this function, this should not represent a 
+        # all_day_ps_cache will hold transactions for more than just the date of slot_start, but
+        # since filtering is done further down in this function, this should not represent a
         # problem. There should be no situations where more than two days of transactions will
         # wind up in this cache at any one time.
         dts_cache = [tz.localize(parser.parse(p[time_field])) for p in ps_all]
@@ -1037,12 +1037,12 @@ def keep_running(slot_start_time,halting_time):
 
 def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
-    # collecting data over two UTC days (from a function that 
+    # collecting data over two UTC days (from a function that
     # caches API query results as raw JSON files) and then filtering
     # those results down to a single UTC day.
 
     # Thus, the sequence is
-    #       get_day_from_json_or_API: Check if the desired day is 
+    #       get_day_from_json_or_API: Check if the desired day is
     #       in a JSON file. If not, it fetches the data from the API.
     #       Adding hashes, culling fields, and saving local JSON
     #       files of transactions happens here.
@@ -1064,42 +1064,42 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
     ###
     # Note that no matter what time of day is associated with slot_start,
     # this function will get all of the transactions for that entire day.
-    # Filtering the results down to the desired time range is handled 
+    # Filtering the results down to the desired time range is handled
     # elsewhere (in the calling function).
     ###############
-    # This function gets parking purchases, either from a 
+    # This function gets parking purchases, either from a
     # JSON cache (if the date appears to have been cached)
-    # or else from the API (and then caches the whole thing 
+    # or else from the API (and then caches the whole thing
     # if cache = True), by using get_batch_parking_for_day.
 
     # Note that no matter what time of day is associated with slot_start,
     # this function will get all of the transactions for that entire day.
 
-    # Filtering the results down to the desired time range is now handled 
+    # Filtering the results down to the desired time range is now handled
     # in this functions (though the function only marks a date as cached
     # when it has added all events from the day of slot_start (based on
     # StartDateUtc)).
-    
-    # This approach tries to address the problem of the often 
+
+    # This approach tries to address the problem of the often
     # gigantic discrepancy between the DateCreatedUtc timestamp
     # and the StartDateUtc timestamp.
 
     #ref_field = '@StartDateUtc' # This should not be changed. # But it looks like I'm changing it.
 
     #for each date in day before, day of, and day after (to get all transactions)
-        # [Three full days is probably slightly overkill since the most extreme 
-        # negative case of DateCreatedUtc - StartDateUtc observed so far has 
+        # [Three full days is probably slightly overkill since the most extreme
+        # negative case of DateCreatedUtc - StartDateUtc observed so far has
         # been -12 hours.]
 
     # To avoid issues with missing or extra hours during Daylight Savings Time,
     # all slot times should be in UTC.
 
-    # The cached_dates format is also UTC dates. (This change was made to 
-    # route around issues encountered when using localized versions of 
+    # The cached_dates format is also UTC dates. (This change was made to
+    # route around issues encountered when using localized versions of
     # StartDateUtc and converting to dates.)
 
-    #pgh = pytz.timezone('US/Eastern') # This time zone no longer needs to be hard-coded 
-    # since get_batch_parking_for_day has been fixed to work for different time zones 
+    #pgh = pytz.timezone('US/Eastern') # This time zone no longer needs to be hard-coded
+    # since get_batch_parking_for_day has been fixed to work for different time zones
     # (I think). [Actually, we do need to use the local time zone so that beginning_of_day
     # returns the correct time. This time zone is now being passed up to this function
     # using the local_tz variable.]
@@ -1180,8 +1180,8 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
     # This function handles the situation where slot_start and slot_end are on different days
     # by calling get_ps_for_day in a loop.
 
-    # When reference_time == 'hybrid', the function "hybrid_parking_segment_start_of" determines 
-    # the timestamp used for calculating the datetime values used to filter purchases 
+    # When reference_time == 'hybrid', the function "hybrid_parking_segment_start_of" determines
+    # the timestamp used for calculating the datetime values used to filter purchases
     # down to those between slot_start and start_end. When reference_time == 'purchase_time',
     # @PurchaseDateUtc is used instead. (reference_time is set in get_utc_ps_for_day_from_json,
     # which is called below.)
@@ -1217,8 +1217,8 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
                 print("Now there are {} transactions in ps_all".format(len(ps_all)))
 
         utc_ps_cache = ps_all # Note that if slot_start and slot_end are not on the same day,
-        # utc_ps_cache will hold transactions for more than just the date of slot_start, but 
-        # since filtering is done further down in this function, this should not represent a 
+        # utc_ps_cache will hold transactions for more than just the date of slot_start, but
+        # since filtering is done further down in this function, this should not represent a
         # problem. There should be no situations where more than two days of transactions will
         # wind up in this cache at any one time.
         #utc_dts_cache = [tz.localize(datetime.strptime(p[time_field],dt_format)) for p in ps_all] # This may break for StartDateUtc!!!!!
@@ -1264,17 +1264,17 @@ def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,ca
         # This is too large of a margin, to be on the safe side.
         # I have not yet found the exact edge.
     #recent = datetime.now(pgh) - slot_end <= timedelta(days = 5)
-    # This definition of the 'recent' variable doesn't handle well situations where we 
+    # This definition of the 'recent' variable doesn't handle well situations where we
     # want to pull 12 hours of data (as in the warming-up/seeding scenario) and that
     # 12-hour block happens to cross over the boundary between recent and non-recent.
 
     # Actually, those cases will be handled fine, since the real limit of the LiveData
-    # export is like 6 hours and 19 or 20 hours, but to be able to handle slots of 
+    # export is like 6 hours and 19 or 20 hours, but to be able to handle slots of
     # arbitrary size, I am changing the definition to use slot_start to decide recency:
     recent = datetime.now(pgh) - slot_start <= timedelta(days = 5)
 
     if caching_mode == 'utc_json' or recent:
-        #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live" 
+        #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live"
         # (recent transactions) API.
         return cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute,caching_mode)
     else: # Currently utc_json mode is considered the default and the get_batch_parking
@@ -1293,7 +1293,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
     # without the sorting by zone name. One thing that package_for_output adds is ensuring that all
     # zones in zonelist are represented in augmented output (so zones with zero occupancy still
     # get rows).
-    
+
 
     # Convert Durations (list of integers) and Payments to their final forms.
     # (Durations becomes a JSON dict and Payments becomes rounded to the nearest
@@ -1319,10 +1319,10 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
     if space_aggregate_by == 'meter':
         list_of_dicts = []
         augmented = []
-        
+
         #mlist = sorted(list(set(stats_rows.keys()))) # This would be the list of Meter GUIDs
         #mlist = sorted(list(set([u['Meter GUID'] for u in stats_rows.values()]))) # Meter GUIDs
-        # For meter-month-hour aggregation, we want to sort by year, month, hour, and then 
+        # For meter-month-hour aggregation, we want to sort by year, month, hour, and then
         # meter ID. By construction, package_for_output should only be called for the same
         # year and month values, so we sort by hour (maybe sorting by local hour and then
         # using UTC hour as the tiebreaker) and then by meter ID.
@@ -1341,7 +1341,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
 
         # This approach works, but it would be nicer to sort by meter ID, though using meter GUID
         # as the key seems like it might be slightly more robust (though it's actually unclear
-        # how best to handle situations where the meter ID shifts). 
+        # how best to handle situations where the meter ID shifts).
 
         # Perhaps that could be done this way:
         # better_order = sorted(stats_rows, key=lambda x: (x['Year'], x['Month'], x['Hour'], x['Meter ID']))
@@ -1353,7 +1353,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
     else: #if space_aggregate_by == 'zone' and time_aggregate_by is None: # The expectation is that spacetime == 'zone' here.
         list_of_dicts = []
         augmented = []
-        # Eventually zlist should be formed like mlist is being formed, in case other kinds of 
+        # Eventually zlist should be formed like mlist is being formed, in case other kinds of
         # spacetime aggregation are used::
         #       mlist = sorted(list(set([u['Meter ID'] for u in stats_rows.values()]))) # Meter IDs
         zlist = sorted(list(set(sorted(stats_rows.keys())+zonelist))) # I think that the inner "sorted" function can be removed here.
@@ -1377,15 +1377,15 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
                 d['zone'] = zone
             if zone in stats_rows.keys():
                 list_of_dicts.append(copy(d))
-            # Note that augmented mode has not been generalized to handle different kinds of spatial 
+            # Note that augmented mode has not been generalized to handle different kinds of spatial
             # aggregation. Thus:
             if augment and space_aggregate_by in ['meter']:
                 raise ValueError("Augmented mode has not been generalized to work with aggregating by {}".format(space_aggregate_by))
             if augment and inferred_occupancy is not None:
                 d['inferred_occupancy'] = inferred_occupancy[slot_start][zone]
             if augment and zone in zone_info.keys(): # This was originally just "if zone in temp_zone_info",
-            # so I was deliberately adding these parameters to all rows (even when not computing 
-            # augmented statistics). Probably this was being done to allow centroids to be 
+            # so I was deliberately adding these parameters to all rows (even when not computing
+            # augmented statistics). Probably this was being done to allow centroids to be
             # calculated, but for now, I am eliminating such additions.
                 base = zone_info[zone]
                 #if zone in temp_zone_info.keys():
@@ -1405,7 +1405,7 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
                 if 'inferred_occupancy' not in d:
                     print("zone = {}, d = ".format(zone))
                     pprint(d)
-                # Below is the line that would need to be changed to output to the 
+                # Below is the line that would need to be changed to output to the
                 # augmented file rows where the inferred occupancy is zero.
                 #   To generate the data to send to Carto for a live (or quasi-live)
                 #   map, the package_for_output function could be called just at the
@@ -1499,7 +1499,7 @@ def main(*args, **kwargs):
     #######
     # space_aggregate_by is a parameter used to tell distill_stats how to spatially aggregate
     # data (by zone, sampling zone, or meter GUID). We need a different parameter to choose
-    # among spatiotemporal aggregations, including: 
+    # among spatiotemporal aggregations, including:
     # 1) default: by 10-minute interval and zone/sampling zone (TIMECHUNK = 10 minutes)
     # 2) alternative: by 1-hour intervals and meter, but also summed over every day in a
     # month (the timechunk will be separately controlled by the 'timechunk' parameter).
@@ -1513,7 +1513,7 @@ def main(*args, **kwargs):
         time_aggregation = None # So, there are really two different time aggregations going
         # on. Fine-grained aggregation into bins of duration timechunk (10 minutes) by default
         # and then this extra optional time_aggregation, which is by month for 'meter,month'
-        # aggregation (where timechunk is switched to one hour) or else none at all in the 
+        # aggregation (where timechunk is switched to one hour) or else none at all in the
         # default case.
     elif spacetime == 'meter,month':
         space_aggregation = 'meter'
@@ -1558,14 +1558,14 @@ def main(*args, **kwargs):
         halting_time = halting_time.replace(month=next_month, day=1, hour=0, minute=0, second=0, microsecond=0)
         print("halting_time = {}".format(halting_time))
 
-    # Setting slot_start and halting_time to UTC has no effect on 
+    # Setting slot_start and halting_time to UTC has no effect on
     # getting_ps_from_somewhere, but totally screws up get_batch_parking
     # (resulting in zero transactions after 20:00 (midnight UTC).
     if caching_mode == 'db_caching':
         slot_start = slot_start.astimezone(pytz.utc)
         halting_time = halting_time.astimezone(pytz.utc)
-    # This is not related to the resetting of session_dict, since extending 
-    # session_dict by adding on previous_session_dict did not change the fact that 
+    # This is not related to the resetting of session_dict, since extending
+    # session_dict by adding on previous_session_dict did not change the fact that
     # casting slot_start and halting_time to UTC caused all transactions
     # after 20:00 ET to not appear in the output.
 
@@ -1648,7 +1648,7 @@ def main(*args, **kwargs):
     current_day = slot_start.date()
     warmup_unlinkable_count = len(purchases) - len(linkable)
     dkeys, sampling_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation, split_by_mode)
-    
+
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
     starting_time = copy(slot_start) # The passed parameters slot_start should actually be renamed,
@@ -1658,7 +1658,7 @@ def main(*args, **kwargs):
 
 
 
-    # Occupancy calculations are currently broken for long pulls (since session_dict is incomplete and all_unlinkable 
+    # Occupancy calculations are currently broken for long pulls (since session_dict is incomplete and all_unlinkable
     # grows to beyond the computer's memory limits).
 
     estimate_occupancy = False
@@ -1688,7 +1688,7 @@ def main(*args, **kwargs):
             linkable = []
             if not estimate_occupancy: # This is a temporary hack to keep all_unlinkable from growing without bound
                 all_unlinkable = [ ] # until a proper fix for estimating occupancy can be made.
-            
+
             if slot_start.date() != current_day:
                 print("Moving session_dict to previous_session_dict at {}.".format(slot_start))
                 current_day = slot_start.date()
@@ -1700,7 +1700,7 @@ def main(*args, **kwargs):
                 # First cluster into sessions
                 for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
                     if 'hash' in p:                        # Keep a running history of all
-                        session_dict[p['hash']].append(p)  # purchases for a given day. 
+                        session_dict[p['hash']].append(p)  # purchases for a given day.
                         linkable.append(p)
                     else:
                         unlinkable.append(p)
@@ -1749,19 +1749,19 @@ def main(*args, **kwargs):
             ### server
             ### spacetime, space_aggregation, time_aggregation, turbo_mode, output_to_csv, push_to_CKAN, overwrite
 
-            ### It would be nice to be able to package this code up and call it twice: Once for binned transactions 
+            ### It would be nice to be able to package this code up and call it twice: Once for binned transactions
             ### by payment time and once for binned transactions with durations and inferrable occupancy, by true parking times.
 
-            ### Currently (instead) there is no abstraction to bin objects and the transactions-loop code is a more 
+            ### Currently (instead) there is no abstraction to bin objects and the transactions-loop code is a more
             ### complicated version of the occupancy-loop code (chiefly due to the different kinds of aggregations
             ### and support for sampling zones. The transactions-loop is simpler now that the occupancy and
             ### augmented stuff has been pulled out of it.
-            if time_aggregation == 'month': 
+            if time_aggregation == 'month':
                 if is_very_beginning_of_the_month(slot_start) and len(stats_rows) > 0: # Store the old stats_rows and then reset stats_rows
                     print("Found the very beginning of the month")
                     # Store old stats_rows
                     list_of_dicts, _ = package_for_output(stats_rows,zonelist,None,zone_info,pgh,slot_start,slot_end,space_aggregation,time_aggregation,split_by_mode,transactions_only=True)
-                    if output_to_csv: 
+                    if output_to_csv:
                         write_or_append_to_csv(filename,list_of_dicts,dkeys,overwrite)
 
                     if push_to_CKAN:
@@ -1773,22 +1773,22 @@ def main(*args, **kwargs):
                         success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, list_of_dicts, primary_keys=primary_keys)
                         print("success = {}".format(success))
 
-                    if (push_to_CKAN and success) or not push_to_CKAN: 
+                    if (push_to_CKAN and success) or not push_to_CKAN:
                         stats_rows = {}
                     if (push_to_CKAN and not success) and output_to_CSV:
                         raise ValueError("stats_rows was not cleared because of failure to write to CKAN, but this would cause data to be double-written to the CSV file. No code exists to resolve this conflict, so this script is throwing its digital hands up to avoid making a mess.")
 
             elif time_aggregation is None:
                 stats_rows = {}
-                        
+
             # Condense to key statistics (including duration counts).
             stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start,slot_end,stats_rows, zone_kind, space_aggregation, time_aggregation, split_by_mode, [], tz=pgh, transactions_only=True)
             # stats_rows is actually a dictionary, keyed by zone.
-            if time_aggregation is None and space_aggregation == 'zone':  
+            if time_aggregation is None and space_aggregation == 'zone':
                 sampling_stats_rows = distill_stats(reframed_ps,terminals,t_guids,t_ids,group_lookup_addendum,slot_start, slot_end,{}, zone_kind, 'sampling zone', time_aggregation, split_by_mode, parent_zones, tz=pgh, transactions_only=True)
 
             if spacetime == 'zone': # The original idea for these clauses was to make them all
-            # like 
+            # like
             #       if time_aggregation == 'month'
             # or
             #       if time_aggregation is None
@@ -1818,7 +1818,7 @@ def main(*args, **kwargs):
                         cumulated_dicts = []
 
                 sampling_list_of_dicts, _ = package_for_output(sampling_stats_rows,sampling_zones,None,{},pgh,slot_start,slot_end,'sampling zone',None,split_by_mode,transactions_only=True)
-                # Sending the augment parameter here as "augment and False" to prevent 
+                # Sending the augment parameter here as "augment and False" to prevent
                 # package_for_output from even trying to generate augmented output.
 
                 # Between the passed use_sampling_zones boolean and other parameters, more
@@ -1845,7 +1845,7 @@ def main(*args, **kwargs):
         slot_end = slot_start + timechunk
     if spacetime == 'zone':
         print("After the main processing loop, len(session_dict) = {}, len(cumulated_dicts) = {}, and len(cumulated_sampling_dicts) = {}".format(len(session_dict), len(cumulated_dicts), len(cumulated_sampling_dicts)))
-  
+
     if caching_mode == 'db_caching':
         cached_dates,_ = get_tables_from_db(db)
         print("Currently cached dates (These are UTC dates): {}".format(list(cached_dates.all())))
@@ -1888,8 +1888,8 @@ def main(*args, **kwargs):
             if success_a:
                 cumulated_sampling_dicts = []
                 print("Pushed the last batch of sampling-zone transactions to {}".format(sampling_transactions_resource_name))
-            success_transactions = success and success_a # This will be true if the last two pushes of data to CKAN are true 
-            # (and even if all previous pushes failed, the data should be sitting around in cumulated lists, and these last 
+            success_transactions = success and success_a # This will be true if the last two pushes of data to CKAN are true
+            # (and even if all previous pushes failed, the data should be sitting around in cumulated lists, and these last
             # two success Booleans will tell you whether the whole process succeeded).
         else:
             success_transactions = success
