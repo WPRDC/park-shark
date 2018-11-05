@@ -1192,6 +1192,9 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
 
 # ~~~~~~~~~~~~~~~~
 
+def get_utc_ps_for_day(dt_start_i,local_tz,cache,mute):
+    ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,cache,mute)
+    return ps_for_whole_day, dts_for_whole_day
 
 def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,caching_mode='utc_json'):
     # Basically, this function gets all the parking events between slot_start and start_end (using time_field)
@@ -1229,7 +1232,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
         dt_start_i = slot_start
         while dt_start_i < slot_end:
             if caching_mode == 'utc_json':
-                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,cache,mute)
+                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day(dt_start_i,local_tz,cache,mute)
             elif caching_mode == 'db_caching':
                 ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
             else:
