@@ -1174,9 +1174,16 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
             print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
 
         if offset == 0 and not recent:
-            for day in ps_by_day.keys():
-                # Upsert purchases in batches to reduce write time.
-                bulk_upsert_to_sqlite(ps_by_day[day], dts_by_day[day], day, reference_time)
+            for day in ps_by_day.keys(): # Upsert purchases in batches to reduce write time.
+                if day <= (slot_start + timedelta(days=1)).date(): # Here slot_start is a stand-in
+                    # for DateCreatedUtc, and this serves as a check against transactions from
+                    # the future (which should be impossible) getting added.
+                    bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                else:
+                    print("Does it make sense to insert transactions under day = {} if slot_start = {}?".format(day,slot_start))
+                    print("Here's an example transaction:")
+                    pprint(ps_by_day[day][0])
+                    raise ValueError("Time-travelling transactions transgression")
         ps_all += ps
         dts_all += dts
 
