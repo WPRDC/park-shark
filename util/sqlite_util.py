@@ -126,7 +126,7 @@ def reverse_sqlite_adapter(d_input):
     del(d['hour'])
     del(d['minute'])
     #'hybrid_parking_segment_start_utc' will not be in the returned dict.
-    if 'json_PurchasePayUnit' in d:
+    if 'json_PurchasePayUnit' in d and d['json_PurchasePayUnit'] is not None:
         # PurchasePayUnit looks like this:
         #    "PurchasePayUnit": {
         #              "@PayUnitName": "None",
