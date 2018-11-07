@@ -1125,8 +1125,11 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
     dts_by_day = defaultdict(list)
     ps_all = []
     dts_all = []
-    #for offset in range(-1,2):
     recent = datetime.now(local_tz) - slot_start <= timedelta(days = 5)
+    ## Begin diagnostics #
+    #sought_key = 'ECA8F05C-F220-E948-9FCA-2A51BA006F5B'
+    #just_found = False
+    ## End diagnostics #
     for offset in range(0,2):
         #query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pgh)
         query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pytz.utc)
@@ -1155,6 +1158,16 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
         start_of_day = beginning_of_day(slot_start)
         start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
         for purchase_i,datetime_i in zip(ps_for_whole_day,datetimes):
+            ## Begin diagnostics #
+            #if purchase_i['@PurchaseGuid'] == sought_key:
+            #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            #    pprint(purchase_i)
+            #    print("get_payment_type(purchase_i) == {}".format(get_payment_type(purchase_i)))
+            #    just_found = True
+            #    print("len(ps_by_day) for each day: {}".format([(day,len(ps_by_day[day])) for day in sorted(ps_by_day.keys())]))
+            #    print("offset == {}".format(offset))
+            ## End diagnostics #
+
             if start_of_day <= datetime_i < start_of_next_day:
                 if get_payment_type(purchase_i) != 'manual': # Filter out payments that are neither meter nor mobile payments.
                     ps.append(purchase_i)
@@ -1163,6 +1176,19 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                 day = datetime_i.astimezone(local_tz).date()
                 ps_by_day[day].append(purchase_i)
                 dts_by_day[day].append(datetime_i)
+
+            ## Begin diagnostics #
+            #if just_found:
+            #    just_found = False
+            #    print("len(ps_by_day) for each day: {}".format([(day,len(ps_by_day[day])) for day in sorted(ps_by_day.keys())]))
+
+        #if False:
+        #    for day in sorted(ps_by_day.keys()):
+        #        print("Searching day == {}...".format(day))
+        #        for p in ps_by_day[day]:
+        #            if p['@PurchaseGuid'] == sought_key:
+        #                print("{} found filed under day {}.".format(sought_key,day))
+        ## End diagnostics #
 
             #if purchase_i['@PurchaseGuid'] == '53F693C2-4BF9-4E70-89B5-5B9532461B8C':
             #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
