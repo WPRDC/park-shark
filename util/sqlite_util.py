@@ -14,7 +14,11 @@ def shorten_reference_time(reference_time):
 
 ## Begin SQLite database functions ##
 
-### Begin cached-date functions #
+### Begin cached-date functions ####
+# These functions are used to check whether the contents of two
+# UTC JSON files have been loaded into SQLite databases: The one
+# for the same local date and the one for the following day.
+
 def get_date_filepath(path,reference_time):
     short_ref = shorten_reference_time(reference_time)
     return path + "sqlite-" + short_ref + "/cached_dates.sqlite"
@@ -45,7 +49,7 @@ def is_date_cached(path,reference_time,date_i):
     date_format = '%Y-%m-%d'
     date_string = date_i.strftime(date_format)
     return (cached_dates.find_one(date=date_string, offset=0) is not None) and (cached_dates.find_one(date=date_string, offset=1) is not None)
-### End cached-date functions #
+### End cached-date functions ###
 
 def get_table_name():
     return 'purchases'
@@ -90,7 +94,6 @@ def get_sqlite_table(path,date_i,reference_time):
     dashless = date_i.strftime('%y%m%d')
     short_ref = shorten_reference_time(reference_time)
     filepath = path + "sqlite-" + short_ref + "/" + dashless + ".sqlite"
-
     tz = pytz.timezone('US/Eastern')
     too_soon = date_i >= datetime.now(tz).date()
     # If the day that is being requested is today, definitely don't cache it.
