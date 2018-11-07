@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 
 #from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
-from util.sqlite_util import bulk_upsert_to_sqlite, time_to_field
+from util.sqlite_util import get_events_from_sqlite, bulk_upsert_to_sqlite, time_to_field, mark_date_as_cached, is_date_cached
 
 
 from util.carto_util import update_map
@@ -1216,10 +1216,17 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
 
     return ps_all, dts_all
 
-# ~~~~~~~~~~~~~~~~
+def get_utc_ps_for_day(dt_start_i,local_tz,reference_time,cache,mute):
+    """If possible, pull events from the sqlite cache."""
 
-def get_utc_ps_for_day(dt_start_i,local_tz,cache,mute):
-    ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,cache,mute)
+    # dt_start_i comes in as a UTC datetime.
+    # But is_date_cached wants a LOCAL DATE.
+    local_date = dt_start_i.astimezone(local_tz).date()
+
+    if is_date_cached(path,reference_time,local_date):
+        ps_for_whole_day, dts_for_whole_day = get_events_from_sqlite(path,local_date,reference_time)
+    else:
+        ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute)
     return ps_for_whole_day, dts_for_whole_day
 
 def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,caching_mode='utc_json'):
@@ -1258,7 +1265,9 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
         dt_start_i = slot_start
         while dt_start_i < slot_end:
             if caching_mode == 'utc_json':
-                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day(dt_start_i,local_tz,cache,mute)
+                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute)
+            elif caching_mode == 'sqlite':
+                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day(dt_start_i,local_tz,reference_time,cache,mute)
             elif caching_mode == 'db_caching':
                 ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
             else:
@@ -1326,7 +1335,7 @@ def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,ca
     # arbitrary size, I am changing the definition to use slot_start to decide recency:
     recent = datetime.now(pgh) - slot_start <= timedelta(days = 5)
 
-    if caching_mode == 'utc_json' or recent:
+    if caching_mode in ['utc_json', 'sqlite'] or recent:
         #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live"
         # (recent transactions) API.
         return cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute,caching_mode)
