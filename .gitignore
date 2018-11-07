@@ -11,6 +11,7 @@ json/
 utc_json/
 utc_json_2/
 week_utc_json/
+sqlite-pdl/
 csv/
 docs/
 meters_etl/
