@@ -1358,7 +1358,10 @@ def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,ca
     # Actually, those cases will be handled fine, since the real limit of the LiveData
     # export is like 6 hours and 19 or 20 hours, but to be able to handle slots of
     # arbitrary size, I am changing the definition to use slot_start to decide recency:
-    recent = datetime.now(pgh) - slot_start <= timedelta(days = 5)
+    recent = datetime.now(pgh) - slot_start <= timedelta(days = 5) # <<<<<<<< Why
+    # does this line use a locally hard-coded value of the local timezone,
+    # while calls below use the value passed in local_tz?
+
 
     if caching_mode in ['utc_json', 'sqlite'] or recent:
         #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live"
