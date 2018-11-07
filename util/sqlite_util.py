@@ -75,7 +75,7 @@ def create_or_connect_to_sqlite(filepath):
         db = dataset.connect('sqlite:///'+filepath)
         print("Database file found with tables {}.".format(db.tables))
     except sqlalchemy.exc.NoSuchTableError as e:
-        print("Unable to load database {}.".format(filepath))
+        print("Unable to load database {} and table {}.".format(filepath,get_table_name()))
         directory = '/'.join(filepath.split('/')[:-1])
         if not os.path.isdir(directory):
             os.makedirs(directory)
@@ -116,6 +116,39 @@ def time_to_field(reference_time):
     if reference_time == 'purchase_time':
         return '@PurchaseDateUtc', '@PurchaseDateLocal'
     raise ValueError('time_to_field does not know how to handle reference_time = {}'.format(reference_time))
+
+def reverse_sqlite_adapter(d_input):
+    d = dict(d_input)
+    del(d['hour'])
+    del(d['minute'])
+    #'hybrid_parking_segment_start_utc' will not be in the returned dict.
+    if 'json_PurchasePayUnit' in d:
+        # PurchasePayUnit looks like this:
+        #    "PurchasePayUnit": {
+        #              "@PayUnitName": "None",
+        #              "@Amount": "0.25"
+        #            }
+        # or this:
+        #        "PurchasePayUnit": {
+        #          "@PayUnitName": "Card",
+        #          "@Amount": "1",
+        #          "@TransactionReference": "ccaff5f1ebbc101c"
+        #        },
+        # or this:
+        #    "PurchasePayUnit": {
+        #      "@PayUnitName": "Mobile Payment",
+        #      "@Amount": "3",
+        #      "@TransactionReference": "174994079"
+        #    }
+        # or this:
+        #    "PurchasePayUnit": { "@PayUnitName": "Coin", "@Amount": "0.25" }
+        # or occasionally it's a list of two different dicts.
+        # To capture all this data, let's just stringify/serialize it
+        # and then deserialize it after getting it from the SQLite database
+        # (or as needed).
+        d['PurchasePayUnit'] = json.loads(d['json_PurchasePayUnit'])
+        del d['json_PurchasePayUnit']
+    return d
 
 def sqlite_adapter(d_input,datetime_i):
     d = dict(d_input)
