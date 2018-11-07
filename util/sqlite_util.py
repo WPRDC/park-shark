@@ -266,7 +266,9 @@ def bulk_insert_into_sqlite(path,purchases,dts,date_i,reference_time):
 # THEN save the result to a file.
 ## End SQLite database functions ##
 
-def get_events_from_sqlite(date_i,reference_time):
-    # fetched_ps = table.
-    # run reverse sqlite_adapter on fetched_ps
-    pass
+def get_events_from_sqlite(path,date_i,reference_time):
+    table, db = get_sqlite_table(path,date_i,reference_time)
+    adapted_ps = [reverse_sqlite_adapter(p) for p in table.all()]
+    utc_reference_field, local_reference_field = time_to_field(reference_time)
+    dts_all = [(pytz.utc).localize(parser.parse(p[utc_reference_field])) for p in adapted_ps]
+    return adapted_ps, dts_all
