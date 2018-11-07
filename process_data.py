@@ -1037,7 +1037,7 @@ def parking_segment_start_of(p):
 def keep_running(slot_start_time,halting_time):
     return slot_start_time <= datetime.now(pytz.utc) and slot_start_time < halting_time
 
-def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),cache=True,mute=False):
+def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),reference_time='purchase_time',cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
     # collecting data over two UTC days (from a function that
     # caches API query results as raw JSON files) and then filtering
@@ -1115,8 +1115,8 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
 
     print("############# slot_start = {}, beginning_of_day(slot_start) = {}, slot_start.utcoffset().total_seconds() = {}".format(slot_start,beginning_of_day(slot_start),slot_start.utcoffset().total_seconds()))
 
-    reference_time = 'hybrid'
-    reference_time = 'purchase_time' # Switching to PurchaseDate as a reference for
+    #reference_time = 'hybrid'
+    #reference_time = 'purchase_time' # Switching to PurchaseDate as a reference for
     # comparison with CALE Web Office results (even though this timestamp is
     # sometimes problematically different from StartDate).
     print("Using {} reference-time mode.".format(reference_time))
@@ -1243,9 +1243,9 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
     # When reference_time == 'hybrid', the function "hybrid_parking_segment_start_of" determines
     # the timestamp used for calculating the datetime values used to filter purchases
     # down to those between slot_start and start_end. When reference_time == 'purchase_time',
-    # @PurchaseDateUtc is used instead. (reference_time is set in get_utc_ps_for_day_from_json,
-    # which is called below.)
+    # @PurchaseDateUtc is used instead. (reference_time is set in this function.)
 
+    reference_time = 'purchase_time'
     # Note that the time zone tz and the field produced by hybrid_parking_segment_start_of must be consistent
     # for this to work properly.
     #tz = pytz.utc
