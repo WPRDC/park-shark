@@ -13,6 +13,40 @@ def shorten_reference_time(reference_time):
     raise ValueError("No abbreviated version found for reference_time = {}".format(reference_time))
 
 ## Begin SQLite database functions ##
+
+### Begin cached-date functions #
+def get_date_filepath(path,reference_time):
+    short_ref = shorten_reference_time(reference_time)
+    return path + "sqlite-" + short_ref + "/cached_dates.sqlite"
+
+def mark_date_as_cached(path,reference_time,date_i,offset):
+    date_filepath = get_date_filepath(path,reference_time)
+    date_table_name = 'cached_dates'
+    try:
+        db = dataset.connect('sqlite:///'+date_filepath)
+        table = db[date_table_name]
+    except sqlalchemy.exc.NoSuchTableError as e:
+        print("Unable to load database {} and table {}.".format(date_filepath,data_table_name))
+        table = db.create_table(date_table_name, primary_id = 'date', primary_type = 'String')
+    record = {'date': date_i.strftime("%Y-%m-%d"), 'offset': offset}
+    table.upsert(record, keys=['date', 'offset'])  # The second
+    # argument is a list of keys used in the upserting process.
+
+def is_date_cached(path,reference_time,date_i):
+    # Return a Boolean indicating whether the date is in cached_dates
+    # which specifies whether all events with [reference_time_field] values
+    # equal to date_i have been cached in the database (or at
+    # least all of the utc_json values, providing a base).
+    date_filepath = get_date_filepath(path,reference_time)
+    date_table_name = 'cached_dates'
+    db = dataset.connect('sqlite:///'+date_filepath)
+    cached_dates = db[date_table_name]
+
+    date_format = '%Y-%m-%d'
+    date_string = date_i.strftime(date_format)
+    return (cached_dates.find_one(date=date_string, offset=0) is not None) and (cached_dates.find_one(date=date_string, offset=1) is not None)
+### End cached-date functions #
+
 def get_table_name():
     return 'purchases'
 
