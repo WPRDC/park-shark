@@ -1199,12 +1199,37 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
         if len(ps_for_whole_day) > 0:
             print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
 
-        if offset == 0 and not recent:
-            for day in ps_by_day.keys(): # Upsert purchases in batches to reduce write time.
+        if offset in [0,1] and not recent: # The reason that we can't just test for offset == 0
+            # is because the data is stored in JSON files by UTC time and pulled that way too.
+            # Only using offset == 0 misses transactions that are on the next day's UTC JSON file.
+
+            # Currently there's a fair amount of redundancy in here (seemingly).
+
+            for day in sorted(ps_by_day.keys()): # Upsert purchases in batches to reduce write time.
                 if day <= (slot_start + timedelta(days=1)).date(): # Here slot_start is a stand-in
                     # for DateCreatedUtc, and this serves as a check against transactions from
                     # the future (which should be impossible) getting added.
                     bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                    mark_date_as_cached(path,reference_time,day,offset) # <<< This is probably the problem.
+                    # How do we know when a date has been truly and sufficiently cached????
+                    # When the UTC JSON files for offset == 1 and then offset == 0 have
+                    # BOTH been loaded and transferred into the correct SQLite database.
+
+                    # The difficulty here is that we're not trusting the entire function get_utc_ps_for_day_from_json
+                    # to do its job. Instead, we're making sure that every transaction gets put somewhere (which
+                    # is correct since get_utc_ps_for_day_from_json cannot currently get transactions that are
+                    # multiple days late).
+                    #   Option 1: Just assume that the script will eventually be run for the entire
+                    #   set of JSON files and that the SQLite databases will then be complete.
+                    #   Option 2: Keep track of offsets used (in database) and incorporate that into
+                    #   the check. <== This is an inelegant kluge, but seems simplest at this point.
+
+                    #       A better eventual redesign might be to switch the JSON files back to
+                    #       being based on local timestamps or to make the SQLite databases UTC
+                    #       also and move the selection of a day's transactions downstream to
+                    #       queries that access two SQLite databases.
+
+
                 else:
                     print("Does it make sense to insert transactions under day = {} if slot_start = {}?".format(day,slot_start))
                     print("Here's an example transaction:")
