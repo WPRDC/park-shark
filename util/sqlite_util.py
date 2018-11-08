@@ -223,7 +223,7 @@ def bulk_upsert_to_sqlite(path,purchases,dts,date_i,reference_time):
     try:
         assert filing_date == sample_date
     except:
-        print("sample_date_string = {}".format(sample_date_string))
+        print("filing_date = {}, sample_date = {}, sample_date_string = {}".format(filing_date,sample_date,sample_date_string))
         assert filing_date == sample_date
 
     table, db = get_sqlite_table(path,filing_date,reference_time)
