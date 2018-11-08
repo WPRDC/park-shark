@@ -152,6 +152,11 @@ def reverse_sqlite_adapter(d_input):
         # (or as needed).
         d['PurchasePayUnit'] = json.loads(d['json_PurchasePayUnit'])
         del d['json_PurchasePayUnit']
+    if 'hash' in d and d['hash'] is None: # 'hash' fields with values of None
+        del d['hash'] # are added before inserting records into the SQLite database
+        # for compatibility with hash-having records, but they also need to be
+        # removed to conform to process_data's expectations about transactions that
+        # have hashes.
     return d
 
 def sqlite_adapter(d_input,datetime_i):
