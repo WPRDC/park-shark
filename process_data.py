@@ -1701,7 +1701,7 @@ def main(*args, **kwargs):
     # is built up but the data is not output to anything (save the console).
 
     # An edge case of concern is where a parking purchase that happens at 12:05am
-    # extends a previous purchase. To handle this, two dicts are maintained
+    # extends a previous purchase. To handle this, two dicts are maintained:
     # session_dict (for the day being worked on) and previous_session_dict
     # (which holds yesterday's contents). Both must be checked when trying to
     # link a new transaction with an existing session.
@@ -1715,6 +1715,17 @@ def main(*args, **kwargs):
     # need to wrap process_data in a loop that sends the CALE API a new
     # request every 30 seconds, processes those new transactions, and update
     # the relevant output slots.
+
+
+    # Occupancy calculations are currently broken for long pulls (since session_dict is incomplete and all_unlinkable
+    # grows to beyond the computer's memory limits).
+
+    estimate_occupancy = False
+    if not estimate_occupancy:
+        print("Occupancy estimation is turned off.")
+    else:
+        print("Occupancy estimation (currently on) needs to be fixed.")
+
     seeding_mode = True
     linkable = [] # Purchases that can be sorted into hash-based sessions.
     all_unlinkable = [] # For now, we're excluding the warm_up period transactions.
@@ -1722,17 +1733,21 @@ def main(*args, **kwargs):
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
         purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,pgh,True,False,caching_mode)
-        for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-            if 'hash' in p:
-                session_dict[p['hash']].append(p)
-                linkable.append(p)
 
-        for session in session_dict.values():
-            fix_durations(session)
+        if estimate_occupancy:
+            for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
+                if 'hash' in p:
+                    session_dict[p['hash']].append(p)
+                    linkable.append(p)
 
-        print("len(session_dict) = {}, len(linkable) = {}, len(purchases) = {}".format(len(session_dict), len(linkable), len(purchases)))
-        # If we could guarantee that all transactions would be in session_dict, we could just iterate
-        # through the pre-packaged sessions.
+            for session in session_dict.values():
+                fix_durations(session)
+
+            print("len(session_dict) = {}, len(linkable) = {}, len(purchases) = {}".format(len(session_dict), len(linkable), len(purchases)))
+            # If we could guarantee that all transactions would be in session_dict, we could just iterate
+            # through the pre-packaged sessions.
+        else:
+            print("len(purchases) = {}".format(len(purchases)))
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
@@ -1745,17 +1760,6 @@ def main(*args, **kwargs):
     # but it appears in like 160 places across many files.
 ###########################################
     stats_rows = {} # This is only needed for the extra time aggregation modes.
-
-
-
-    # Occupancy calculations are currently broken for long pulls (since session_dict is incomplete and all_unlinkable
-    # grows to beyond the computer's memory limits).
-
-    estimate_occupancy = False
-    if not estimate_occupancy:
-        print("Occupancy estimation is turned off.")
-    else:
-        print("Occupancy estimation (currently on) needs to be fixed.")
 
     print("time_aggregation = {}, space_aggregation = {}, spacetime = {}, split_by_mode = {}".format(time_aggregation, space_aggregation, spacetime, split_by_mode))
     while slot_start <= datetime.now(pytz.utc) and slot_start < halting_time:
