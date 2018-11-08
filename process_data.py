@@ -20,7 +20,7 @@ from dateutil import parser
 
 #from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
 from util.sqlite_util import get_events_from_sqlite, bulk_upsert_to_sqlite, time_to_field, mark_date_as_cached, is_date_cached
-
+from notify import send_to_slack
 
 from util.carto_util import update_map
 from parameters.credentials_file import CALE_API_user, CALE_API_password
@@ -1037,6 +1037,13 @@ def parking_segment_start_of(p):
 def keep_running(slot_start_time,halting_time):
     return slot_start_time <= datetime.now(pytz.utc) and slot_start_time < halting_time
 
+def add_n_years(p,dt_field,n):
+    if dt_field in p:
+        dt_value = parser.parse(p[dt_field])
+        new_value = dt_value.replace(year = dt_value.year + n)
+        p[dt_field] = new_value.strftime("%Y-%m-%dT%H:%M:%S")
+
+
 def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),reference_time='purchase_time',cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
     # collecting data over two UTC days (from a function that
@@ -1231,10 +1238,60 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
 
 
                 else:
-                    print("Does it make sense to insert transactions under day = {} if slot_start = {}?".format(day,slot_start))
-                    print("Here's an example transaction:")
-                    pprint(ps_by_day[day][0])
-                    raise ValueError("Time-travelling transactions transgression")
+                    mute_alerts = False
+                    example = ps_by_day[day][0]
+                    dc = example['@DateCreatedUtc']
+                    utc_reference_field, local_reference_field = time_to_field(reference_time)
+                    example_ref = example[utc_reference_field]
+                    example_difference = parser.parse(example_ref) - parser.parse(dc)
+                    if not mute_alerts:
+                        msg = "Time-travelling transactions transgression: A batch of {} transactions with day == {} when slot_start.date() == {}. Example: @DateCreatedUtc = {}, @PurchaseDateUtc = {}, difference = {}. Full example transaction: ".format(len(ps_by_day[day]), day, slot_start.date(), dc, example_ref, example_difference)
+                        msg += pprint(example)
+                        send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+
+                    dt_fields = ['@PurchaseDateLocal', '@EndDateLocal', '@EndDateUtc', '@PayIntervalEndLocal',
+                            '@PayIntervalEndUtc', '@PayIntervalStartLocal', '@PayIntervalStartUtc',
+                            '@PurchaseDateLocal', '@PurchaseDateUtc', '@StartDateLocal', '@StartDateUtc']
+                    # If the time difference is exactly one year, just correct the year.
+                    # Example:
+                        # '@DateCreatedUtc': '2017-11-20T21:22:58.407'
+                        # '@PurchaseDateLocal': '2018-11-19T16:22:26',
+                        #{'@Amount': '9',
+                        # '@DateCreatedUtc': '2017-11-20T21:22:58.407',
+                        # '@EndDateLocal': '2018-11-19T20:52:14',
+                        # '@EndDateUtc': '2018-11-20T01:52:14',
+                        # '@PayIntervalEndLocal': '2018-11-19T20:52:14',
+                        # '@PayIntervalEndUtc': '2018-11-20T01:52:14',
+                        # '@PayIntervalStartLocal': '2018-11-19T16:22:14',
+                        # '@PayIntervalStartUtc': '2018-11-19T21:22:14',
+                        # '@PaymentServiceType': 'PrePay Code',
+                        # '@PurchaseDateLocal': '2018-11-19T16:22:26',
+                        # '@PurchaseDateUtc': '2018-11-19T21:22:26',
+                        # '@PurchaseGuid': 'AB02FF4B-21DD-E139-4680-22F6D0D778D5',
+                        # '@StartDateLocal': '2018-11-19T16:22:14',
+                        # '@StartDateUtc': '2018-11-19T21:22:14',
+                        # '@TerminalGuid': '8C1E8FEB-8E35-48B3-AE37-CB9DF42FB8CD',
+                        # '@TerminalID': '328548-IVYBEL0004',
+                        # '@Units': '270',
+                        # 'PurchasePayUnit': {'@Amount': '9', '@PayUnitName': 'Card'},
+                        # 'hybrid_parking_segment_start_utc': datetime.datetime(2018, 11, 19, 21, 22, 14, tzinfo=<UTC>)}
+                    if 362 < example_difference.days < 367:
+                        # Fix the years of every transaction.
+                        n = -1
+                        for p,dt in zip(ps_by_day[day],dts_by_day[day]):
+                            for dt_field in dt_fields:
+                                add_n_years(p,dt_field,n)
+                            dt = dt.replace(dt.year + n)
+
+                        bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        print("These transactions have been fixed by adding {} years to their datetime fields (other than @DateCreatedUtc).".format(n))
+
+                    else:
+                        print("Does it make sense to insert transactions under day = {} if slot_start = {}?".format(day,slot_start))
+                        print("Here's an example transaction:")
+                        pprint(example)
+                        print("We're just not going to file these anywhere for now.")
+                        #raise ValueError("Time-travelling transactions transgression")
         ps_all += ps
         dts_all += dts
 
