@@ -1245,8 +1245,7 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                     example_ref = example[utc_reference_field]
                     example_difference = parser.parse(example_ref) - parser.parse(dc)
                     if not mute_alerts:
-                        msg = "Time-travelling transactions transgression: A batch of {} transactions with day == {} when slot_start.date() == {}. Example: @DateCreatedUtc = {}, @PurchaseDateUtc = {}, difference = {}. Full example transaction: ".format(len(ps_by_day[day]), day, slot_start.date(), dc, example_ref, example_difference)
-                        msg += pprint(example)
+                        msg = "Time-travelling transactions transgression: A batch of {} transactions with day == {} when slot_start.date() == {}. Example: @DateCreatedUtc = {}, @PurchaseDateUtc = {}, difference = {}. Full example transaction: {}".format(len(ps_by_day[day]), day, slot_start.date(), dc, example_ref, example_difference,example)
                         send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
 
                     dt_fields = ['@PurchaseDateLocal', '@EndDateLocal', '@EndDateUtc', '@PayIntervalEndLocal',
