@@ -1274,7 +1274,8 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                         # '@Units': '270',
                         # 'PurchasePayUnit': {'@Amount': '9', '@PayUnitName': 'Card'},
                         # 'hybrid_parking_segment_start_utc': datetime.datetime(2018, 11, 19, 21, 22, 14, tzinfo=<UTC>)}
-                    if 362 < example_difference.days < 367:
+                    if False:
+                    #if 362 < example_difference.days < 367:
                         # Fix the years of every transaction.
                         n = -1
                         for p,dt in zip(ps_by_day[day],dts_by_day[day]):
