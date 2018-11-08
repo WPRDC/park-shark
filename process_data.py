@@ -1247,7 +1247,7 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                     if not mute_alerts:
                         msg = "Time-travelling transactions transgression: A batch of {} transactions with day == {} when slot_start.date() == {}. Example: @DateCreatedUtc = {}, @PurchaseDateUtc = {}, difference = {}. Full example transaction: {}".format(len(ps_by_day[day]), day, slot_start.date(), dc, example_ref, example_difference,example)
                         send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
-
+                        print(msg)
                     dt_fields = ['@PurchaseDateLocal', '@EndDateLocal', '@EndDateUtc', '@PayIntervalEndLocal',
                             '@PayIntervalEndUtc', '@PayIntervalStartLocal', '@PayIntervalStartUtc',
                             '@PurchaseDateLocal', '@PurchaseDateUtc', '@StartDateLocal', '@StartDateUtc']
@@ -1283,15 +1283,16 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                                 add_n_years(p,dt_field,n)
                             dt = dt.replace(dt.year + n)
 
-                        bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
                         print("These transactions have been fixed by adding {} years to their datetime fields (other than @DateCreatedUtc).".format(n))
+                        bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
 
                     else:
-                        print("Does it make sense to insert transactions under day = {} if slot_start = {}?".format(day,slot_start))
-                        print("Here's an example transaction:")
-                        pprint(example)
                         print("We're just not going to file these anywhere for now.")
                         #raise ValueError("Time-travelling transactions transgression")
+
+                    print("Does it make sense to insert transactions under day = {} if slot_start = {}?".format(day,slot_start))
+                    print("Here's an example transaction:")
+                    pprint(example)
         ps_all += ps
         dts_all += dts
 
