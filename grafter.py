@@ -5,7 +5,7 @@ from process_data import time_to_field, bulk_upsert_to_sqlite
 from collections import defaultdict
 from pprint import pprint
 
-from parameters.local_parameters import missing_data_path as path
+from parameters.local_parameters import missing_data_path, path
 
 def special_conversion(d):
     #Terminal - Terminal ID,Pay Unit - Name,Node,Purchase Date Local,Amount,Created in CWO,Payment Service Type - Name,Tariff Package - Name,Units,Transaction Reference,External ID,Purchase Guid,Start Date Local,Delivery Delay,End Date Local,Purchase State - Name,Pay Interval Start Local,Pay Interval End Local,Article ID
@@ -73,12 +73,12 @@ def add_missing_purchases(filepath,reference_time):
         print("Grafting missing purchases from {} onto corresponding sqlite database.".format(day))
         purchases = ps_by_day[day]
         dts = dts_by_day[day]
-        bulk_upsert_to_sqlite(purchases,dts,day,reference_time)
+        bulk_upsert_to_sqlite(path,purchases,dts,day,reference_time)
 
 
 reference_time = 'purchase_time'
 filenames = ['Purchases-2017-Operational.csv', 'Purchases-1801-1806-Operational.csv', 'Purchases-2018-07-Operational.csv']
 
 for filename in filenames:
-    print("Merging in transactions from {}".format(path+filename))
-    add_missing_purchases(path + filename,reference_time)
+    print("Merging in transactions from {}".format(missing_data_path+filename))
+    add_missing_purchases(missing_data_path + filename,reference_time)
