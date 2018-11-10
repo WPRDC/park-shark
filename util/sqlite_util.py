@@ -20,6 +20,10 @@ def shorten_reference_time(reference_time):
 # UTC JSON files have been loaded into SQLite databases: The one
 # for the same local date and the one for the following day.
 
+def format_date(date_i):
+    date_format = '%Y-%m-%d'
+    return date_i.strftime(date_format)
+
 def get_date_filepath(path,reference_time):
     short_ref = shorten_reference_time(reference_time)
     return path + "sqlite-" + short_ref + "/cached_dates.sqlite"
@@ -37,7 +41,7 @@ def mark_date_as_cached(path,reference_time,date_i,offset):
     date_filepath = get_date_filepath(path,reference_time)
     date_table_name = 'cached_dates'
     table = get_cached_dates_table(date_filepath, date_table_name)
-    record = {'date': date_i.strftime("%Y-%m-%d"), 'offset': offset}
+    record = {'date': format_date(date_i), 'offset': offset}
     table.upsert(record, keys=['date', 'offset'])  # The second
     # argument is a list of keys used in the upserting process.
 
@@ -50,13 +54,19 @@ def is_date_cached(path,reference_time,date_i):
     date_table_name = 'cached_dates'
     cached_dates = get_cached_dates_table(date_filepath, date_table_name)
 
-    date_format = '%Y-%m-%d'
-    date_string = date_i.strftime(date_format)
+    date_string = format_date(date_i)
     return (cached_dates.find_one(date=date_string, offset=0) is not None) and (cached_dates.find_one(date=date_string, offset=1) is not None)
+
 ### End cached-date functions ###
 
 def get_table_name():
     return 'purchases'
+
+def get_purchases_filepath(path,reference_time,date_i):
+    dashless = date_i.strftime('%y%m%d')
+    short_ref = shorten_reference_time(reference_time)
+    filepath = path + "sqlite-" + short_ref + "/" + dashless + ".sqlite"
+    return filepath
 
 def create_sqlite(db_filename):
     db = dataset.connect('sqlite:///'+db_filename)
@@ -95,9 +105,7 @@ def get_sqlite_table(path,date_i,reference_time):
 
 
     """
-    dashless = date_i.strftime('%y%m%d')
-    short_ref = shorten_reference_time(reference_time)
-    filepath = path + "sqlite-" + short_ref + "/" + dashless + ".sqlite"
+    filepath = get_purchases_filepath(path,reference_time,date_i)
     tz = pytz.timezone('US/Eastern')
     too_soon = date_i >= datetime.now(tz).date()
     # If the day that is being requested is today, definitely don't cache it.
