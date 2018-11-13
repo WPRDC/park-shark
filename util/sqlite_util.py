@@ -292,3 +292,17 @@ def get_events_from_sqlite(path,date_i,reference_time):
     utc_reference_field, local_reference_field = time_to_field(reference_time)
     dts_all = [(pytz.utc).localize(parser.parse(p[utc_reference_field])) for p in adapted_ps]
     return adapted_ps, dts_all
+
+
+def clear_cache_for_date(path,reference_time,date_i):
+    # Step 1: Revise the cached-dates table to reflect the fact that the
+    # date is no longer considered cached.
+    date_filepath = get_date_filepath(path,reference_time)
+    date_table_name = 'cached_dates'
+    cached_dates = get_cached_dates_table(date_filepath, date_table_name)
+    cached_dates.delete(date = format_date(date_i))
+
+    # Step 2: Delete the SQLite file for that date.
+    filepath = get_purchases_filepath(path,reference_time,date_i)
+    if os.path.isfile(filepath):
+        os.remove(filepath)
