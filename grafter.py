@@ -28,7 +28,7 @@ def special_conversion(d):
 
     # Now, one problem might be duplication of Purchase Guid values so that separate Pay Unit - Names for the same transaction can be on separate lines.
     # However, none of the transactions I downloaded have this problem.
-    p = {'@TerminalId': d['Terminal - Terminal ID'],
+    p = {'@TerminalID': d['Terminal - Terminal ID'],
         '@PurchaseGuid': d['Purchase Guid'].upper(),
         '@Amount': d['Amount'],
         '@Units': d['Units'],
