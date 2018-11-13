@@ -32,20 +32,20 @@ def special_conversion(d):
         '@PurchaseGuid': d['Purchase Guid'].upper(),
         '@Amount': d['Amount'],
         '@Units': d['Units'],
-        '@PurchaseDateLocal': d['Purchase Date Local'],
+        '@PurchaseDateLocal': parser.parse(d['Purchase Date Local']).strftime("%Y-%m-%dT%H:%M:%S"),
         '@PurchaseDateUtc': pgh.localize(parser.parse(d['Purchase Date Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
         'json_PurchasePayUnit': jsonPPU, #'{"@TransactionReference": "168767264", "@Amount": "3", "@PayUnitName": "Mobile Payment"}'
-        '@StartDateLocal': d['Start Date Local'],
+        '@StartDateLocal': parser.parse(d['Start Date Local']).strftime("%Y-%m-%dT%H:%M:%S"),
         '@StartDateUtc': pgh.localize(parser.parse(d['Start Date Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
         #'@PurchaseTypeName': None, # I can't find this one, unfortunately. This is like "PrePay Code" and doesn't seem that important.
         # sqlite_adapter (called from sqlite functions) takes care of missing @PurchaseTypeName values.
-        '@PayIntervalStartLocal': d['Pay Interval Start Local'],
+        '@PayIntervalStartLocal': parser.parse(d['Pay Interval Start Local']).strftime("%Y-%m-%dT%H:%M:%S"),
         '@PayIntervalStartUtc': pgh.localize(parser.parse(d['Pay Interval Start Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
-        '@PayIntervalEndLocal': d['Pay Interval End Local'],
+        '@PayIntervalEndLocal': parser.parse(d['Pay Interval End Local']).strftime("%Y-%m-%dT%H:%M:%S"),
         '@PayIntervalEndUtc': pgh.localize(parser.parse(d['Pay Interval End Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
-        '@EndDateLocal': d['End Date Local'],
+        '@EndDateLocal': parser.parse(d['End Date Local']).strftime("%Y-%m-%dT%H:%M:%S"),
         '@EndDateUtc': pgh.localize(parser.parse(d['End Date Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
-        '@DateCreatedUtc': d['Created in CWO'],
+        '@DateCreatedUtc': parser.parse(d['Created in CWO']).strftime("%Y-%m-%dT%H:%M:%S"),
         }
     return p
 
