@@ -5,6 +5,7 @@ from pprint import pprint
 from datetime import datetime, timedelta
 from dateutil import parser
 import sqlalchemy
+import traceback
 
 def shorten_reference_time(reference_time):
     if reference_time == 'hybrid':
@@ -243,12 +244,14 @@ def bulk_upsert_to_sqlite(path,purchases,dts,date_i,reference_time):
         for ap in adapted_ps:
             table.upsert(ap, keys=['@PurchaseGuid'])
         db.commit()
-    except:
+        print("Upsert of {} rows to {} succeeded.".format(len(adapted_ps), db))
+    except Exception as err:
         db.rollback()
-
-    #table.insert_many(adapted_ps, chunk_size=2000) # Setting ensure = True
-    # was supposed to handle cases where some fields are missing values,
-    # but it didn't.
+        print("Upsert of {} rows failed. Rolling back {}".format(len(adapted_ps), db))
+        traceback.print_tb(err.__traceback__)
+        print("Let's try another approach since the database-transactions-commit approach is failing.")
+        for ap in adapted_ps:
+            table.upsert(ap, keys=['@PurchaseGuid'])
 
     #For example, in sqlite3library I often use this calls:
 
