@@ -11,7 +11,7 @@ from parameters.local_parameters import path
 
 from collections import defaultdict
 
-def main(*args, **kwargs):
+def check_guids(*args, **kwargs):
     fn = kwargs.get('fn',"cwo_refs/Purchases-2017-06-16-1200-1300-Eastern-Historical.csv")
     with open(fn,'r') as f:
         reader = csv.DictReader(f)
@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
         kwparams['fn'] = fn
         pprint(kwparams)
-        main(**kwparams)
+        check_guids(**kwparams)
     else:
         raise ValueError("Please specify some command-line parameters")
 
