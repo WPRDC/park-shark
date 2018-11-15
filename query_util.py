@@ -74,7 +74,7 @@ def query_resource(site,query,API_key=None):
     return data
 
 def get_resource_id(ref_time):
-    by_name = False
+    by_name = True
     if ref_time == 'hybrid':
         from credentials import transactions_resource_id as resource_id
     elif ref_time == 'purchase_time':
