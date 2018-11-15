@@ -5,7 +5,7 @@ from collections import defaultdict
 import xmltodict
 from util.util import zone_name, get_terminals, round_to_cent, corrected_zone_name, numbered_zone, lot_list, pure_zones_list, numbered_reporting_zones_list
 from util.dates_util import parking_days_in_month, is_holiday
-from process_data import get_batch_parking, get_parking_events, to_dict, get_utc_ps_for_day_from_json
+from process_data import get_parking_events, to_dict
 from datetime import date, datetime, timedelta
 from dateutil import parser
 import time
