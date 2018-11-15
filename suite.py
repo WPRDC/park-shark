@@ -79,7 +79,7 @@ def get_parking_for_day(dt_date,tz,time_field):
 
     # get_parking_events may be working differently depending on whether UTC or ET time zones are 
     # thrown at it.
-    purchases = get_parking_events(None,dt_start_utc,dt_end_utc,local_tz=pgh,cache=True,mute=False,caching_mode='utc_json')
+    purchases = get_parking_events(None,dt_start_utc,dt_end_utc,local_tz=pgh,cache=True,mute=False,caching_mode='sqlite')
     #assert len(old_purchases) == len(purchases) # This is now failing for 2018-09-24 (as one would expect).
     #purchases = get_parking_events(none,dt_start_utc,dt_end_utc,cache=true,mute=false,caching_mode='utc_json')
     print("Fetched {} candidate purchases.".format(len(purchases)))
