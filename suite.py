@@ -12,7 +12,9 @@ import time
 import pytz
 from pprint import pprint
 
-from proto_get_revenue import get_revenue_and_count, set_table, clear_table,  get_resource_id
+from proto_get_revenue import set_table, clear_table
+from query_util import get_revenue_and_count, get_resource_id
+
 def print_dict_by_y_m_foo(d):
     for year in d.keys():
         for month in d[year].keys():
