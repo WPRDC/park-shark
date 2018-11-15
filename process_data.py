@@ -1299,8 +1299,12 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
 
     return ps_all, dts_all
 
-def get_utc_ps_for_day(dt_start_i,local_tz,reference_time,cache,mute):
-    """If possible, pull events from the sqlite cache."""
+def get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute):
+    """If possible, pull events from the sqlite cache.
+
+    NOTE: If the data is already cached in a SQLite database, this
+    returns transactions from LOCAL midnight to local midnight.
+    Otherwise it returns transactions from UTC midnight to UTC midnight."""
 
     # dt_start_i comes in as a UTC datetime.
     # But is_date_cached wants a LOCAL DATE.
@@ -1350,7 +1354,9 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
             if caching_mode == 'utc_json':
                 ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute)
             elif caching_mode == 'sqlite':
-                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day(dt_start_i,local_tz,reference_time,cache,mute)
+                ps_for_whole_day, dts_for_whole_day = get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute)
+                # The reason it's OK to use get_ps_for_day_local (probably) is because the filtering down to
+                # the required time range is done at the bottom of this function.
             elif caching_mode == 'db_caching':
                 ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
             else:
