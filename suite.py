@@ -139,7 +139,7 @@ def batch_analysis(start_date_str=None,end_date_str=None):
     transactions = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     overall_transactions = defaultdict(int)
     overall_payments = defaultdict(float)
-    all_json_payments = 0
+    all_local_payments = 0
     payments = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     car_minutes = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     utilization = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
@@ -301,7 +301,7 @@ def batch_analysis(start_date_str=None,end_date_str=None):
         for p in ps:
             # If start time is between 8 am and 10am, add to those transactions and revenue for the month.
 
-            all_json_payments += float(p['@Amount'])
+            all_local_payments += float(p['@Amount'])
             start_date_local = parser.parse(p[local_time_field])
     #        start_date_local = datetime.strptime(p['@StartDateLocal'],'%Y-%m-%dT%H:%M:%S')
             start_hour = start_date_local.hour
@@ -426,7 +426,7 @@ def batch_analysis(start_date_str=None,end_date_str=None):
     for hour in sorted(overall_transactions.keys()):
         print("{:>3}   {:>6} ${:6.2f}".format(hour,overall_transactions[hour],overall_payments[hour]))
 
-    print("\nFor start_date = {} and end_date = {}, a total of {} purchases were found, totalling ${}.".format(start_date,end_date,total_ps,all_json_payments))
+    print("\nFor start_date = {} and end_date = {}, a total of {} purchases were found, totalling ${}.".format(start_date,end_date,total_ps,all_local_payments))
 
     # Here end_date is the last full day. I think this might be the source of the off-by-one error above (when inferring end_date_str from start_date_str
     # and it gives an off-by-one-day error in valet month-summary calculations.
@@ -456,7 +456,7 @@ def batch_analysis(start_date_str=None,end_date_str=None):
         print("For comparison, pulling from the CKAN transactions repository, for start_date = {}, end_date = {}, start_hour = {}, end_hour = {}, we get {} purchases, totalling ${}."
         .format(start_date,end_date,start_hour,end_hour,transaction_count,revenue))
 
-        print("hour CKAN results      sums from JSON files      deltas")
+        print("hour CKAN results      sums from local files      deltas")
 
         fmt = "{:>2} {:>6} ${:>8.2f}      {:>6} ${:>8.2f}       {:>6} {}"
         for start_hour in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]:
@@ -464,24 +464,24 @@ def batch_analysis(start_date_str=None,end_date_str=None):
             start_dt = datetime(year=start_date.year, month=start_date.month, day=start_date.day, hour=start_hour) # minute, second, and millisecond will default to zero
             end_dt = start_dt + timedelta(hours=1)
             revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False)
-            json_transactions = 0
-            json_payments = 0.0
+            local_transactions = 0
+            local_payments = 0.0
             if start_hour in overall_transactions.keys():
-                json_transactions = overall_transactions[start_hour]
-                json_payments = overall_payments[start_hour]
+                local_transactions = overall_transactions[start_hour]
+                local_payments = overall_payments[start_hour]
 
-            delta_t = transaction_count - json_transactions
-            delta_p = revenue - json_payments
+            delta_t = transaction_count - local_transactions
+            delta_p = revenue - local_payments
             delta_t_str = "" if abs(delta_t) < 0.5 else delta_t
             delta_p_str = "" if abs(delta_p) < 0.005 else "${:<8.2f}".format(delta_p)
-            print(fmt.format(start_hour,transaction_count,revenue,json_transactions,json_payments,delta_t_str,delta_p_str))
+            print(fmt.format(start_hour,transaction_count,revenue,local_transactions,local_payments,delta_t_str,delta_p_str))
             cumulative_ckan_revenue += revenue
             cumulative_ckan_count += transaction_count
             time.sleep(0.1)
 
         clear_table(ref_time)
         print("-------------------------------------------------------")
-        print(fmt.format("", cumulative_ckan_count,cumulative_ckan_revenue,total_ps,all_json_payments,cumulative_ckan_count-total_ps,cumulative_ckan_revenue-all_json_payments))
+        print(fmt.format("", cumulative_ckan_count,cumulative_ckan_revenue,total_ps,all_local_payments,cumulative_ckan_count-total_ps,cumulative_ckan_revenue-all_local_payments))
         print("get_resource_id() = {}".format(get_resource_id(ref_time)))
         print("cumulative_ckan_revenue = ${}".format(cumulative_ckan_revenue))
         print("cumulative_ckan_count = {}".format(cumulative_ckan_count))
