@@ -43,7 +43,7 @@ def aggregate_by_quarter(d):
                 a[foo][quarter(bar)][baz] += d[foo][bar][baz]
     return a
 
-def get_parking_for_day(dt_date,tz,time_field):
+def get_parking_for_day(dt_date,tz,time_field,caching_mode):
     # dt_date needs to be converted to UTC (midnight in Pittsburgh
     # time maps to 4am or 5am UTC, depending on Daylight Savings Time)
     dt_naive = datetime.combine(dt_date, datetime.min.time())
@@ -78,7 +78,7 @@ def get_parking_for_day(dt_date,tz,time_field):
 
     # get_parking_events may be working differently depending on whether UTC or ET time zones are 
     # thrown at it.
-    purchases = get_parking_events(None,dt_start_utc,dt_end_utc,local_tz=pgh,cache=True,mute=False,caching_mode='sqlite')
+    purchases = get_parking_events(None,dt_start_utc,dt_end_utc,local_tz=pgh,cache=True,mute=False,caching_mode=caching_mode)
     #assert len(old_purchases) == len(purchases) # This is now failing for 2018-09-24 (as one would expect).
     #purchases = get_parking_events(none,dt_start_utc,dt_end_utc,cache=true,mute=false,caching_mode='utc_json')
     print("Fetched {} candidate purchases.".format(len(purchases)))
@@ -254,7 +254,8 @@ def batch_analysis(start_date_str=None,end_date_str=None):
         time_field = '@PurchaseDateUtc'
         if time_field == '@PurchaseDateUtc':
             local_time_field = '@PurchaseDateLocal'
-        ps = get_parking_for_day(date_i,pgh,time_field) # This seems to include more than just that day's purchases.
+        caching_mode = 'sqlite'
+        ps = get_parking_for_day(date_i,pgh,time_field,caching_mode) # This seems to include more than just that day's purchases.
      
         # Debugging code below
         #p_guid = "53F693C2-4BF9-4E70-89B5-5B9532461B8C"
