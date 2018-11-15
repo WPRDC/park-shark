@@ -12,8 +12,7 @@ import time
 import pytz
 from pprint import pprint
 
-from proto_get_revenue import get_revenue_and_count, set_table, clear_table
-
+from proto_get_revenue import get_revenue_and_count, set_table, clear_table,  get_resource_id
 def print_dict_by_y_m_foo(d):
     for year in d.keys():
         for month in d[year].keys():
@@ -482,6 +481,7 @@ def batch_analysis(start_date_str=None,end_date_str=None):
         clear_table(ref_time)
         print("-------------------------------------------------------")
         print(fmt.format("", cumulative_ckan_count,cumulative_ckan_revenue,total_ps,all_json_payments,cumulative_ckan_count-total_ps,cumulative_ckan_revenue-all_json_payments))
+        print("get_resource_id() = {}".format(get_resource_id(ref_time)))
         print("cumulative_ckan_revenue = ${}".format(cumulative_ckan_revenue))
         print("cumulative_ckan_count = {}".format(cumulative_ckan_count))
 
