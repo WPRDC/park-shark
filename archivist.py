@@ -381,6 +381,7 @@ def main(*args, **kwargs):
     use_cache = kwargs.get('use_cache', False)
     slot_start = pgh.localize(datetime(2012,7,23,0,0)) # The actual earliest available data.
     slot_start = pgh.localize(datetime(2017,12,25,0,0) + 0*timedelta(days=7))
+    slot_start = pgh.localize(datetime(2017,6,5,0,0) + 0*timedelta(days=7))
 
     slot_start = kwargs.get('slot_start',slot_start)
 
