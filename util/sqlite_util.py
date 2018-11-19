@@ -170,7 +170,7 @@ def reverse_sqlite_adapter(d_input):
 
 def sqlite_adapter(d_input,datetime_i):
     d = dict(d_input)
-    d['hour'] = datetime_i.hour
+    d['hour'] = datetime_i.hour # Note that this is the UTC hour.
     d['minute'] = datetime_i.minute
     if '@PurchaseTypeName' not in d:
         d['@PurchaseTypeName'] = None
