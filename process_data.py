@@ -1158,7 +1158,8 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                 utc_reference_field, local_reference_field = time_to_field(reference_time)
                 purchase_dt = (pytz.utc).localize(parser.parse(p['@PurchaseDateUtc']))
                 #purchase_dt = (pytz.timezone('US/Eastern')).localize(parser.parse(p['@PurchaseDateLocal']))
-                #purchase_dt = purchase_dt.astimezone(pytz.utc) #Using PurchaseDateLocal gives the same results.
+                #purchase_dt = purchase_dt.astimezone(pytz.utc) #Using PurchaseDateLocal gives the same results (except
+                # there could be problems associated with daylight savings time changes).
                 datetimes.append(purchase_dt)
 
         #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
@@ -1378,8 +1379,6 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
         utc_dts_cache = dts_all
     else:
         ps_all = utc_ps_cache
-
-        # [ ]  Why is utc_ps_cache needed here at all? Was this just duplicating needlessly a pattern from another parallel function?
 
 
     #ps = [p for p in ps_all if slot_start <= tz.localize(datetime.strptime(p[time_field],'%Y-%m-%dT%H:%M:%S')) < slot_end] # This takes like 3 seconds to
