@@ -163,6 +163,59 @@ def reverse_check_guids(*args, **kwargs):
         else:
             raise ValueError("No SQLite database found for date = {}.".format(date_i))
 
+def reverse_check_guids_one_zone(*args, **kwargs):
+    """Checks a CWO CSV download for a single date and a single zone to see
+    whether it contains each purchase in the corresponding SQLite database."""
+    reverse = True
+
+    zone = '401'
+    fn = kwargs.get('fn',"cwo_refs/Purchases-2017-06-16-1200-1300-Eastern-Historical.csv")
+    with open(fn,'r') as f:
+        reader = csv.DictReader(f)
+        pdls = []
+        guids = []
+        ds = []
+        ps = []
+        for d in reader:
+            # Check whether GUID is in corresponding sqlite database.
+            pdl = parser.parse(d['Purchase Date Local'])
+            guid = d['Purchase Guid']
+            pdls.append(pdl)
+            guids.append(guid.upper())
+            ds.append(d)
+        reference_time = 'purchase_time'
+        date_i = pdl.date()
+        if is_date_cached(path,reference_time,date_i):
+            table, db = get_sqlite_table(path,date_i,reference_time)
+            sqlite_guids = []
+            for row in table.all():
+                # Match by zone
+                if re.match(zone,row['@TerminalID']) is not None or re.match('PBP'+zone,row['@TerminalID']) is not None:
+                    sqlite_guids.append(row['@PurchaseGuid'])
+                    ps.append(row)
+            k = 0
+            count = 0
+            counts_by_meter = defaultdict(int)
+            if reverse:
+                for p,sqlite_guid in zip(ps,sqlite_guids):
+                    if sqlite_guid not in guids:
+                        print("Unable to find {} (k={}):".format(sqlite_guid,k))
+                        pprint(p)
+                        counts_by_meter[p['@TerminalID']] += 1
+                        count += 1
+                    k += 1
+            else:
+                for d,pdl,guid in zip(ds,pdls,guids):
+                    if guid.upper() not in sqlite_guids:
+                        print("Unable to find {} (k={}):".format(guid,k))
+                        pprint(d)
+                        counts_by_meter[d['Terminal - Terminal ID']] += 1
+                        count += 1
+                    k += 1
+            print("total missing = {}".format(count))
+            pprint(counts_by_meter)
+        else:
+            raise ValueError("No SQLite database found for date = {}.".format(date_i))
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
@@ -178,6 +231,7 @@ if __name__ == '__main__':
                 "debug",
                 "testbed",
                 "sandbox",
+                "apple-test",
                 ] # This list could be automatically harvested from SETTINGS_FILE.
 
         kwparams = {}
@@ -193,7 +247,8 @@ if __name__ == '__main__':
 
         kwparams['fn'] = fn
         pprint(kwparams)
-        check_guids(**kwparams)
+        #check_guids(**kwparams)
+        reverse_check_guids_one_zone(**kwparams)
     else:
         raise ValueError("Please specify some command-line parameters")
 
