@@ -18,7 +18,7 @@ from pprint import pprint
 from datetime import datetime, timedelta
 from dateutil import parser
 
-#from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day
+#from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day as db_get_ps_for_day
 from util.sqlite_util import get_events_from_sqlite, bulk_upsert_to_sqlite, time_to_field, mark_date_as_cached, is_date_cached
 from notify import send_to_slack
 
@@ -1359,7 +1359,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
                 # The reason it's OK to use get_ps_for_day_local (probably) is because the filtering down to
                 # the required time range is done at the bottom of this function.
             elif caching_mode == 'db_caching':
-                ps_for_whole_day = get_ps_for_day(db,dt_start_i,cache,mute)
+                ps_for_whole_day = db_get_ps_for_day(db,dt_start_i,cache,mute)
             else:
                 raise ValueError("Behavior for caching_mode = {} is undefined".format(caching_mode))
             ps_all += ps_for_whole_day
