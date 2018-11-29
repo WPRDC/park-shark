@@ -58,6 +58,26 @@ def is_date_cached(path,reference_time,date_i):
     date_string = format_date(date_i)
     return (cached_dates.find_one(date=date_string, offset=0) is not None) and (cached_dates.find_one(date=date_string, offset=1) is not None)
 
+def mark_utc_date_as_cached(path,reference_time,date_i):
+    date_filepath = get_date_filepath(path,reference_time)
+    date_table_name = 'cached_dates'
+    table = get_cached_dates_table(date_filepath, date_table_name)
+    record = {'date': format_date(date_i)}
+    table.upsert(record, keys=['date'])  # The second
+    # argument is a list of keys used in the upserting process.
+
+def is_utc_date_cached(path,reference_time,date_i):
+    # Return a Boolean indicating whether the date is in cached_dates
+    # which specifies whether all events with [reference_time_field] values
+    # equal to date_i have been cached in the database (or at
+    # least all of the utc_json values, providing a base).
+    date_filepath = get_date_filepath(path,reference_time)
+    date_table_name = 'cached_dates'
+    cached_dates = get_cached_dates_table(date_filepath, date_table_name)
+
+    date_string = format_date(date_i)
+    return (cached_dates.find_one(date=date_string) is not None)
+
 ### End cached-date functions ###
 
 def get_table_name():
