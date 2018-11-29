@@ -12,6 +12,8 @@ def shorten_reference_time(reference_time):
         return 'hybrid'
     if reference_time == 'purchase_time':
         return 'pdl'
+    if reference_time == 'purchase_time_utc':
+        return 'pdu'
     raise ValueError("No abbreviated version found for reference_time = {}".format(reference_time))
 
 ## Begin SQLite database functions ##
@@ -146,7 +148,7 @@ def get_sqlite_table(path,date_i,reference_time):
     return db[table_name], db
 
 def time_to_field(reference_time):
-    if reference_time == 'purchase_time':
+    if reference_time in ['purchase_time', 'purchase_time_utc']:
         return '@PurchaseDateUtc', '@PurchaseDateLocal'
     raise ValueError('time_to_field does not know how to handle reference_time = {}'.format(reference_time))
 
