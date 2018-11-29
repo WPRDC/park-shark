@@ -239,7 +239,49 @@ def upsert_to_sqlite(path,purchase_i,datetime_i,reference_time):
     # argument is a list of keys used in the upserting process.
 
 def bulk_upsert_to_sqlite(path,purchases,dts,date_i,reference_time):
-    """Upsert many purchases to SQLite database for corresponding day."""
+    """Upsert many purchases to SQLite database for corresponding UTC day."""
+    # The date is going to be used to select
+    # a SQLite database that should contain all the
+    # purchases from midnight to midnight (local Pittsbugh time)
+    # where purhcases have been assigned based on the
+    # reference_time.
+    filing_date = date_i
+    utc_field, local_field = time_to_field(reference_time)
+    sample_date_string = random.sample(purchases,1)[0][utc_field]
+    sample_date = parser.parse(sample_date_string).date()
+    try:
+        assert filing_date == sample_date
+    except:
+        print("filing_date = {}, sample_date = {}, sample_date_string = {}".format(filing_date,sample_date,sample_date_string))
+        assert filing_date == sample_date
+
+    table, db = get_sqlite_table(path,filing_date,reference_time)
+
+    adapted_ps = [sqlite_adapter(p,dt) for p,dt in zip(purchases,dts)]
+
+    db.begin()
+    try:
+        for ap in adapted_ps:
+            table.upsert(ap, keys=['@PurchaseGuid'])
+        db.commit()
+        print("Upsert of {} rows to {} succeeded.".format(len(adapted_ps), db))
+    except Exception as err:
+        db.rollback()
+        print("Upsert of {} rows failed. Rolling back {}".format(len(adapted_ps), db))
+        traceback.print_tb(err.__traceback__)
+        print("Let's try another approach since the database-transactions-commit approach is failing.")
+        for ap in adapted_ps:
+            table.upsert(ap, keys=['@PurchaseGuid'])
+
+    #For example, in sqlite3library I often use this calls:
+
+#db.executemany('REPLACE INTO .... ', list_of_dicts)
+#https://stackoverflow.com/questions/18219779/bulk-insert-huge-data-into-sqlite-using-python
+# Do most of the work of creation in memory to make it fast.
+# THEN save the result to a file.
+
+def bulk_upsert_to_sqlite_local(path,purchases,dts,date_i,reference_time):
+    """Upsert many purchases to SQLite database for corresponding local day."""
     # The date is going to be used to select
     # a SQLite database that should contain all the
     # purchases from midnight to midnight (local Pittsbugh time)
@@ -279,8 +321,35 @@ def bulk_upsert_to_sqlite(path,purchases,dts,date_i,reference_time):
 #https://stackoverflow.com/questions/18219779/bulk-insert-huge-data-into-sqlite-using-python
 # Do most of the work of creation in memory to make it fast.
 # THEN save the result to a file.
+
 def bulk_insert_into_sqlite(path,purchases,dts,date_i,reference_time):
-    """Insert purchases into SQLite database for corresponding day."""
+    """Insert purchases into SQLite database for corresponding UTC day."""
+    # The date is going to be used to select
+    # a SQLite database that should contain all the
+    # purchases from midnight to midnight (local Pittsbugh time)
+    # where purhcases have been assigned based on the
+    # reference_time.
+    filing_date = date_i
+    utc_field, local_field = time_to_field(reference_time)
+    sample_date_string = random.sample(purchases,1)[0][utc_field]
+    sample_date = parser.parse(sample_date_string).date()
+    assert filing_date == sample_date
+    table, _ = get_sqlite_table(path,filing_date,reference_time)
+
+    adapted_ps = [sqlite_adapter(p,dt) for p,dt in zip(purchases,dts)]
+    table.insert_many(adapted_ps, chunk_size=2000) # Setting ensure = True
+    # was supposed to handle cases where some fields are missing values,
+    # but it didn't.
+
+    #For example, in sqlite3library I often use this calls:
+
+#db.executemany('REPLACE INTO .... ', list_of_dicts)
+#https://stackoverflow.com/questions/18219779/bulk-insert-huge-data-into-sqlite-using-python
+# Do most of the work of creation in memory to make it fast.
+# THEN save the result to a file.
+
+def bulk_insert_into_sqlite_local(path,purchases,dts,date_i,reference_time):
+    """Insert purchases into SQLite database for corresponding local day."""
     # The date is going to be used to select
     # a SQLite database that should contain all the
     # purchases from midnight to midnight (local Pittsbugh time)
