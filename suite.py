@@ -390,8 +390,8 @@ def batch_analysis(start_date_str=None,end_date_str=None):
         print(type(tkeys[0]))
     else:
         print("No transactions found.")
-    print(" ----- Transactions by month/hour/zone --------")
-    print_dict_by_foo_bar_baz(transactions_by_month_zone_hour)
+    #print(" ----- Transactions by month/hour/zone --------")
+    #print_dict_by_foo_bar_baz(transactions_by_month_zone_hour)
     if zonelist is not None:
         print("For zonelist = {}".format(str(zonelist)))
     else:
@@ -434,7 +434,7 @@ def batch_analysis(start_date_str=None,end_date_str=None):
     # and it gives an off-by-one-day error in valet month-summary calculations.
 
     # We therefore want to be able to move to using start_dt and end_dt as start and end boundary datetimes.
-    
+
     start_dt = None
     end_dt = None
     def date_to_datetime(d):
