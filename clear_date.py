@@ -6,7 +6,8 @@ from dateutil import parser
 
 from parameters.local_parameters import path
 
-reference_time = 'purchase_time'
+#reference_time = 'purchase_time' # For use with sqlite-pdl
+reference_time = 'purchase_time_utc' # For use with sqlite-pdu
 
 if len(sys.argv) == 2:
     dt = parser.parse(sys.argv[1])
