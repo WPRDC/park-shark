@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 
 #from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for_day as db_get_ps_for_day
-from util.sqlite_util import get_events_from_sqlite, bulk_upsert_to_sqlite, time_to_field, mark_date_as_cached, is_date_cached
+from util.sqlite_util import get_events_from_sqlite, bulk_upsert_to_sqlite, bulk_upsert_to_sqlite_local, time_to_field, mark_date_as_cached, is_date_cached, mark_utc_date_as_cached, is_utc_date_cached
 from notify import send_to_slack
 
 from util.carto_util import update_map
@@ -1043,8 +1043,282 @@ def add_n_years(p,dt_field,n):
         new_value = dt_value.replace(year = dt_value.year + n)
         p[dt_field] = new_value.strftime("%Y-%m-%dT%H:%M:%S")
 
+def get_utc_ps_for_utc_day_from_json(slot_start,reference_time='purchase_time_utc',cache=True,mute=False):
+    # A variant of get_utc_ps_for_day_from_json that returns
+    # all the transactions for a particular UTC day (from
+    # UTC midnight to UTC midnight), eliminating all the
+    # Daylight-Savings-Time-induced errors.
 
-def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),reference_time='purchase_time',cache=True,mute=False):
+    # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
+    # collecting data over two UTC days (from a function that
+    # caches API query results as raw JSON files) and then filtering
+    # those results down to a single UTC day.
+
+    # Thus, the sequence is
+    #       get_day_from_json_or_API: Check if the desired day is
+    #       in a JSON file. If not, it fetches the data from the API.
+    #       Adding hashes, culling fields, and saving local JSON
+    #       files of transactions happens here.
+    #
+    #       get_utc_ps_for_day_from_json: Takes lots of data (filtered
+    #       by DateCreatedUtc) and synthesizes it into a single day
+    #       of purchases, filtered instead by StartDateUtc.
+    #
+    #       cache_in_memory_and_filter: Caches the most recent UTC day
+    #       of purchases in memory (or else uses the existing cache)
+    #       and then filters the results down to the desired slot.
+    #
+    #       get_parking_events: Dispatches the correct function based
+    #       on recency of the slot and then by caching method.
+
+
+    # As suggested by the name, this function is designed specifically
+    # for the 'utc_json' caching mode.
+    ###
+    # Note that no matter what time of day is associated with slot_start,
+    # this function will get all of the transactions for that entire day.
+    # Filtering the results down to the desired time range is handled
+    # elsewhere (in the calling function).
+    ###############
+    # This function gets parking purchases, either from a
+    # JSON cache (if the date appears to have been cached)
+    # or else from the API (and then caches the whole thing
+    # if cache = True), by using get_batch_parking_for_day.
+
+    # Note that no matter what time of day is associated with slot_start,
+    # this function will get all of the transactions for that entire day.
+
+    # Filtering the results down to the desired time range is now handled
+    # in this functions (though the function only marks a date as cached
+    # when it has added all events from the day of slot_start (based on
+    # StartDateUtc)).
+
+    # This approach tries to address the problem of the often
+    # gigantic discrepancy between the DateCreatedUtc timestamp
+    # and the StartDateUtc timestamp.
+
+    #ref_field = '@StartDateUtc' # This should not be changed. # But it looks like I'm changing it.
+
+    #for each date in day before, day of, and day after (to get all transactions)
+        # [Three full days is probably slightly overkill since the most extreme
+        # negative case of DateCreatedUtc - StartDateUtc observed so far has
+        # been -12 hours.]
+
+    # To avoid issues with missing or extra hours during Daylight Savings Time,
+    # all slot times should be in UTC.
+
+    # The cached_dates format is also UTC dates. (This change was made to
+    # route around issues encountered when using localized versions of
+    # StartDateUtc and converting to dates.)
+
+    #pgh = pytz.timezone('US/Eastern') # This time zone no longer needs to be hard-coded
+    # since get_batch_parking_for_day has been fixed to work for different time zones
+    # (I think). [Actually, we do need to use the local time zone so that beginning_of_day
+    # returns the correct time. This time zone is now being passed up to this function
+    # using the local_tz variable.]
+    slot_start = slot_start.astimezone(pytz.utc)
+
+    # Time-zone-sensitivity problem: This function gives different results for
+    # slot_start = 2018-09-23 04:00:00+00:00
+    # and
+    # slot_start = 2018-09-23 00:00:00-04:00
+    # even though these are two different representations of the same time.
+
+    print("############# slot_start = {}, beginning_of_day(slot_start) = {}, slot_start.utcoffset().total_seconds() = {}".format(slot_start,beginning_of_day(slot_start),slot_start.utcoffset().total_seconds()))
+
+    #reference_time = 'hybrid'
+    #reference_time = 'purchase_time' # Switching to PurchaseDate as a reference for
+    # comparison with CALE Web Office results (even though this timestamp is
+    # sometimes problematically different from StartDate).
+    print("Using {} reference-time mode.".format(reference_time))
+
+    ps_by_day = defaultdict(list)
+    dts_by_day = defaultdict(list)
+    ps_all = []
+    dts_all = []
+    recent = datetime.now(pytz.utc) - slot_start <= timedelta(days = 5)
+    ## Begin diagnostics #
+    #sought_key = 'ECA8F05C-F220-E948-9FCA-2A51BA006F5B'
+    #just_found = False
+    ## End diagnostics #
+    for offset in range(0,2):
+        #query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pgh)
+        query_start = (beginning_of_day(slot_start) + (offset)*timedelta(days = 1)).astimezone(pytz.utc)
+
+        ps = []
+        dts = []
+        t_start_fetch = time.time()
+        ps_for_whole_day = get_day_from_json_or_api(query_start,pytz.utc,cache,mute)
+
+        # Filter down to the events in the slot #
+        datetimes = []
+        for p in ps_for_whole_day:
+            hybrid_start = hybrid_parking_segment_start_of(p)
+            p['hybrid_parking_segment_start_utc'] = (pytz.utc).localize(parser.parse(hybrid_start)) # This is being used for estimating occupancy.
+            # [ ] Could parking_segment_start_utc be used instead?
+            if reference_time == 'hybrid':
+                datetimes.append(p['hybrid_parking_segment_start_utc'])
+            elif reference_time in ['purchase_time', 'purchase_time_utc']:
+                utc_reference_field, local_reference_field = time_to_field(reference_time)
+                purchase_dt = (pytz.utc).localize(parser.parse(p['@PurchaseDateUtc']))
+                #purchase_dt = (pytz.timezone('US/Eastern')).localize(parser.parse(p['@PurchaseDateLocal']))
+                #purchase_dt = purchase_dt.astimezone(pytz.utc) #Using PurchaseDateLocal gives the same results (except
+                # there could be problems associated with daylight savings time changes).
+                datetimes.append(purchase_dt)
+
+        #ps = [p for p,dt in zip(purchases,dts) if beginning_of_day(slot_start) <= dt < beginning_of_day(slot_start) + timedelta(days=1)]
+        start_of_day = beginning_of_day(slot_start)
+        start_of_next_day = beginning_of_day(slot_start) + timedelta(days=1)
+        for purchase_i,datetime_i in zip(ps_for_whole_day,datetimes):
+            ## Begin diagnostics #
+            #if purchase_i['@PurchaseGuid'] == sought_key:
+            #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            #    pprint(purchase_i)
+            #    print("get_payment_type(purchase_i) == {}".format(get_payment_type(purchase_i)))
+            #    just_found = True
+            #    print("len(ps_by_day) for each day: {}".format([(day,len(ps_by_day[day])) for day in sorted(ps_by_day.keys())]))
+            #    print("offset == {}".format(offset))
+            ## End diagnostics #
+
+            if start_of_day <= datetime_i < start_of_next_day:
+                if get_payment_type(purchase_i) != 'manual': # Filter out payments that are neither meter nor mobile payments.
+                    ps.append(purchase_i)
+                    dts.append(datetime_i)
+            if get_payment_type(purchase_i) != 'manual': # Filter out payments that are neither meter nor mobile payments.
+                day = datetime_i.astimezone(pytz.utc).date()
+                ps_by_day[day].append(purchase_i)
+                dts_by_day[day].append(datetime_i)
+
+            ## Begin diagnostics #
+            #if just_found:
+            #    just_found = False
+            #    print("len(ps_by_day) for each day: {}".format([(day,len(ps_by_day[day])) for day in sorted(ps_by_day.keys())]))
+
+        #if False:
+        #    for day in sorted(ps_by_day.keys()):
+        #        print("Searching day == {}...".format(day))
+        #        for p in ps_by_day[day]:
+        #            if p['@PurchaseGuid'] == sought_key:
+        #                print("{} found filed under day {}.".format(sought_key,day))
+        ## End diagnostics #
+
+            #if purchase_i['@PurchaseGuid'] == '53F693C2-4BF9-4E70-89B5-5B9532461B8C':
+            #    print("FOUND IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            #    print("start_of_day ({}) <= datetime_i ({})< start_of_next_day ({}) = {}".format(start_of_day, datetime_i, start_of_next_day, start_of_day <= datetime_i < start_of_next_day))
+            #    pprint(purchase_i)
+
+        t_end_fetch = time.time()
+        if len(ps_for_whole_day) > 0:
+            print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
+
+        store_data_locally = False
+        if not recent:
+            if reference_time == 'purchase_time_utc':
+                if offset == 0:
+                    store_data_locally = True
+            else:
+                if offset in [0,1]: # The reason that we can't just test for offset == 0
+            # is because the data is stored in JSON files by UTC time and pulled that way too.
+            # Only using offset == 0 misses transactions that are on the next day's UTC JSON file.
+                    store_data_locally = True
+
+        if store_data_locally:
+            # Currently there's a fair amount of redundancy in here (seemingly).
+            for day in sorted(ps_by_day.keys()): # Upsert purchases in batches to reduce write time.
+                if day <= (slot_start + timedelta(days=1)).date(): # Here slot_start is a stand-in
+                    # for DateCreatedUtc, and this serves as a check against transactions from
+                    # the future (which should be impossible) getting added.
+                    if reference_time == 'purchase_time_utc':
+                        bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        mark_utc_date_as_cached(path,reference_time,day)
+                    else:
+                        bulk_upsert_to_sqlite_local(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        mark_date_as_cached(path,reference_time,day,offset) # <<< This is probably the problem.
+                    # How do we know when a date has been truly and sufficiently cached????
+                    # When the UTC JSON files for offset == 1 and then offset == 0 have
+                    # BOTH been loaded and transferred into the correct SQLite database.
+
+                    # The difficulty here is that we're not trusting the entire function get_utc_ps_for_day_from_json
+                    # to do its job. Instead, we're making sure that every transaction gets put somewhere (which
+                    # is correct since get_utc_ps_for_day_from_json cannot currently get transactions that are
+                    # multiple days late).
+                    #   Option 1: Just assume that the script will eventually be run for the entire
+                    #   set of JSON files and that the SQLite databases will then be complete.
+                    #   Option 2: Keep track of offsets used (in database) and incorporate that into
+                    #   the check. <== This is an inelegant kluge, but seems simplest at this point.
+
+                    #       A better eventual redesign might be to switch the JSON files back to
+                    #       being based on local timestamps or to make the SQLite databases UTC
+                    #       also and move the selection of a day's transactions downstream to
+                    #       queries that access two SQLite databases.
+
+
+                else:
+                    mute_alerts = False
+                    example = ps_by_day[day][0]
+                    dc = example['@DateCreatedUtc']
+                    utc_reference_field, local_reference_field = time_to_field(reference_time)
+                    example_ref = example[utc_reference_field]
+                    example_difference = parser.parse(example_ref) - parser.parse(dc)
+                    if not mute_alerts:
+                        msg = "Time-travelling transactions transgression: A batch of {} transactions with day == {} when slot_start.date() == {}. Example: @DateCreatedUtc = {}, @PurchaseDateUtc = {}, difference = {}. Full example transaction: {}".format(len(ps_by_day[day]), day, slot_start.date(), dc, example_ref, example_difference,example)
+                        send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+                        print(msg)
+                    dt_fields = ['@PurchaseDateLocal', '@EndDateLocal', '@EndDateUtc', '@PayIntervalEndLocal',
+                            '@PayIntervalEndUtc', '@PayIntervalStartLocal', '@PayIntervalStartUtc',
+                            '@PurchaseDateLocal', '@PurchaseDateUtc', '@StartDateLocal', '@StartDateUtc']
+                    # If the time difference is exactly one year, just correct the year.
+                    # Example:
+                        # '@DateCreatedUtc': '2017-11-20T21:22:58.407'
+                        # '@PurchaseDateLocal': '2018-11-19T16:22:26',
+                        #{'@Amount': '9',
+                        # '@DateCreatedUtc': '2017-11-20T21:22:58.407',
+                        # '@EndDateLocal': '2018-11-19T20:52:14',
+                        # '@EndDateUtc': '2018-11-20T01:52:14',
+                        # '@PayIntervalEndLocal': '2018-11-19T20:52:14',
+                        # '@PayIntervalEndUtc': '2018-11-20T01:52:14',
+                        # '@PayIntervalStartLocal': '2018-11-19T16:22:14',
+                        # '@PayIntervalStartUtc': '2018-11-19T21:22:14',
+                        # '@PaymentServiceType': 'PrePay Code',
+                        # '@PurchaseDateLocal': '2018-11-19T16:22:26',
+                        # '@PurchaseDateUtc': '2018-11-19T21:22:26',
+                        # '@PurchaseGuid': 'AB02FF4B-21DD-E139-4680-22F6D0D778D5',
+                        # '@StartDateLocal': '2018-11-19T16:22:14',
+                        # '@StartDateUtc': '2018-11-19T21:22:14',
+                        # '@TerminalGuid': '8C1E8FEB-8E35-48B3-AE37-CB9DF42FB8CD',
+                        # '@TerminalID': '328548-IVYBEL0004',
+                        # '@Units': '270',
+                        # 'PurchasePayUnit': {'@Amount': '9', '@PayUnitName': 'Card'},
+                        # 'hybrid_parking_segment_start_utc': datetime.datetime(2018, 11, 19, 21, 22, 14, tzinfo=<UTC>)}
+                    if False:
+                    #if 362 < example_difference.days < 367:
+                        # Fix the years of every transaction.
+                        n = -1
+                        for p,dt in zip(ps_by_day[day],dts_by_day[day]):
+                            for dt_field in dt_fields:
+                                add_n_years(p,dt_field,n)
+                            dt = dt.replace(dt.year + n)
+
+                        print("These transactions have been fixed by adding {} years to their datetime fields (other than @DateCreatedUtc).".format(n))
+                        if reference_time == 'purchase_time_utc':
+                            bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        else:
+                            bulk_upsert_to_sqlite_local(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+
+                    else:
+                        print("We're just not going to file these anywhere for now.")
+                        #raise ValueError("Time-travelling transactions transgression")
+
+                    print("Does it make sense to insert transactions under day = {} if slot_start = {}?".format(day,slot_start))
+                    print("Here's an example transaction:")
+                    pprint(example)
+        ps_all += ps
+        dts_all += dts
+
+
+    return ps_all, dts_all
+
+def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),reference_time='purchase_time_utc',cache=True,mute=False):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
     # collecting data over two UTC days (from a function that
     # caches API query results as raw JSON files) and then filtering
@@ -1154,7 +1428,7 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
             # [ ] Could parking_segment_start_utc be used instead?
             if reference_time == 'hybrid':
                 datetimes.append(p['hybrid_parking_segment_start_utc'])
-            elif reference_time == 'purchase_time':
+            elif reference_time in ['purchase_time', 'purchase_time_utc']:
                 utc_reference_field, local_reference_field = time_to_field(reference_time)
                 purchase_dt = (pytz.utc).localize(parser.parse(p['@PurchaseDateUtc']))
                 #purchase_dt = (pytz.timezone('US/Eastern')).localize(parser.parse(p['@PurchaseDateLocal']))
@@ -1207,7 +1481,16 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
         if len(ps_for_whole_day) > 0:
             print("  Time required to pull day {} ({}), either from the API or from a JSON file: {} s  |  len(ps)/len(purchases) = {}".format(offset,query_start.date(),t_end_fetch-t_start_fetch,len(ps)/len(ps_for_whole_day)))
 
-        if offset in [0,1] and not recent: # The reason that we can't just test for offset == 0
+        store_data_locally = False
+        if not recent:
+            if reference_time == 'purchase_time_utc':
+                if offset == 0:
+                    store_data_locally = True
+            else:
+                if offset in [0,1]:
+                    store_data_locally = True
+
+        if store_data_locally: # The reason that we can't just test for offset == 0
             # is because the data is stored in JSON files by UTC time and pulled that way too.
             # Only using offset == 0 misses transactions that are on the next day's UTC JSON file.
 
@@ -1217,8 +1500,16 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                 if day <= (slot_start + timedelta(days=1)).date(): # Here slot_start is a stand-in
                     # for DateCreatedUtc, and this serves as a check against transactions from
                     # the future (which should be impossible) getting added.
-                    bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
-                    mark_date_as_cached(path,reference_time,day,offset) # <<< This is probably the problem.
+
+                    if reference_time == 'purchase_time_utc':
+                        #try:
+                        #    bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        #except:
+                        bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        mark_utc_date_as_cached(path,reference_time,day)
+                    else:
+                        bulk_upsert_to_sqlite_local(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        mark_date_as_cached(path,reference_time,day,offset) # <<< This is probably the problem.
                     # How do we know when a date has been truly and sufficiently cached????
                     # When the UTC JSON files for offset == 1 and then offset == 0 have
                     # BOTH been loaded and transferred into the correct SQLite database.
@@ -1285,7 +1576,10 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                             dt = dt.replace(dt.year + n)
 
                         print("These transactions have been fixed by adding {} years to their datetime fields (other than @DateCreatedUtc).".format(n))
-                        bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        if reference_time == 'purchase_time_utc':
+                            bulk_upsert_to_sqlite(path, ps_by_day[day], dts_by_day[day], day, reference_time)
+                        else:
+                            bulk_upsert_to_sqlite_local(path, ps_by_day[day], dts_by_day[day], day, reference_time)
 
                     else:
                         print("We're just not going to file these anywhere for now.")
@@ -1299,6 +1593,23 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
 
 
     return ps_all, dts_all
+
+def get_ps_for_utc_day(dt_start_i,reference_time,cache,mute):
+    """If possible, pull events from the sqlite cache.
+
+    NOTE: If the data is already cached in a SQLite database, this
+    returns transactions from UTC midnight to UTC midnight.
+    Otherwise it fetches and returns transactions from UTC midnight to UTC midnight."""
+
+    # dt_start_i comes in as a UTC datetime.
+    # and is_date_cached wants a UTC date.
+    utc_date = dt_start_i.astimezone(pytz.utc).date()
+
+    if is_utc_date_cached(path,reference_time,utc_date):
+        ps_for_whole_day, dts_for_whole_day = get_events_from_sqlite(path,utc_date,reference_time)
+    else:
+        ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_utc_day_from_json(dt_start_i,reference_time,cache,mute)
+    return ps_for_whole_day, dts_for_whole_day
 
 def get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute):
     """If possible, pull events from the sqlite cache.
@@ -1317,7 +1628,7 @@ def get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute):
         ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute)
     return ps_for_whole_day, dts_for_whole_day
 
-def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,caching_mode='utc_json'):
+def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,caching_mode='utc_sqlite'):
     # Basically, this function gets all the parking events between slot_start and start_end (using time_field)
     # to choose the field to filter on, and maintains an in-memory global cache of all parking events for the
     # entire day corresponding to the last date called. Thus, when slot_start moves from January 1st to
@@ -1333,7 +1644,9 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
     # down to those between slot_start and start_end. When reference_time == 'purchase_time',
     # @PurchaseDateUtc is used instead. (reference_time is set in this function.)
 
-    reference_time = 'purchase_time'
+    #reference_time = 'purchase_time'
+    reference_time = 'purchase_time_utc'
+
     # Note that the time zone tz and the field produced by hybrid_parking_segment_start_of must be consistent
     # for this to work properly.
     #tz = pytz.utc
@@ -1345,15 +1658,22 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
 
     global last_utc_date_cache, utc_ps_cache, utc_dts_cache
     if last_utc_date_cache != slot_start.date():
+        # Given that reference_time now encodes for UTC vs non-UTC, it's possible for the
+        # reference_time to directly conflict with the caching mode.
+        if reference_time == 'purchase_time_utc':
+            assert caching_mode != 'sqlite'
+
         if not mute:
             print("last_utc_date_cache ({}) doesn't match slot_start.date() ({})".format(last_utc_date_cache, slot_start.date()))
 
         ps_all = []
         dts_all = []
         dt_start_i = slot_start
-        while dt_start_i < slot_end:
+        while dt_start_i.date() <= slot_end.date():
             if caching_mode == 'utc_json':
                 ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute)
+            elif caching_mode == 'utc_sqlite':
+                ps_for_whole_day, dts_for_whole_day = get_ps_for_utc_day(dt_start_i,reference_time,cache,mute)
             elif caching_mode == 'sqlite':
                 ps_for_whole_day, dts_for_whole_day = get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute)
                 # The reason it's OK to use get_ps_for_day_local (probably) is because the filtering down to
@@ -1404,7 +1724,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
     last_utc_date_cache = slot_start.date()
     return ps
 
-def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,caching_mode='utc_json'):
+def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,caching_mode='utc_sqlite'):
     # slot_start and slot_end must have time zones so that they
     # can be correctly converted into UTC times for interfacing
     # with the /Cah LAY/ API.
@@ -1426,13 +1746,12 @@ def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,ca
     # while calls below use the value passed in local_tz?
 
 
-    if caching_mode in ['utc_json', 'sqlite'] or recent:
+    if caching_mode in ['utc_json', 'sqlite', 'utc_sqlite'] or recent:
         #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live"
         # (recent transactions) API.
         return cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute,caching_mode)
     else: # Currently utc_json mode is considered the default and the get_batch_parking
         # functions are considered to be deprecated.
-
         #elif caching_mode == 'local_json': # The original approach
         return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
         #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
@@ -1623,7 +1942,7 @@ def main(*args, **kwargs):
     if raw_only:
         turbo_mode = True
     skip_processing = kwargs.get('skip_processing',False)
-    caching_mode = kwargs.get('caching_mode','utc_json')
+    caching_mode = kwargs.get('caching_mode','utc_sqlite')
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
@@ -1687,8 +2006,6 @@ def main(*args, **kwargs):
     # It is recommended that all work be done in UTC time and that the
     # conversion to a local time zone only happen at the end, when
     # presenting something to humans.
-    #slot_start = beginning_of_day(datetime.now(pgh) - timedelta(hours=24)) #+ timedelta(hours=2)
-    #slot_start = beginning_of_day(datetime.now(pgh) - timedelta(days=7))
     slot_start = pgh.localize(datetime(2012,7,23,0,0)) # The actual earliest available data.
     slot_start = pgh.localize(datetime(2017,4,15,0,0))
     slot_start = kwargs.get('slot_start',slot_start)
@@ -1696,7 +2013,6 @@ def main(*args, **kwargs):
 ########
     halting_time = slot_start + timedelta(hours=24)
 
-    # halting_time = beginning_of_day(datetime.now(pgh))
     halting_time = pgh.localize(datetime(3030,4,13,0,0)) # Set halting time
     # to the far future so that the script runs all the way up to the most
     # recent data (based on the slot_start < now check in the loop below).
@@ -1832,8 +2148,6 @@ def main(*args, **kwargs):
 
         purchases = get_parking_events(db,slot_start,slot_end,pgh,True,False,caching_mode)
         t1 = time.time()
-
-        #print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
 
         if skip_processing:
             print("{} | {} purchases".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"), len(purchases)))
