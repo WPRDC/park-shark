@@ -2,6 +2,7 @@ import os
 import requests
 import xmltodict
 from datetime import datetime
+from dateutil import parser
 from pprint import pprint
 import copy
 
@@ -118,12 +119,15 @@ def pull_terminals(*args, **kwargs):
     doc = xmltodict.parse(r.text,encoding = r.encoding)
     attributes = doc['CustomAttributes']['Data']
 
-    rates, restrictions = {}, {}
+    rates, restrictions, install_dates = {}, {}, {}
     for a in attributes:
         if a['@Attribute'] == 'Rate':
             rates[a['@Guid']] = a['@Value']
         elif a['@Attribute'] == 'Restrictions':
             restrictions[a['@Guid']] = a['@Value']
+        elif a['@Attribute'] == 'Installation Date':
+            install_dates[a['@Guid']] = a['@Value']
+        # Note that some look like this 7/14/2013 and some are zero-padded, like this: 07/11/2013.
 
     points_in_zone = defaultdict(list)
     zone_type = {}
@@ -209,13 +213,17 @@ def pull_terminals(*args, **kwargs):
 
         if t['@Guid'] in restrictions:
             new_entry['Restrictions'] = restrictions[t['@Guid']]
+        if t['@Guid'] in install_dates:
+            installed = parser.parse(install_dates[t['@Guid']])
+            new_entry['InstallationDate'] = installed.date().isoformat()
 
         if t['@Id'] not in ids_to_ignore:
             list_of_dicts.append(new_entry)
 
     #dkeys = list(list_of_dicts[0].keys()) # This does not set the correct order for the field names.
     dkeys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
-    'Rate information','Restrictions','description']
+    'Rate information','Restrictions','description',
+    'InstallationDate']
 
     if output_to_csv:
         csv_path = csv_file_path()
