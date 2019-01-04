@@ -19,7 +19,7 @@ if calculate_zone_centroids:
     import numpy as np
     from util.hm_util import centroid_np
 
-# URL for accessing the Purchases listed under August 19, 2016 (seems to 
+# URL for accessing the Purchases listed under August 19, 2016 (seems to
 # be based on UTC time when the purchase was made).
 #url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/2016-08-19/2016-08-20'
 
@@ -51,7 +51,7 @@ def csv_file_path():
     filename = 'meters_etl/meters-{}.csv'.format(datetime.today().strftime("%Y-%m"))
     csv_path = path+'/'+filename
     return csv_path
-    
+
 def pull_terminals(*args, **kwargs):
     # This function accepts keyword arguments use_cache (to
     # set whether cached data is used, for offline testing),
@@ -59,15 +59,15 @@ def pull_terminals(*args, **kwargs):
     # zones are returned rather than the table of terminals),
     # and push_to_CKAN and output_to_csv (to control those output
     # channels).
-    
+
     use_cache = kwargs.get('use_cache',False)
     return_extra_zones = kwargs.get('return_extra_zones',True)
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
     # [ ] Note that cached mode could break if a new parking zone is
-    # created and is therefore a) not in the cached_terminals.xml 
-    # file (used by the get_terminals function) and b) not entered 
+    # created and is therefore a) not in the cached_terminals.xml
+    # file (used by the get_terminals function) and b) not entered
     # into the hard-coded extra zones below.
     #
     # Indeed, no thought has been given yet to incorporating new
@@ -227,7 +227,7 @@ def pull_terminals(*args, **kwargs):
 
     if output_to_csv:
         csv_path = csv_file_path()
-        # Rename 'ID' field to avoid possible problem stemming from Marshmallow's lowercasing of fields and 
+        # Rename 'ID' field to avoid possible problem stemming from Marshmallow's lowercasing of fields and
         # Python's treating 'id' as a reserved term.
         #csv_keys = list(dkeys)
         #old_key = 'ID'
@@ -294,7 +294,7 @@ def pull_terminals(*args, **kwargs):
         return list_of_dicts, dkeys # The data that was previously written to the payment_points.csv file.
 ############
 
-# At present, the default when running this script (or the pull_terminals function) is not to output the results to 
+# At present, the default when running this script (or the pull_terminals function) is not to output the results to
 # a CSV file.
 if __name__ == '__main__':
     pull_terminals(output_to_csv=True)
