@@ -229,8 +229,21 @@ def beginning_of_day(dt=None):
     that that corresponds to LOCAL midnight (00:00).
 
     This function is time-zone agnostic."""
+    # Using this function may have been part of the DST-related problems. Hence the
+    # creation of localized_beginning_of_day below.
     if dt == None : dt = datetime.now()
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+def localized_beginning_of_day(local_tz,dt=None):
+    """Takes a datetime and returns the first datetime before
+    that that corresponds to LOCAL midnight (00:00).
+
+    This function is time-zone agnostic."""
+    # Note that this function was created as one attempt to fix the DST-related
+    # problems, but now that more times have been switched to using UTC time,
+    # it seems to be unneeded.
+    if dt == None : dt = datetime.now()
+    return (local_tz.normalize(dt)).replace(hour=0, minute=0, second=0, microsecond=0)
 
 def terminal_of(p,t_guids,terminals):
     t = terminals[t_guids.index(p['@TerminalGuid'])]
