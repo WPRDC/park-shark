@@ -2033,6 +2033,9 @@ def main(*args, **kwargs):
     if caching_mode == 'db_caching':
         slot_start = slot_start.astimezone(pytz.utc)
         halting_time = halting_time.astimezone(pytz.utc)
+
+    slot_start = slot_start.astimezone(pytz.utc) # Changed for utc_sqlite
+    halting_time = halting_time.astimezone(pytz.utc)
     # This is not related to the resetting of session_dict, since extending
     # session_dict by adding on previous_session_dict did not change the fact that
     # casting slot_start and halting_time to UTC caused all transactions
