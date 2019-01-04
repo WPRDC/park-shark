@@ -151,6 +151,18 @@ def pull_terminals(*args, **kwargs):
         new_entry['Status'] = t['Status']['@Name']
         new_entry['LocationType'] = value_or_blank('LocationType',t,['@Name'])
 
+        if 'TariffPackages' in t:
+            tariffs = t['TariffPackages']['TariffPackage']
+            if type(tariffs) != list:
+                tariffs = [tariffs]
+            programs, program_descriptions = [], []
+            for tariff in tariffs:
+                if tariff['@Name'] != 'Test':
+                    programs.append(tariff['@Name'])
+                    program_descriptions.append(value_or_blank('@Description',tariff))
+            new_entry['TariffPrograms'] = '|'.join(programs)
+            new_entry['TariffDescriptions'] = '|'.join(program_descriptions)
+
         # Convert the Location Type to "Lot" if the Parent Terminal Structure
         # ends in "-L". (Using the Parent Terminal Structure also snags
         # virtual terminals).
@@ -223,7 +235,7 @@ def pull_terminals(*args, **kwargs):
     #dkeys = list(list_of_dicts[0].keys()) # This does not set the correct order for the field names.
     dkeys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
     'Rate information','Restrictions','description',
-    'InstallationDate']
+    'InstallationDate','TariffPrograms','TariffDescriptions']
 
     if output_to_csv:
         csv_path = csv_file_path()
