@@ -43,7 +43,7 @@ def main(*args,**kwargs):
     # for the processing; this would require reworking process_data.py.
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(server=server, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, spacetime = spacetime, caching_mode = 'sqlite', slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 5000, filename = csv_filename)
+    success = process_data.main(use_cache=use_cache, server=server, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, spacetime = spacetime, caching_mode = 'utc_sqlite', slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 5000, filename = csv_filename)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
