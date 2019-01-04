@@ -226,8 +226,12 @@ def pull_terminals(*args, **kwargs):
         if t['@Guid'] in restrictions:
             new_entry['Restrictions'] = restrictions[t['@Guid']]
         if t['@Guid'] in install_dates:
-            installed = parser.parse(install_dates[t['@Guid']])
-            new_entry['InstallationDate'] = installed.date().isoformat()
+            try:
+                installed = parser.parse(install_dates[t['@Guid']])
+                new_entry['InstallationDate'] = installed.date().isoformat()
+            except ValueError:
+                print("Unable to parse install date ({}) for terminal with GUID {}".format(install_dates[t['@Guid']], t['@Guid']))
+                new_entry['InstallationDate'] = ""
 
         if t['@Id'] not in ids_to_ignore:
             list_of_dicts.append(new_entry)
