@@ -35,6 +35,17 @@ def get_cached_dates_table(date_filepath,date_table_name):
     try:
         db = dataset.connect('sqlite:///'+date_filepath)
         table = db[date_table_name]
+    except sqlalchemy.exc.OperationalError as e:
+        # If unable to load the table because the directory does not exist, try creating the directory.
+        print("Unable to load database {}.".format(date_filepath))
+        directory = '/'.join(date_filepath.split('/')[:-1])
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
+        # Note that the purchases database has a dedicated creation function,
+        #   create_sqlite(filepath),
+        # but this seems not to be true of the cached_dates table.
+        db = dataset.connect('sqlite:///'+date_filepath)
+        table = db[date_table_name]
     except sqlalchemy.exc.NoSuchTableError as e:
         print("Unable to load database {} and table {}.".format(date_filepath,data_table_name))
         table = db.create_table(date_table_name, primary_id = 'date', primary_type = 'String')
