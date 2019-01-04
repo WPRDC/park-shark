@@ -151,6 +151,13 @@ def pull_terminals(*args, **kwargs):
         new_entry['Status'] = t['Status']['@Name']
         new_entry['LocationType'] = value_or_blank('LocationType',t,['@Name'])
 
+        new_entry['created_utc'] = value_or_blank('DateCreatedUtc',t)
+        new_entry['active_utc'] = value_or_blank('DateActiveUtc',t)
+        new_entry['in_service_utc'] = value_or_blank('DateInServiceUtc',t)
+        new_entry['inactive_utc'] = value_or_blank('DateInactiveUtc',t)
+        new_entry['removed_utc'] = value_or_blank('DateRemovedUtc',t)
+
+
         if 'TariffPackages' in t:
             tariffs = t['TariffPackages']['TariffPackage']
             if type(tariffs) != list:
@@ -228,7 +235,7 @@ def pull_terminals(*args, **kwargs):
         if t['@Guid'] in install_dates:
             try:
                 installed = parser.parse(install_dates[t['@Guid']])
-                new_entry['InstallationDate'] = installed.date().isoformat()
+                new_entry['InstallationDate'] = installed.date().isoformat() # This is generally consistent with the DateInServiceUtc field, but can come a day or two after that.
             except ValueError:
                 print("Unable to parse install date ({}) for terminal with GUID {}".format(install_dates[t['@Guid']], t['@Guid']))
                 new_entry['InstallationDate'] = ""
@@ -239,7 +246,8 @@ def pull_terminals(*args, **kwargs):
     #dkeys = list(list_of_dicts[0].keys()) # This does not set the correct order for the field names.
     dkeys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
     'Rate information','Restrictions','description',
-    'InstallationDate','TariffPrograms','TariffDescriptions']
+    'InstallationDate','TariffPrograms','TariffDescriptions',
+    'created_utc','active_utc','in_service_utc','inactive_utc','removed_utc']
 
     if output_to_csv:
         csv_path = csv_file_path()
