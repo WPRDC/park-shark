@@ -81,6 +81,21 @@ def get_parking_for_local_day(dt_date,tz,time_field,caching_mode):
     # get_parking_events may be working differently depending on whether UTC or ET time zones are
     # thrown at it.
     purchases = get_parking_events(None,dt_start_utc,dt_end_utc,local_tz=pgh,cache=True,mute=False,caching_mode=caching_mode)
+    if time_field == '@PurchaseDateUtc':
+        local_time_field = '@PurchaseDateLocal'
+    for p in purchases:
+        local_datetime = tz.localize(parser.parse(p[local_time_field]))
+        utc_datetime = (pytz.utc).localize(parser.parse(p[time_field]))
+        #print("{} {} {}".format(time_field, local_datetime, date_i))
+        try:
+            assert dt_start_utc <= utc_datetime < dt_end_utc
+            assert local_datetime.date() == dt_date
+        except:
+            pprint(p)
+            print("has a local time field ({}) that is inconsistent with the local date being {} .".format(local_time_field,dt_date))
+            print("OORRRRRRRRRRR dt_start_utc ({}) <= dt ({}) < dt_end_utc ({}) is not true.".format(dt_start_utc, utc_datetime, dt_end_utc))
+
+            raise ValueError("ERRor")
     #assert len(old_purchases) == len(purchases) # This is now failing for 2018-09-24 (as one would expect).
     #purchases = get_parking_events(none,dt_start_utc,dt_end_utc,cache=true,mute=false,caching_mode='utc_json')
     print("Fetched {} candidate purchases.".format(len(purchases)))
@@ -257,7 +272,7 @@ def batch_analysis(start_date_str=None,end_date_str=None):
         if time_field == '@PurchaseDateUtc':
             local_time_field = '@PurchaseDateLocal'
         caching_mode = 'utc_sqlite'
-        caching_mode = 'utc_json'
+        #caching_mode = 'utc_json'
         ps = get_parking_for_local_day(date_i,pgh,time_field,caching_mode) # This seems to include more than just that day's purchases.
 
         # Debugging code below
