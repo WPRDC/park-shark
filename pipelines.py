@@ -43,9 +43,9 @@ class MetersSchema(pl.BaseSchema):
     #oldzone = fields.String(dump_to='old_zone',allow_none=True)
     all_groups = fields.String(dump_to='all_groups',allow_none=True) # Should this be JSON?
     guid = fields.String(dump_to='guid')
-    cost_per_hour = fields.Float(dump_to='cost_per_hour',allow_none=True)
-    rate_information = fields.String(dump_to='rate_information',allow_none=True)
-    restrictions = fields.String(dump_to='restrictions',allow_none=True)
+    #cost_per_hour = fields.Float(dump_to='cost_per_hour',allow_none=True)
+    #rate_information = fields.String(dump_to='rate_information',allow_none=True)
+    #restrictions = fields.String(dump_to='restrictions',allow_none=True)
 
     class Meta:
         ordered = True
