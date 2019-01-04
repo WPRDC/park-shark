@@ -191,7 +191,7 @@ def main(keep_archive):
 
     # Will this script overwrite an existing CSV file (or just append to it)?
     ########### CUMULATIVE METERS ARCHIVE #############################
-    cumulative_resource_name = 'Payment Points (Monthly Archives)'
+    cumulative_resource_name = 'Payment Points (Archives)'
     clear_first = False # Setting this variable here is just a precaution
     # since clear_first is not specified in the pipeline call below.
     schema = CumulativeMetersSchema
