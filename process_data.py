@@ -427,11 +427,11 @@ def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_
     # time_aggregation parameter (since now a bin is not defined just by start and end
     # but also by year-month. The other possibility would be to do it when the month
     # is archived (from the loop in main()).
-    start_time_pgh = start_time.astimezone(tz)
-    stats['start'] = datetime.strftime(start_time_pgh,"%Y-%m-%d %H:%M:%S")
+    start_time_local = start_time.astimezone(tz)
+    stats['start'] = datetime.strftime(start_time_local,"%Y-%m-%d %H:%M:%S")
     # [ ] Is this the correct start time?
-    end_time_pgh = end_time.astimezone(tz)
-    stats['end'] = datetime.strftime(end_time_pgh,"%Y-%m-%d %H:%M:%S")
+    end_time_local = end_time.astimezone(tz)
+    stats['end'] = datetime.strftime(end_time_local,"%Y-%m-%d %H:%M:%S")
     start_time_utc = start_time.astimezone(pytz.utc)
     stats['utc_start'] = datetime.strftime(start_time_utc,"%Y-%m-%d %H:%M:%S")
     if not split_by_mode:
