@@ -1,5 +1,5 @@
 """This script takes CSV exports from CALE Web Office and adds the transactions to a directory of SQLite databases, where each database holds the transactions from a particular day, where the day is chosen (and the SQLite directory is named) based on the reference_time field."""
-import csv, pytz
+import sys, csv, pytz
 from dateutil import parser
 from process_data import time_to_field, bulk_upsert_to_sqlite
 from collections import defaultdict
@@ -61,7 +61,11 @@ def add_missing_purchases(filepath,reference_time):
             utc_reference_field, local_reference_field = time_to_field(reference_time)
             #upsert_to_sqlite(purchase_i,datetime_i,reference_time)
             datetime_i = (pytz.utc).localize(parser.parse(purchase_i[utc_reference_field]))
-            day = datetime_i.astimezone(local_tz).date()
+
+            if reference_time == 'purchase_time':
+                day = datetime_i.astimezone(local_tz).date()
+            elif reference_time == 'purchase_time_utc':
+                day = datetime_i.astimezone(pytz.utc).date()
             # There's a shorter set of commands to get the local day, but I am doing
             # it this way to copy how process_data:get_utc_ps_for_day_from_json is 
             # currently doing it, making the day local but the datetime UTC.
@@ -73,10 +77,23 @@ def add_missing_purchases(filepath,reference_time):
         print("Grafting missing purchases from {} onto corresponding sqlite database.".format(day))
         purchases = ps_by_day[day]
         dts = dts_by_day[day]
-        bulk_upsert_to_sqlite(path,purchases,dts,day,reference_time)
+        if reference_time == 'purchase_time':
+            bulk_upsert_to_sqlite_local(path,purchases,dts,day,reference_time)
+        elif reference_time == 'purchase_time_utc':
+            bulk_upsert_to_sqlite(path,purchases,dts,day,reference_time)
 
 
-reference_time = 'purchase_time'
+#reference_time = 'purchase_time'
+try:
+    input = raw_input
+except NameError:
+    pass
+
+reference_time = input('Choose a reference time (either purchase_time or purchase_time_utc): ')
+if reference_time not in ['purchase_time', 'purchase_time_utc']:
+    raise ValueError("Invalid reference time value.")
+
+
 filenames = ['Purchases-2017-Operational.csv', 'Purchases-1801-1806-Operational.csv', 'Purchases-2018-07-Operational.csv',
         #'Purchases-324541-FMURRY0001-through-2013.csv',
         'Purchases-324541-FMURRY0001-2014.csv', 'Purchases-324541-FMURRY0001-2015.csv',
