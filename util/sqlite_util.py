@@ -244,7 +244,7 @@ def upsert_to_sqlite(path,purchase_i,datetime_i,reference_time):
     # The date is going to be used to select
     # a SQLite database that should contain all the
     # purchases from midnight to midnight (local Pittsbugh time)
-    # where purhcases have been assigned based on the
+    # where purchases have been assigned based on the
     # reference_time.
     table, _ = get_sqlite_table(path,datetime_i.date(),reference_time)
     p_i = sqlite_adapter(purchase_i,datetime_i)
@@ -256,7 +256,7 @@ def bulk_upsert_to_sqlite(path,purchases,dts,date_i,reference_time):
     # The date is going to be used to select
     # a SQLite database that should contain all the
     # purchases from midnight to midnight (local Pittsbugh time)
-    # where purhcases have been assigned based on the
+    # where purchases have been assigned based on the
     # reference_time.
     filing_date = date_i
     utc_field, local_field = time_to_field(reference_time)
@@ -298,7 +298,7 @@ def bulk_upsert_to_sqlite_local(path,purchases,dts,date_i,reference_time):
     # The date is going to be used to select
     # a SQLite database that should contain all the
     # purchases from midnight to midnight (local Pittsbugh time)
-    # where purhcases have been assigned based on the
+    # where purchases have been assigned based on the
     # reference_time.
     filing_date = date_i
     utc_field, local_field = time_to_field(reference_time)
@@ -340,7 +340,7 @@ def bulk_insert_into_sqlite(path,purchases,dts,date_i,reference_time):
     # The date is going to be used to select
     # a SQLite database that should contain all the
     # purchases from midnight to midnight (local Pittsbugh time)
-    # where purhcases have been assigned based on the
+    # where purchases have been assigned based on the
     # reference_time.
     filing_date = date_i
     utc_field, local_field = time_to_field(reference_time)
@@ -366,7 +366,7 @@ def bulk_insert_into_sqlite_local(path,purchases,dts,date_i,reference_time):
     # The date is going to be used to select
     # a SQLite database that should contain all the
     # purchases from midnight to midnight (local Pittsbugh time)
-    # where purhcases have been assigned based on the
+    # where purchases have been assigned based on the
     # reference_time.
     filing_date = date_i
     utc_field, local_field = time_to_field(reference_time)
