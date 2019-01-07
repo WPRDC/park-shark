@@ -78,12 +78,15 @@ def add_missing_purchases(filepath,reference_time):
 
 reference_time = 'purchase_time'
 filenames = ['Purchases-2017-Operational.csv', 'Purchases-1801-1806-Operational.csv', 'Purchases-2018-07-Operational.csv',
-        #'Purchases-324541-FMURRY0001-through-2013.csv', 'Purchases-324541-FMURRY0001-2014.csv', 'Purchases-324541-FMURRY0001-2015.csv', 
+        #'Purchases-324541-FMURRY0001-through-2013.csv',
+        'Purchases-324541-FMURRY0001-2014.csv', 'Purchases-324541-FMURRY0001-2015.csv',
         'Purchases-324541-FMURRY0001-2016.csv', 'Purchases-324541-FMURRY0001-2017-to-201809.csv',
-        #'Purchases-324542-FMURRY0002-through-2013.csv', 'Purchases-324542-FMURRY0002-2014.csv',  'Purchases-324542-FMURRY0002-2015.csv', 
+        #'Purchases-324542-FMURRY0002-through-2013.csv',
+        'Purchases-324542-FMURRY0002-2014.csv',  'Purchases-324542-FMURRY0002-2015.csv',
         'Purchases-324542-FMURRY0002-2016.csv', 'Purchases-324542-FMURRY0002-2017-to-201809.csv',
-        #'Purchases-325543-JCCLOT0001-through-2013.csv', 'Purchases-325543-JCCLOT0001-2014.csv', 'Purchases-325543-JCCLOT0001-2015.csv', 
-        'Purchases-325543-JCCLOT0001-2016.csv', 'Purchases-325543-JCCLOT0001-2017-to-201809.csv', 
+        #'Purchases-325543-JCCLOT0001-through-2013.csv',
+        'Purchases-325543-JCCLOT0001-2014.csv', 'Purchases-325543-JCCLOT0001-2015.csv',
+        'Purchases-325543-JCCLOT0001-2016.csv', 'Purchases-325543-JCCLOT0001-2017-to-201809.csv',
         'Purchases-410190-FORBES4002-through-2018-10.csv',
         ]
 
