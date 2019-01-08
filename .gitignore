@@ -12,6 +12,8 @@ utc_json/
 utc_json_2/
 week_utc_json/
 sqlite-pdl/
+sqlite-pdu/
+missing_data/
 csv/
 docs/
 cwo_refs/
