@@ -1657,8 +1657,8 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
     # down to those between slot_start and start_end. When reference_time == 'purchase_time',
     # @PurchaseDateUtc is used instead. (reference_time is set in this function.)
 
-    #reference_time = 'purchase_time'
-    reference_time = 'purchase_time_utc'
+    #reference_time = 'purchase_time' # This is a local-time reference.
+    reference_time = 'purchase_time_utc' # This is a UTC-time reference.
 
     # Note that the time zone tz and the field produced by hybrid_parking_segment_start_of must be consistent
     # for this to work properly.
@@ -1675,7 +1675,8 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
         # reference_time to directly conflict with the caching mode.
         if reference_time == 'purchase_time_utc':
             assert caching_mode != 'sqlite'
-
+        if reference_time == 'purchase_time':
+            assert caching_mode != 'utc_sqlite'
         if not mute:
             print("last_utc_date_cache ({}) doesn't match slot_start.date() ({})".format(last_utc_date_cache, slot_start.date()))
 
