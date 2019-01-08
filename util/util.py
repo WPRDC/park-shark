@@ -344,10 +344,20 @@ def numbered_reporting_groups(t):
             return reporting_group_names
     return []
 
+def get_more_minizones():
+    # "Mini-zones" is another designation for sampling groups, the distinction being that sampling groups/zones
+    # had been inferred from zones that were not numbered reporting zones or enforcement zones, while
+    # mini-zones are those being explicitly requested.
+    more_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2'] # Add these back in since they are used as mini-zones/sampling zones.
+    return more_minizones
+
 def sampling_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
+    # This just returns a list of strings, each of which is the designation for what is believed to be
+    # a sampling zone.
     non_sampling_zones = lot_list + pure_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
     all_group_names = all_groups(t)
     sgs = [name for name in all_group_names if name not in non_sampling_zones]
+    sgs += get_more_minizones()
     return sgs
 
 def group_by_code(code,t=None,group_lookup_addendum={}):
