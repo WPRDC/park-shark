@@ -355,9 +355,11 @@ def sampling_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
     # This just returns a list of strings, each of which is the designation for what is believed to be
     # a sampling zone.
     non_sampling_zones = lot_list + pure_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
+    more_minizones = get_more_minizones() # These are zones that were previous considered to be pure zones,
+    # but which have been changed to mini-zones.
+    improved_non_sampling_zones = [z for z in non_sampling_zones if z not in more_minizones]
     all_group_names = all_groups(t)
-    sgs = [name for name in all_group_names if name not in non_sampling_zones]
-    sgs += get_more_minizones()
+    sgs = [name for name in all_group_names if name not in improved_non_sampling_zones]
     return sgs
 
 def group_by_code(code,t=None,group_lookup_addendum={}):
