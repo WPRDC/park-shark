@@ -355,7 +355,9 @@ def get_more_minizones():
     # "Mini-zones" is another designation for sampling groups, the distinction being that sampling groups/zones
     # had been inferred from zones that were not numbered reporting zones or enforcement zones, while
     # mini-zones are those being explicitly requested.
-    more_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2'] # Add these back in since they are used as mini-zones/sampling zones.
+    #more_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2'] # Add these back in since they are used as mini-zones/sampling zones.
+    more_minizones = [] # Since we're switching to incorporating ParentTerminalStructure groups into all_groups/AllGroups,
+    # we no longer need to add these in... or subtract them from non_sampling_zones in sampling_groups.
     return more_minizones
 
 def sampling_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
@@ -749,6 +751,25 @@ def get_terminals(use_cache = False):
         doc = xmltodict.parse(text,encoding = 'utf-8')
 
     terminals = doc['Terminals']['Terminal']
+    return terminals
+
+def add_minizone(terminals, minizone_name):
+    if minizone_name == 'General Robinson Ext':
+        minizone_meter_ids = ['403317-RBSTEX0405', '403319-RBSTEX0409', '403316-RBSTEX0403', '403315-RBSTEX0402', '403320-RBSTEX0411', '403314-RBSTEX0401', '403318-RBSTEX0407']
+        new_group = {'@TerminalGroupGuid': minizone_name,
+                    '@TerminalGroupName': minizone_name,
+                    '@TerminalGroupTypeGuid': 'no-idea-what-this-should-be',
+                    '@TerminalGroupTypeName': u'Reporting'}
+        for t in terminals:
+            if t['@Id'] in minizone_meter_ids:
+                if 'TerminalGroups' in t:
+                    if 'TerminalGroup' in t['TerminalGroups']:
+                        list_of_groups = t['TerminalGroups']['TerminalGroup']
+                        if type(list_of_groups) == type(OrderedDict()):
+                            list_of_groups = [list_of_groups, new_group]
+                        else:
+                            list_of_groups.append(new_group)
+                        t['TerminalGroups']['TerminalGroup'] = list_of_groups
     return terminals
 
 def cast_fields(original_dicts,ordered_fields):
