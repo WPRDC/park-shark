@@ -293,8 +293,7 @@ def pull_terminals(*args, **kwargs):
             write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
 
 
-    excluded_zones = ['TEST - South Craig - Reporting']
-    excluded_zones = []
+    excluded_zones = ['TEST - South Craig - Reporting', 'FRIENDSHIP AVE RPP']
     print("Here is the list of all groups not already in lot_list or other_zones_list or numbered_reporting_zones_list or exclude_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
     maybe_sampling_zones = set_of_all_groups - set(lot_list) - set(other_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
     sampling_zones = censor(maybe_sampling_zones)
