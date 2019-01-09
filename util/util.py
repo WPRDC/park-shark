@@ -15,7 +15,9 @@ from notify import send_to_slack
 
 lot_list = ['18-CARSO-L', '18-SIDNE-L', '19-CARSO-L', '20-SIDNE-L', '42-BUTLE-L', '5224BUTL-L', 'ANSL-BEA-L', 'ASTE-WAR-L', 'BEAC-BAR-L', 'BEECHVIE-L', 'BROOKLIN-L', 'BROW-SAN-L', 'CENT-CRA-L', 'DOUG-PHI-L', 'EASTCARS-L', 'EASTOHIO-L', 'EVA-BEAT-L', 'FORB-MUR-L', 'FORB-SHA-L', 'FRIE-CED-L', 'HOME-ZEN-L', 'IVY-BELL-L', 'JCC-L', 'MAIN-ALE-L', 'OBSERHIL-L', 'PENNC.NW-L', 'SHER-HAR-L', 'SHER-KIR-L', 'SHILOH-L', 'TAME-BEA-L', 'TAYLOR-L', 'WALT-WAR-L'] # Harvard-Beatty-Inferred-L is missing from this list.
 
-pure_zones_list = ['ALLENTOWN', 'BAKERY-SQ', 'BEECHVIEW', 'BLOOMFIELD', 'BROOKLINE', 'CARRICK', 'DOWNTOWN1', 'DOWNTOWN2', 'EASTLIB', 'HILL-DIST', 'KNOXVILLE', 'LAWRENCEV', 'MELONPARK', 'MT.WASH', 'NORTHSHORE', 'NORTHSIDE', 'OAKLAND1', 'OAKLAND2', 'OAKLAND3', 'OAKLAND4', 'SHADYSIDE1', 'SHADYSIDE2', 'SOUTHSIDE', 'SQ.HILL1', 'SQ.HILL2', 'STRIPDIST', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'WEST END', 'Hill District']#, 'Z - Inactive/Removed Terminals']
+other_zones_list = ['ALLENTOWN', 'BAKERY-SQ', 'BEECHVIEW', 'BLOOMFIELD', 'BROOKLINE', 'CARRICK', 'DOWNTOWN1', 'DOWNTOWN2', 'EASTLIB', 'HILL-DIST', 'KNOXVILLE', 'LAWRENCEV', 'MELONPARK', 'MT.WASH', 'NORTHSHORE', 'NORTHSIDE', 'OAKLAND1', 'OAKLAND2', 'OAKLAND3', 'OAKLAND4', 'SOUTHSIDE', 'STRIPDIST', 'TECHNOLOGY', 'WEST END', 'Z - Inactive/Removed Terminals']
+
+designated_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'Hill District']
 
 # The reporting zones of the form '123 - Description'.
 numbered_reporting_zones_list = ['301 - Sheridan Harvard Lot',
@@ -354,7 +356,7 @@ def get_more_minizones():
 def sampling_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
     # This just returns a list of strings, each of which is the designation for what is believed to be
     # a sampling zone.
-    non_sampling_zones = lot_list + pure_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
+    non_sampling_zones = lot_list + other_zones_list + numbered_reporting_zones_list + uncharted_numbered_zones + uncharted_enforcement_zones
     more_minizones = get_more_minizones() # These are zones that were previous considered to be pure zones,
     # but which have been changed to mini-zones.
     improved_non_sampling_zones = [z for z in non_sampling_zones if z not in more_minizones]

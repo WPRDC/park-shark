@@ -4,7 +4,7 @@ from collections import OrderedDict, Counter, defaultdict
 from util.util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
-pure_zones_list, numbered_reporting_zones_list, sampling_groups, \
+other_zones_list, numbered_reporting_zones_list, sampling_groups, \
 add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
 build_keys
 from fetch_terminals import pull_terminals
@@ -590,7 +590,6 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                     if not transactions_only and 'Duration' in rp and rp['Duration'] is not None:
                         stats_by[a_key]['car_minutes'] += rp['Duration']
                         stats_by[a_key]['Durations'].append(rp['Duration'])
-
 
     return stats_by
 
@@ -1976,7 +1975,10 @@ def main(*args, **kwargs):
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
     # zones.
     if zone_kind == 'old':
-        zonelist = lot_list + pure_zones_list
+        zonelist = lot_list + other_zones_list # Note that other_zones_list (previously
+        # called "pure_zones_list") was modified in January 2019, being turned into
+        # more of an exclude-from-mini-zones list, eroding support for
+        # zone_kind = 'old', which could probably be removed at this point.
     else:
         zonelist = numbered_reporting_zones_list
 

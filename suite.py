@@ -3,7 +3,7 @@
 import sys, requests, fire
 from collections import defaultdict
 import xmltodict
-from util.util import zone_name, get_terminals, round_to_cent, corrected_zone_name, numbered_zone, lot_list, pure_zones_list, numbered_reporting_zones_list
+from util.util import zone_name, get_terminals, round_to_cent, corrected_zone_name, numbered_zone, lot_list, other_zones_list, numbered_reporting_zones_list
 from util.dates_util import parking_days_in_month, is_holiday
 from process_data import get_parking_events, to_dict
 from datetime import date, datetime, timedelta
@@ -151,7 +151,7 @@ def batch_analysis(start_date_str=None,end_date_str=None):
 
     print("Compare parking days value to those report numbers.")
 
-    list_of_official_zones = lot_list + pure_zones_list + numbered_reporting_zones_list
+    list_of_official_zones = lot_list + other_zones_list + numbered_reporting_zones_list # other_zones_list was modified in January 2019 with the introduction of official mini-zones.
 
     transactions = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     overall_transactions = defaultdict(int)

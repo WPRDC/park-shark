@@ -7,7 +7,7 @@ from collections import OrderedDict, Counter, defaultdict
 from util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
-pure_zones_list, numbered_reporting_zones_list
+other_zones_list, numbered_reporting_zones_list
 
 from fetch_terminals import pull_terminals
 
@@ -54,7 +54,7 @@ def main(*args, **kwargs):
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
     # zones.
     if zone_kind == 'old':
-        zonelist = lot_list + pure_zones_list
+        zonelist = lot_list + other_zones_list
     else:
         zonelist = numbered_reporting_zones_list
 

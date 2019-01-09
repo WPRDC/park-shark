@@ -7,7 +7,6 @@ from collections import OrderedDict, Counter, defaultdict
 from .util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
-pure_zones_list, numbered_reporting_zones_list, sampling_groups, \
 group_by_code, numbered_zone
 from fetch_terminals import pull_terminals
 import requests

@@ -1,4 +1,4 @@
-from util import lot_list, pure_zones_list, numbered_reporting_zones_list
+from util import lot_list, other_zones_list, numbered_reporting_zones_list
 
 import time
 from datetime import datetime, timedelta
@@ -44,7 +44,7 @@ def main():
     # (specifically corrected_zone_name). 'new' maps to numbered reporting
     # zones.
     if zone_kind == 'old':
-        zonelist = lot_list + pure_zones_list
+        zonelist = lot_list + other_zones_list
     else:
         zonelist = numbered_reporting_zones_list
 
