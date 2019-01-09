@@ -8,7 +8,7 @@ import copy
 
 from collections import OrderedDict, defaultdict
 import re
-from util.util import to_dict, write_to_csv, value_or_blank, is_a_lot, is_a_virtual_lot, is_a_virtual_zone, corrected_zone_name, char_delimit, all_groups, lot_list, other_zones_list, numbered_reporting_zones_list, zone_lookup, is_virtual, numbered_zone, censor, get_more_minizones, add_minizone
+from util.util import to_dict, write_to_csv, value_or_blank, is_a_lot, is_a_virtual_lot, is_a_virtual_zone, corrected_zone_name, char_delimit, all_groups, lot_list, other_zones_list, numbered_reporting_zones_list, zone_lookup, is_virtual, numbered_zone, censor, get_more_minizones
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 
@@ -138,7 +138,6 @@ def pull_terminals(*args, **kwargs):
     group_lookup_addendum = {}
 
     ids_to_ignore = ['Friendship Ave RPP']
-    #terminals = add_minizone(terminals,'General Robinson Ext')
     for k,t in enumerate(terminals):
         new_entry = {}
         new_entry['GUID'] = t['@Guid']

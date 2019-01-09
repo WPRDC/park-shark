@@ -753,25 +753,6 @@ def get_terminals(use_cache = False):
     terminals = doc['Terminals']['Terminal']
     return terminals
 
-def add_minizone(terminals, minizone_name):
-    if minizone_name == 'General Robinson Ext':
-        minizone_meter_ids = ['403317-RBSTEX0405', '403319-RBSTEX0409', '403316-RBSTEX0403', '403315-RBSTEX0402', '403320-RBSTEX0411', '403314-RBSTEX0401', '403318-RBSTEX0407']
-        new_group = {'@TerminalGroupGuid': minizone_name,
-                    '@TerminalGroupName': minizone_name,
-                    '@TerminalGroupTypeGuid': 'no-idea-what-this-should-be',
-                    '@TerminalGroupTypeName': u'Reporting'}
-        for t in terminals:
-            if t['@Id'] in minizone_meter_ids:
-                if 'TerminalGroups' in t:
-                    if 'TerminalGroup' in t['TerminalGroups']:
-                        list_of_groups = t['TerminalGroups']['TerminalGroup']
-                        if type(list_of_groups) == type(OrderedDict()):
-                            list_of_groups = [list_of_groups, new_group]
-                        else:
-                            list_of_groups.append(new_group)
-                        t['TerminalGroups']['TerminalGroup'] = list_of_groups
-    return terminals
-
 def cast_fields(original_dicts,ordered_fields):
     # This can become pre_load functions in a Marshmallow schema.
     data = []
