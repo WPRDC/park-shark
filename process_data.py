@@ -6,7 +6,7 @@ lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
 other_zones_list, numbered_reporting_zones_list, sampling_groups, \
 add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
-build_keys
+build_keys, add_minizone
 from fetch_terminals import pull_terminals
 import requests
 import zipfile
@@ -2011,6 +2011,7 @@ def main(*args, **kwargs):
     pgh = pytz.timezone('US/Eastern')
     use_cache = kwargs.get('use_cache', False)
     terminals = get_terminals(use_cache)
+    #terminals = add_minizone(terminals,'General Robinson Ext')
 
     t_ids = [t['@Id'] for t in terminals]
     t_guids = [t['@Guid'] for t in terminals]

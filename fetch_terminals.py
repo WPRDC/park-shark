@@ -138,6 +138,7 @@ def pull_terminals(*args, **kwargs):
     group_lookup_addendum = {}
 
     ids_to_ignore = ['Friendship Ave RPP']
+    #terminals = add_minizone(terminals,'General Robinson Ext')
     for k,t in enumerate(terminals):
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
