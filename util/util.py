@@ -307,15 +307,20 @@ def standardize_group_name(name):
     return name
 
 def all_groups(t):
+    all_group_names = []
     if 'TerminalGroups' in t:
         if 'TerminalGroup' in t['TerminalGroups']:
             list_of_groups = t['TerminalGroups']['TerminalGroup']
             if type(list_of_groups) == type(OrderedDict()):
-                all_group_names = [standardize_group_name(list_of_groups['@TerminalGroupName'])]
+                all_group_names += [standardize_group_name(list_of_groups['@TerminalGroupName'])]
             else:
-                all_group_names = [standardize_group_name(g['@TerminalGroupName']) for g in list_of_groups]
-            return all_group_names
-    return []
+                all_group_names += [standardize_group_name(g['@TerminalGroupName']) for g in list_of_groups]
+    if 'ParentTerminalStructure' in t:
+        if '@Name' in t['ParentTerminalStructure']:
+            pts = t['ParentTerminalStructure']['@Name']
+            if pts not in all_group_names:
+                all_group_names.append(pts)
+    return all_group_names
 
 def is_three_digits(s):
     return (re.match("\d\d\d", s) is not None)
