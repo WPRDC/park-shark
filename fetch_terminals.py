@@ -8,7 +8,7 @@ import copy
 
 from collections import OrderedDict, defaultdict
 import re
-from util.util import to_dict, write_to_csv, value_or_blank, is_a_lot, is_a_virtual_lot, is_a_virtual_zone, corrected_zone_name, char_delimit, all_groups, lot_list, other_zones_list, numbered_reporting_zones_list, zone_lookup, is_virtual, numbered_zone, censor, get_more_minizones
+from util.util import to_dict, write_to_csv, value_or_blank, is_a_lot, is_a_virtual_lot, is_a_virtual_zone, corrected_zone_name, char_delimit, all_groups, lot_list, other_zones_list, numbered_reporting_zones_list, zone_lookup, is_virtual, numbered_zone, censor
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 
@@ -297,9 +297,6 @@ def pull_terminals(*args, **kwargs):
     excluded_zones = []
     print("Here is the list of all groups not already in lot_list or other_zones_list or numbered_reporting_zones_list or exclude_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
     maybe_sampling_zones = set_of_all_groups - set(lot_list) - set(other_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
-    more_minizones = get_more_minizones()
-    for mz in more_minizones:
-        maybe_sampling_zones.add(mz)
     sampling_zones = censor(maybe_sampling_zones)
     pprint(sampling_zones)
 
