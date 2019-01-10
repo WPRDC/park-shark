@@ -544,13 +544,13 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
             # The above could really stand to be refactored.
             if aggregation_keys != []:
                 for a_key in aggregation_keys:
-                    if a_key not in stats_by:
-                        stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,split_by_mode, tz=pytz.timezone('US/Eastern'), transactions_only=transactions_only)
-
                     zone = a_key.split('|')[0]
-                    stats_by[a_key]['zone'] = zone
-
                     if zone != 'FRIENDSHIP AVE RPP': # Exclude bogus zones
+                        if a_key not in stats_by:
+                            stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,split_by_mode, tz=pytz.timezone('US/Eastern'), transactions_only=transactions_only)
+
+                        stats_by[a_key]['zone'] = zone
+
                         if space_aggregate_by == 'sampling zone':
                             if 'parent_zone' in stats_by[a_key]:
                                 #for zone in space_aggregation_keys:
