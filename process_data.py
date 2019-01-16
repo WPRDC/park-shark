@@ -2109,7 +2109,7 @@ def main(*args, **kwargs):
     # period (from maybe 10 minutes to closer to one or two).
 
     # For a high-availability (like streaming solution), try running the program
-    # continuously. This would allow the recent purchase history to be store
+    # continuously. This would allow the recent purchase history to be stored
     # in memory, massively cutting down on the warm-up time. You would just
     # need to wrap process_data in a loop that sends the CALE API a new
     # request every 30 seconds, processes those new transactions, and update
