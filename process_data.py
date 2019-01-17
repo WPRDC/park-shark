@@ -1908,6 +1908,12 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
 
     return list_of_dicts, augmented
 
+def eliminate_zeros(ps):
+    # ParkMobile accepts $0 transactions out of hours (e.g., payments on Sundays, when
+    # parking is free). This function filters them out, so they are not considered in
+    # the analysis.
+    return [p for p in ps if float(p['@Amount']) != 0.0]
+
 def resource_name(spacetime):
     if spacetime == 'zone':
         return 'Transactions by Zone and Time of Day'
@@ -2131,7 +2137,7 @@ def main(*args, **kwargs):
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
-        purchases = get_parking_events(db,slot_start - warm_up_period,slot_start,pgh,True,False,caching_mode)
+        purchases = eliminate_zeros(get_parking_events(db,slot_start - warm_up_period,slot_start,pgh,True,False,caching_mode))
 
         if estimate_occupancy:
             for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
@@ -2166,7 +2172,7 @@ def main(*args, **kwargs):
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
 
-        purchases = get_parking_events(db,slot_start,slot_end,pgh,True,False,caching_mode)
+        purchases = eliminate_zeros(get_parking_events(db,slot_start,slot_end,pgh,True,False,caching_mode))
         t1 = time.time()
 
         if skip_processing:
