@@ -510,6 +510,12 @@ def batch_analysis(start_date_str=None,end_date_str=None):
     except requests.exceptions.ConnectionError:
         print("[Unable to check CKAN repository while offline.]")
 
+def add_month_to_date(d):
+    if d.month == 12:
+        d = d.replace(year = d.year + 1, month = 1)
+    else:
+        d = d.replace(month = d.month + 1)
+    return d
 
 def main(start_date_str=None,end_date_str=None):
     batch_analysis(start_date_str,end_date_str)
