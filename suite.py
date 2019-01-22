@@ -1,6 +1,6 @@
 # This script is currently a non-updated version of the old batch_analysis.py
 # but could eventually become a suite of tests.
-import sys, requests, fire
+import os, sys, requests, fire
 from collections import defaultdict
 import xmltodict
 from util.util import zone_name, get_terminals, round_to_cent, corrected_zone_name, numbered_zone, lot_list, other_zones_list, numbered_reporting_zones_list
@@ -546,6 +546,77 @@ def parse_date_range(date_string):
         end_dt = add_month_to_date(start_dt)
         time_scope = {'date_type': 'month', 'start_dt': start_dt, 'end_dt': end_dt}
         return time_scope, start_dt, end_dt
+
+def compare_to_ref(date_string,repo_name,ref_filename=None):
+    # This function should be able to compare two CKAN repositories (by code name)
+    # or one CKAN repository and one local reference file (pulled from CALE Web
+    # Office). Local reference files are in cwo_refs/.
+    # Sample filenames are
+    # 2017-06-16-DOWNTOWN1-Historical-Purchases.csv
+    # 2017-06-16-DOWNTOWN1-Summary.csv
+    # 2017-06-16-OAKLAND1-Historical-Purchases.csv
+    # 2017-06-16-SHER-HAR-L-Historical-Purchases.csv
+    # 2017-06-16-all-Purchases.csv
+    time_scope, start_dt, end_dt = parse_date_range(date_string)
+    path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
+    ref_path = path + "/cwo_refs/"
+    if ref_filename is None:
+        ref_filepath = ref_path + '{}-all-Summary.csv'.format(date_string)
+    else:
+        ref_filepath = ref_path + ref_filename
+    with open(ref_filepath, 'r') as f:
+    # CALE Web Office summary file format is like this:
+    # Total Row Count,23830
+    # Amount (Sum),52043.73
+    # Amount (Average),2.18
+    # Amount (Min),0.00
+    # Amount (Max),27.00
+    # Net Amount (Sum),52043.73
+    # Net Amount (Average),2.18
+    # Net Amount (Min),0.00
+    # Net Amount (Max),27.00
+    # Card Fee Amount (Sum),0.00
+    # Card Fee Amount (Average),0.00
+    # Card Fee Amount (Min),0.00
+    # Card Fee Amount (Max),0.00
+    # Overpayment Amount (Sum),125.77
+    # Overpayment Amount (Average),0.01
+    # Overpayment Amount (Min),0.00
+    # Overpayment Amount (Max),0.92
+    # No of Purchases (Sum),23779
+        contents = f.readlines()
+        lines = [x.rstrip('\n') for x in contents]
+        stats = {}
+        for line in lines:
+            if ',' in line:
+                field,value = line.split(',')
+                if field in ['Total Row Count', 'No of Purchases (Sum)']:
+                    stats[field] = int(value)
+                else:
+                    stats[field] = float(value)
+        ref_revenue = stats['Amount (Sum)']
+        ref_transaction_count = stats['No of Purchases (Sum)']
+        print("Local reference file: ${}, {} purchases".format(ref_revenue,ref_transaction_count))
+
+    source = identify_source(repo_name)
+    ref_time = "purchase_time_utc"
+    split_by_mode = True
+
+    try:
+        start_hour = 0
+        end_hour = 24
+        start_date = start_dt.date()
+        end_date = end_dt.date()
+        set_table(ref_time,package_id_override=source['package_id'])
+        revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
+        print("Pulling from the CKAN {} repository, for start_dt = {}, end_dt = {}, start_hour = {}, end_hour = {}, we get {} purchases, totalling ${}."
+        .format(source['repo_name'],start_dt,end_dt,start_hour,end_hour,transaction_count,revenue))
+        print("    delta revenue = ${:<.2f}, delta transaction count = {}".format(revenue - ref_revenue, transaction_count - ref_transaction_count))
+
+        print("get_resource_id() = {}".format(get_resource_id(ref_time,package_id_override=source['package_id'])))
+        clear_table(ref_time,package_id_override=source['package_id'])
+    except requests.exceptions.ConnectionError:
+        print("[Unable to check CKAN repository while offline.]")
 
 def compare_repos(date_string,repo_name1,repo_name2):
     # This function should be able to compare two CKAN repositories (by code name).
