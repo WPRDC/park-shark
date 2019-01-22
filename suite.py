@@ -14,6 +14,8 @@ from pprint import pprint
 
 from proto_get_revenue import set_table, clear_table
 from query_util import get_revenue_and_count, get_resource_id
+from pipe.pipe_to_CKAN_resource import get_connection_parameters
+from parameters.local_parameters import path, SETTINGS_FILE
 
 def print_dict_by_y_m_foo(d):
     for year in d.keys():
@@ -510,6 +512,22 @@ def batch_analysis(start_date_str=None,end_date_str=None):
     except requests.exceptions.ConnectionError:
         print("[Unable to check CKAN repository while offline.]")
 
+def identify_source(repo_name):
+    repos_list = ['debug', 'transactions-production']
+    # Check repo_name values against list of servers in parameters/.
+    if repo_name in repos_list:
+        source = {'type': 'ckan_package'}
+        settings, site, package_id, API_key = get_connection_parameters(server=repo_name, settings_file_path=SETTINGS_FILE)
+        source['package_id'] = package_id
+        source['site'] = site
+        source['API_key'] = API_key
+        source['repo_name'] = repo_name
+        return source
+    # If a repo_name can not be found, try interpeting the name as the package_name stub.
+    # This could be done through.
+    # ckan.logic.action.get.package_search(context, data_dict)
+    raise ValueError("Unable to find repo with name {}.".format(repo_name))
+
 def add_month_to_date(d):
     if d.month == 12:
         d = d.replace(year = d.year + 1, month = 1)
@@ -528,6 +546,68 @@ def parse_date_range(date_string):
         end_dt = add_month_to_date(start_dt)
         time_scope = {'date_type': 'month', 'start_dt': start_dt, 'end_dt': end_dt}
         return time_scope, start_dt, end_dt
+
+def compare_repos(date_string,repo_name1,repo_name2):
+    # This function should be able to compare two CKAN repositories (by code name).
+    source1 = identify_source(repo_name1)
+    source2 = identify_source(repo_name2)
+    sources = [source1,source2]
+
+    time_scope, start_dt, end_dt = parse_date_range(date_string)
+
+    ref_time = "purchase_time_utc"
+    split_by_mode = True
+    try:
+        start_hour = 0
+        end_hour = 24
+        revenues, transaction_counts = [], []
+        start_date = start_dt.date()
+        end_date = end_dt.date()
+        for source in sources:
+            set_table(ref_time,package_id_override=source['package_id'])
+            revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
+            print("Pulling from the CKAN {} repository, for start_dt = {}, end_dt = {}, start_hour = {}, end_hour = {}, we get {} purchases, totalling ${}."
+            .format(source['repo_name'],start_dt,end_dt,start_hour,end_hour,transaction_count,revenue))
+            revenues.append(revenue)
+            transaction_counts.append(transaction_count)
+        print("    delta revenue = ${:<.2f}, delta transaction count = {}".format(revenues[0] - revenues[1], transaction_counts[0] - transaction_counts[1]))
+        print("="*72)
+
+        print("hour CKAN1 results     CKAN2 results              deltas")
+
+        fmt = "{:>2} {:>6} ${:>8.2f}      {:>6} ${:>8.2f}       {:>6} {}"
+
+        cumulative_ckan_revenues = [0.0, 0.0]
+        cumulative_ckan_counts = [0, 0]
+        for start_hour in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]:
+            end_hour = start_hour + 1
+            start_dt = datetime(year=start_date.year, month=start_date.month, day=start_date.day, hour=start_hour) # minute, second, and millisecond will default to zero
+            end_dt = start_dt + timedelta(hours=1)
+            revenues, transaction_counts = [], []
+            for k,source in enumerate(sources):
+                revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
+                revenues.append(revenue)
+                transaction_counts.append(transaction_count)
+                cumulative_ckan_revenues[k] += revenue
+                cumulative_ckan_counts[k] += transaction_count
+            delta_t = transaction_counts[0] - transaction_counts[1]
+            delta_p = revenues[0] - revenues[1]
+            delta_t_str = "" if abs(delta_t) < 0.5 else delta_t
+            delta_p_str = "" if abs(delta_p) < 0.005 else "${:<8.2f}".format(delta_p)
+            print(fmt.format(start_hour,transaction_counts[0],revenues[0],transaction_counts[1],revenues[1],delta_t_str,delta_p_str))
+            time.sleep(0.05)
+
+        print("-------------------------------------------------------")
+        print(fmt.format("", cumulative_ckan_counts[0],cumulative_ckan_revenues[0],cumulative_ckan_counts[1],cumulative_ckan_revenues[1],cumulative_ckan_counts[0]-cumulative_ckan_counts[1],cumulative_ckan_revenues[0]-cumulative_ckan_revenues[1]))
+        for source in sources:
+            print("get_resource_id() = {}".format(get_resource_id(ref_time,package_id_override=source['package_id'])))
+            #print("cumulative_ckan_revenue = ${}".format(cumulative_ckan_revenue))
+            #print("cumulative_ckan_count = {}".format(cumulative_ckan_count))
+
+            clear_table(ref_time,package_id_override=source['package_id'])
+    except requests.exceptions.ConnectionError:
+        print("[Unable to check CKAN repository while offline.]")
+
 def main(start_date_str=None,end_date_str=None):
     batch_analysis(start_date_str,end_date_str)
 
