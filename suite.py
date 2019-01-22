@@ -517,6 +517,17 @@ def add_month_to_date(d):
         d = d.replace(month = d.month + 1)
     return d
 
+def parse_date_range(date_string):
+    try:
+        start_dt = datetime.strptime(date_string,'%Y-%m-%d') # This will be local time.
+        end_dt = start_dt + timedelta(days=1)
+        time_scope = {'date_type': 'day', 'start_dt': start_dt, 'end_dt': end_dt}
+        return time_scope, start_dt, end_dt
+    except ValueError:
+        start_dt = datetime.strptime(date_string,'%Y-%m') # This will be midnight of the first day of the month.
+        end_dt = add_month_to_date(start_dt)
+        time_scope = {'date_type': 'month', 'start_dt': start_dt, 'end_dt': end_dt}
+        return time_scope, start_dt, end_dt
 def main(start_date_str=None,end_date_str=None):
     batch_analysis(start_date_str,end_date_str)
 
