@@ -73,13 +73,15 @@ def query_resource(site,query,API_key=None):
     data = response['records']
     return data
 
-def get_resource_id(ref_time):
+def get_resource_id(ref_time,package_id_override=None):
     by_name = True
     if ref_time == 'hybrid':
         from credentials import transactions_resource_id as resource_id
     elif ref_time in ['purchase_time', 'purchase_time_utc']:
         if by_name:
             from credentials import site, ckan_api_key as API_key, transactions_package_id as package_id, resource_name
+            if package_id_override is not None:
+                package_id = package_id_override
             resource_id = find_resource_id(site,package_id,resource_name,API_key)
             if resource_id is None:
                 raise ValueError("No resource found for package ID = {}, resource name = {}.".format(package_id,resource_name))
@@ -93,7 +95,7 @@ def get_resource_id(ref_time):
         raise ValueError("ref_time must specify the reference time to determine the correct resource ID.")
     return resource_id
 
-def get_revenue_and_count(split_by_mode,ref_time,zone,start_date,end_date,start_hour,end_hour,start_dt=None,end_dt=None,save_all=False):
+def get_revenue_and_count(split_by_mode,ref_time,zone,start_date,end_date,start_hour,end_hour,start_dt=None,end_dt=None,save_all=False,package_id_override=None):
     # Two models for getting data:
     # 1) Do a SQL query for all records in the start_date to end_date
     # range, then pare down to the hour range, then sum the results
@@ -112,7 +114,7 @@ def get_revenue_and_count(split_by_mode,ref_time,zone,start_date,end_date,start_
 
     #   Also caching for extra zones would probably be necessary. 
     from credentials import site, ckan_api_key as API_key
-    resource_id = get_resource_id(ref_time)
+    resource_id = get_resource_id(ref_time,package_id_override)
     #make_datastore_public(site,resource_id,API_key)
 
     # query = 'SELECT * FROM "{}" WHERE zone = \'{}\' AND start >= \'2018-01-01\' AND start < \'2018-04-01\' ORDER BY start DESC LIMIT 3'.format(resource_id,zone)# a working query, 
