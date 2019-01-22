@@ -77,7 +77,7 @@ def get_resource_id(ref_time):
     by_name = True
     if ref_time == 'hybrid':
         from credentials import transactions_resource_id as resource_id
-    elif ref_time == 'purchase_time':
+    elif ref_time in ['purchase_time', 'purchase_time_utc']:
         if by_name:
             from credentials import site, ckan_api_key as API_key, transactions_package_id as package_id, resource_name
             resource_id = find_resource_id(site,package_id,resource_name,API_key)
