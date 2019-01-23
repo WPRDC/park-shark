@@ -604,7 +604,7 @@ def compare_to_ref(date_string,repo_name,ref_filename=None):
         ref_filepath = ref_path + ref_filename
 
     ref_revenue, ref_transaction_count = get_stats_from_file(ref_filepath)
-    print("Local reference file: ${}, {} purchases".format(ref_revenue,ref_transaction_count))
+    print("Local reference file: \n  {} purchases, totalling ${}".format(ref_transaction_count,ref_revenue))
 
     source = identify_source(repo_name)
     ref_time = "purchase_time_utc"
@@ -617,11 +617,11 @@ def compare_to_ref(date_string,repo_name,ref_filename=None):
         end_date = end_dt.date()
         set_table(ref_time,package_id_override=source['package_id'])
         revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
-        print("Pulling from the CKAN {} repository, for start_dt = {}, end_dt = {}, start_hour = {}, end_hour = {}, we get {} purchases, totalling ${}."
+        print("Pulling from the CKAN {} repository, for start_dt = {}, end_dt = {}, start_hour = {}, end_hour = {}, we get \n  {} purchases, totalling ${}."
         .format(source['repo_name'],start_dt,end_dt,start_hour,end_hour,transaction_count,revenue))
         print("    delta revenue = ${:<.2f}, delta transaction count = {}".format(revenue - ref_revenue, transaction_count - ref_transaction_count))
 
-        print("get_resource_id() = {}".format(get_resource_id(ref_time,package_id_override=source['package_id'])))
+        #print("get_resource_id() = {}".format(get_resource_id(ref_time,package_id_override=source['package_id'])))
         clear_table(ref_time,package_id_override=source['package_id'])
     except requests.exceptions.ConnectionError:
         print("[Unable to check CKAN repository while offline.]")
