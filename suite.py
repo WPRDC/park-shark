@@ -636,7 +636,7 @@ def compare_repos(date_string,repo_name1,repo_name2):
         end_date = end_dt.date()
         # [ ] The code below has not been generalized to work with start_dt and end_dt on different days.
         timespan = end_date - start_date
-        assert timespan = timedelta(days = 1)
+        assert timespan == timedelta(days = 1)
 
         for source in sources:
             set_table(ref_time,package_id_override=source['package_id'])
