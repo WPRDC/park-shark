@@ -656,7 +656,6 @@ def compare_repos(date_string,repo_name1,repo_name2):
         end_date = end_dt.date()
         # [ ] The code below has not been generalized to work with start_dt and end_dt on different days.
         timespan = end_date - start_date
-        assert timespan == timedelta(days = 1)
 
         for source in sources:
             set_table(ref_time,package_id_override=source['package_id'])
@@ -666,39 +665,38 @@ def compare_repos(date_string,repo_name1,repo_name2):
             revenues.append(revenue)
             transaction_counts.append(transaction_count)
         print("    delta revenue = ${:<.2f}, delta transaction count = {}".format(revenues[0] - revenues[1], transaction_counts[0] - transaction_counts[1]))
-        print("="*72)
 
-        print("hour CKAN1 results     CKAN2 results              deltas")
+        if timespan == timedelta(days=1):
+            print("="*72)
+            print("hour CKAN1 results     CKAN2 results              deltas")
+            fmt = "{:>2} {:>6} ${:>8.2f}      {:>6} ${:>8.2f}       {:>6} {}"
 
-        fmt = "{:>2} {:>6} ${:>8.2f}      {:>6} ${:>8.2f}       {:>6} {}"
+            cumulative_ckan_revenues = [0.0, 0.0]
+            cumulative_ckan_counts = [0, 0]
+            for start_hour in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]:
+                end_hour = start_hour + 1
+                start_dt = datetime(year=start_date.year, month=start_date.month, day=start_date.day, hour=start_hour) # minute, second, and millisecond will default to zero
+                end_dt = start_dt + timedelta(hours=1)
+                revenues, transaction_counts = [], []
+                for k,source in enumerate(sources):
+                    revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
+                    revenues.append(revenue)
+                    transaction_counts.append(transaction_count)
+                    cumulative_ckan_revenues[k] += revenue
+                    cumulative_ckan_counts[k] += transaction_count
+                delta_t = transaction_counts[0] - transaction_counts[1]
+                delta_p = revenues[0] - revenues[1]
+                delta_t_str = "" if abs(delta_t) < 0.5 else delta_t
+                delta_p_str = "" if abs(delta_p) < 0.005 else "${:<8.2f}".format(delta_p)
+                print(fmt.format(start_hour,transaction_counts[0],revenues[0],transaction_counts[1],revenues[1],delta_t_str,delta_p_str))
+                time.sleep(0.05)
 
-        cumulative_ckan_revenues = [0.0, 0.0]
-        cumulative_ckan_counts = [0, 0]
-        for start_hour in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]:
-            end_hour = start_hour + 1
-            start_dt = datetime(year=start_date.year, month=start_date.month, day=start_date.day, hour=start_hour) # minute, second, and millisecond will default to zero
-            end_dt = start_dt + timedelta(hours=1)
-            revenues, transaction_counts = [], []
-            for k,source in enumerate(sources):
-                revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
-                revenues.append(revenue)
-                transaction_counts.append(transaction_count)
-                cumulative_ckan_revenues[k] += revenue
-                cumulative_ckan_counts[k] += transaction_count
-            delta_t = transaction_counts[0] - transaction_counts[1]
-            delta_p = revenues[0] - revenues[1]
-            delta_t_str = "" if abs(delta_t) < 0.5 else delta_t
-            delta_p_str = "" if abs(delta_p) < 0.005 else "${:<8.2f}".format(delta_p)
-            print(fmt.format(start_hour,transaction_counts[0],revenues[0],transaction_counts[1],revenues[1],delta_t_str,delta_p_str))
-            time.sleep(0.05)
-
-        print("-------------------------------------------------------")
-        print(fmt.format("", cumulative_ckan_counts[0],cumulative_ckan_revenues[0],cumulative_ckan_counts[1],cumulative_ckan_revenues[1],cumulative_ckan_counts[0]-cumulative_ckan_counts[1],cumulative_ckan_revenues[0]-cumulative_ckan_revenues[1]))
+            print("-------------------------------------------------------")
+            print(fmt.format("", cumulative_ckan_counts[0],cumulative_ckan_revenues[0],cumulative_ckan_counts[1],cumulative_ckan_revenues[1],cumulative_ckan_counts[0]-cumulative_ckan_counts[1],cumulative_ckan_revenues[0]-cumulative_ckan_revenues[1]))
+            #for source in sources:
+            #    print("get_resource_id() = {}".format(get_resource_id(ref_time,package_id_override=source['package_id'])))
+        ## END if timespan == timedelta(days=1)
         for source in sources:
-            print("get_resource_id() = {}".format(get_resource_id(ref_time,package_id_override=source['package_id'])))
-            #print("cumulative_ckan_revenue = ${}".format(cumulative_ckan_revenue))
-            #print("cumulative_ckan_count = {}".format(cumulative_ckan_count))
-
             clear_table(ref_time,package_id_override=source['package_id'])
     except requests.exceptions.ConnectionError:
         print("[Unable to check CKAN repository while offline.]")
