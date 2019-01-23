@@ -120,8 +120,10 @@ def get_revenue_and_count(split_by_mode,ref_time,zone,start_date,end_date,start_
     # query = 'SELECT * FROM "{}" WHERE zone = \'{}\' AND start >= \'2018-01-01\' AND start < \'2018-04-01\' ORDER BY start DESC LIMIT 3'.format(resource_id,zone)# a working query, 
     # which exactly bins the quarter
 
-    start_string = start_date.strftime("%Y-%m-%d") # This should be the first date in the range.
-    end_string = end_date.strftime("%Y-%m-%d")     # This should be the last date in the range.
+    if start_date is not None:
+        start_string = start_date.strftime("%Y-%m-%d") # This should be the first date in the range.
+    if end_date is not None:
+        end_string = end_date.strftime("%Y-%m-%d")     # This should be the last date in the range.
     #query = 'SELECT SUM(payments) as total_payments, COUNT(_id) as transactions FROM "{}" WHERE zone = \'{}\' AND start >= \'{}\' AND start <= \'{}\''.format(resource_id,zone,start_string,end_string)
 
     new_approach = True
@@ -202,9 +204,8 @@ def get_revenue_and_count(split_by_mode,ref_time,zone,start_date,end_date,start_
     #    data = query_resource(site,query,API_key)
     #    pprint(data)
     #    raise ValueError("Take a look at these transactions from start_hour == {}".format(start_hour))
-
-    if end_date > datetime.now().date():
-        print("The end_date {} is in the future.".format(end_date))
+    if ((end_dt is not None) and (end_dt > datetime.now())) or ((end_date is not None) and (end_date > datetime.now().date())):
+        print("The end date ({}|{}) is in the future.".format(end_date,end_dt))
         print("... though maybe flagging things as too far in the future or past or in an incomplete quarter should be handled in a separate function.") 
 
     if data[0]['total_payments'] is not None:
