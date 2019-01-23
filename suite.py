@@ -634,6 +634,10 @@ def compare_repos(date_string,repo_name1,repo_name2):
         revenues, transaction_counts = [], []
         start_date = start_dt.date()
         end_date = end_dt.date()
+        # [ ] The code below has not been generalized to work with start_dt and end_dt on different days.
+        timespan = end_date - start_date
+        assert timespan = timedelta(days = 1)
+
         for source in sources:
             set_table(ref_time,package_id_override=source['package_id'])
             revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
