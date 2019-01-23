@@ -626,13 +626,25 @@ def compare_to_ref(date_string,repo_name,ref_filename=None):
     except requests.exceptions.ConnectionError:
         print("[Unable to check CKAN repository while offline.]")
 
+def check_repo(split_by_mode,ref_time,start_dt,end_dt,package_id_override=None):
+    try:
+        set_table(ref_time,package_id_override=source['package_id'])
+        revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=None,end_date=None,start_hour=None,end_hour=None,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=package_id_override)
+        print("Pulling from a CKAN repository, for start_dt = {}, end_dt = {} we get {} purchases, totalling ${}."
+        .format(source['repo_name'],start_dt,end_dt,transaction_count,revenue))
+        clear_table(ref_time,package_id_override=source['package_id'])
+        return revenue, transaction_count
+    except requests.exceptions.ConnectionError:
+        print("[Unable to check CKAN repository while offline.]")
+        return None, None
+
 def compare_repos(date_string,repo_name1,repo_name2):
     # This function should be able to compare two CKAN repositories (by code name).
     source1 = identify_source(repo_name1)
     source2 = identify_source(repo_name2)
     sources = [source1,source2]
 
-    time_scope, start_dt, end_dt = parse_date_range(date_string)
+    time_scope, start_dt, end_dt, date_string = parse_date_range(date_string)
 
     ref_time = "purchase_time_utc"
     split_by_mode = True
