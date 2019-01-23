@@ -550,23 +550,7 @@ def parse_date_range(date_string):
         time_scope = {'date_type': 'month', 'start_dt': start_dt, 'end_dt': end_dt}
         return time_scope, start_dt, end_dt, date_string
 
-def compare_to_ref(date_string,repo_name,ref_filename=None):
-    # This function should be able to compare two CKAN repositories (by code name)
-    # or one CKAN repository and one local reference file (pulled from CALE Web
-    # Office). Local reference files are in cwo_refs/.
-    # Sample filenames are
-    # 2017-06-16-DOWNTOWN1-Historical-Purchases.csv
-    # 2017-06-16-DOWNTOWN1-Summary.csv
-    # 2017-06-16-OAKLAND1-Historical-Purchases.csv
-    # 2017-06-16-SHER-HAR-L-Historical-Purchases.csv
-    # 2017-06-16-all-Purchases.csv
-    time_scope, start_dt, end_dt, date_string = parse_date_range(date_string)
-    path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
-    ref_path = path + "/cwo_refs/"
-    if ref_filename is None:
-        ref_filepath = ref_path + '{}-all-Summary.csv'.format(date_string)
-    else:
-        ref_filepath = ref_path + ref_filename
+def get_stats_from_file(ref_filepath):
     with open(ref_filepath, 'r') as f:
     # CALE Web Office summary file format is like this:
     # Total Row Count,23830
@@ -599,7 +583,28 @@ def compare_to_ref(date_string,repo_name,ref_filename=None):
                     stats[field] = float(value)
         ref_revenue = stats['Amount (Sum)']
         ref_transaction_count = stats['No of Purchases (Sum)']
-        print("Local reference file: ${}, {} purchases".format(ref_revenue,ref_transaction_count))
+        return ref_revenue, ref_transaction_count
+
+def compare_to_ref(date_string,repo_name,ref_filename=None):
+    # This function should be able to compare two CKAN repositories (by code name)
+    # or one CKAN repository and one local reference file (pulled from CALE Web
+    # Office). Local reference files are in cwo_refs/.
+    # Sample filenames are
+    # 2017-06-16-DOWNTOWN1-Historical-Purchases.csv
+    # 2017-06-16-DOWNTOWN1-Summary.csv
+    # 2017-06-16-OAKLAND1-Historical-Purchases.csv
+    # 2017-06-16-SHER-HAR-L-Historical-Purchases.csv
+    # 2017-06-16-all-Purchases.csv
+    time_scope, start_dt, end_dt, date_string = parse_date_range(date_string)
+    path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
+    ref_path = path + "/cwo_refs/"
+    if ref_filename is None:
+        ref_filepath = ref_path + '{}-all-Summary.csv'.format(date_string)
+    else:
+        ref_filepath = ref_path + ref_filename
+
+    ref_revenue, ref_transaction_count = get_stats_from_file(ref_filepath)
+    print("Local reference file: ${}, {} purchases".format(ref_revenue,ref_transaction_count))
 
     source = identify_source(repo_name)
     ref_time = "purchase_time_utc"
