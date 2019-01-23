@@ -536,16 +536,19 @@ def add_month_to_date(d):
     return d
 
 def parse_date_range(date_string):
+    if date_string[-1] in ["-", "/"]: # Adding a trailing character to a month date string
+        date_string = date_string[:-1] # is a hack to work around Google Fire's tendency to
+        # interpret strings like "2017-10" as expressions for integers.
     try:
         start_dt = datetime.strptime(date_string,'%Y-%m-%d') # This will be local time.
         end_dt = start_dt + timedelta(days=1)
         time_scope = {'date_type': 'day', 'start_dt': start_dt, 'end_dt': end_dt}
-        return time_scope, start_dt, end_dt
+        return time_scope, start_dt, end_dt, date_string
     except ValueError:
         start_dt = datetime.strptime(date_string,'%Y-%m') # This will be midnight of the first day of the month.
         end_dt = add_month_to_date(start_dt)
         time_scope = {'date_type': 'month', 'start_dt': start_dt, 'end_dt': end_dt}
-        return time_scope, start_dt, end_dt
+        return time_scope, start_dt, end_dt, date_string
 
 def compare_to_ref(date_string,repo_name,ref_filename=None):
     # This function should be able to compare two CKAN repositories (by code name)
@@ -557,7 +560,7 @@ def compare_to_ref(date_string,repo_name,ref_filename=None):
     # 2017-06-16-OAKLAND1-Historical-Purchases.csv
     # 2017-06-16-SHER-HAR-L-Historical-Purchases.csv
     # 2017-06-16-all-Purchases.csv
-    time_scope, start_dt, end_dt = parse_date_range(date_string)
+    time_scope, start_dt, end_dt, date_string = parse_date_range(date_string)
     path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
     ref_path = path + "/cwo_refs/"
     if ref_filename is None:
