@@ -48,9 +48,9 @@ class MetersSchema(pl.BaseSchema):
     #restrictions = fields.String(dump_to='restrictions',allow_none=True)
     created_utc = fields.DateTime(dump_to='created_utc',allow_none=True) # This works
     # because Marshmallow can take an ISO-formatted datetime and turn it into a DateTime field.
-    active_utc = fields.DateTime(dump_to='active_utc',allow_none=True)
+    #active_utc = fields.DateTime(dump_to='active_utc',allow_none=True)
     in_service_utc = fields.DateTime(dump_to='in_service_utc',allow_none=True)
-    inactive_utc = fields.DateTime(dump_to='inactive_utc',allow_none=True)
+    #inactive_utc = fields.DateTime(dump_to='inactive_utc',allow_none=True)
     removed_utc = fields.DateTime(dump_to='removed_utc',allow_none=True)
 
     class Meta:
