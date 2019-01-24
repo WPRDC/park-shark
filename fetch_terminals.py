@@ -165,7 +165,7 @@ def pull_terminals(*args, **kwargs):
         #new_entry['Type'] = t['Type']['@Name'] # This is "External PBC" for Virtual
         # Terminals and "CWT" for all others, so it's kind of useless.
         new_entry['Status'] = t['Status']['@Name']
-        new_entry['LocationType'] = value_or_blank('LocationType',t,['@Name'])
+        new_entry['location_type'] = value_or_blank('LocationType',t,['@Name'])
 
         new_entry['created_utc'] = value_or_blank('DateCreatedUtc',t)
         new_entry['active_utc'] = value_or_blank('DateActiveUtc',t)
@@ -190,11 +190,11 @@ def pull_terminals(*args, **kwargs):
         # ends in "-L". (Using the Parent Terminal Structure also snags
         # virtual terminals).
         if is_a_virtual_lot(t):
-            new_entry['LocationType'] = "Virtual Lot"
+            new_entry['location_type'] = "Virtual Lot"
         elif is_a_lot(t):
-            new_entry['LocationType'] = "Lot"
+            new_entry['location_type'] = "Lot"
         elif is_a_virtual_zone(t):
-            new_entry['LocationType'] = "Virtual Zone"
+            new_entry['location_type'] = "Virtual Zone"
         new_entry['Zone'], new_numbered_zone, new_enforcement_zone  = numbered_zone(t['@Id'],t)
         if new_numbered_zone is not None:
             uncharted_numbered_zones.append(new_numbered_zone)
@@ -213,16 +213,16 @@ def pull_terminals(*args, **kwargs):
                 print("      FOUND A NEW group_lookup PAIR: {}".format(group_lookup_addendum))
 
         #print('{}: ID = {}, new zone = {}'.format(k,t['@Id'],new_entry['Zone']))
-        new_entry['AllGroups'] = char_delimit(all_groups(t),'|')
+        new_entry['all_groups'] = char_delimit(all_groups(t),'|')
 
         set_of_all_groups.update(all_groups(t))
 
         new_entry['ParentStructure'] = t['ParentTerminalStructure']['@Name']
         new_entry['OldZone'] = corrected_zone_name(t)
 
-        if new_entry['LocationType'] not in ['','Virtual Lot','Virtual Zone']:
-            zone_type[new_entry['Zone']] = new_entry['LocationType']
-            # This takes the most recent LocationType and assumes that it applies
+        if new_entry['location_type'] not in ['','Virtual Lot','Virtual Zone']:
+            zone_type[new_entry['Zone']] = new_entry['location_type']
+            # This takes the most recent location_type and assumes that it applies
             # to the entire zone. One bogus data point could throw this off,
             # and it would be more robust to keep a list of types and then
             # check that they are all the same before committing to that type.
@@ -260,7 +260,7 @@ def pull_terminals(*args, **kwargs):
             list_of_dicts.append(new_entry)
 
     #dkeys = list(list_of_dicts[0].keys()) # This does not set the correct order for the field names.
-    dkeys = ['ID','Location','LocationType','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','AllGroups','GUID','Cost per hour',#'Rate',
+    dkeys = ['ID','Location','location_type','Latitude','Longitude','Status', 'Zone','ParentStructure','OldZone','all_groups','GUID','Cost per hour',#'Rate',
     'Rate information','Restrictions','description',
     'InstallationDate','TariffPrograms','TariffDescriptions',
     'created_utc','active_utc','in_service_utc','inactive_utc','removed_utc']
@@ -329,6 +329,8 @@ def pull_terminals(*args, **kwargs):
 
     if return_extra_zones:
         return list(sampling_zones), parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum
+        # process_data.py only uses this branch, so changing the names of fields in list_of_dicts will not have
+        # any effect on process_data.py
     else:
         return list_of_dicts, dkeys # The data that was previously written to the payment_points.csv file.
 ############
