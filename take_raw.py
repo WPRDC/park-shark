@@ -375,7 +375,11 @@ def main(*args, **kwargs):
 
     pgh = pytz.timezone('US/Eastern')
     use_cache = kwargs.get('use_cache', False)
-    terminals = get_terminals(use_cache)
+    try:
+        terminals = get_terminals(use_cache)
+    except requests.exceptions.ConnectionError:
+        terminals = get_terminals(True)
+        use_cache = True
 
     t_ids = [t['@Id'] for t in terminals]
     t_guids = [t['@Guid'] for t in terminals]
