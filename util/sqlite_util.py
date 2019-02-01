@@ -47,7 +47,7 @@ def get_cached_dates_table(date_filepath,date_table_name):
         db = dataset.connect('sqlite:///'+date_filepath)
         table = db[date_table_name]
     except sqlalchemy.exc.NoSuchTableError as e:
-        print("Unable to load database {} and table {}.".format(date_filepath,data_table_name))
+        print("Unable to load database {} and table {}.".format(date_filepath,date_table_name))
         table = db.create_table(date_table_name, primary_id = 'date', primary_type = 'String')
     return table
 
