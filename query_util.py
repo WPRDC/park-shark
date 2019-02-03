@@ -113,6 +113,12 @@ def get_revenue_and_count(split_by_mode,ref_time,zone,start_date,end_date,start_
     #   for the Southside, once parking became non-free late there on weekends.
 
     #   Also caching for extra zones would probably be necessary. 
+
+
+    # [ ] Note that splitting by mode is essentially the standard now, and the split_by_mode
+    # variable and logic could be removed.
+    # [ ] Similary new_approach (using start_dt and end_dt rather than splitting day and
+    # hour into separate query parts) could also be removed.
     from credentials import site, ckan_api_key as API_key
     resource_id = get_resource_id(ref_time,package_id_override)
     #make_datastore_public(site,resource_id,API_key)
