@@ -38,6 +38,8 @@ def main(*args,**kwargs):
     spacetime = kwargs.get('spacetime','zone')
     server = kwargs.get('server','debug')
     csv_filename = 'test-{}.csv'.format(slot_start.date())
+    #utc_json_folder = 'utc_json_completed'
+    utc_json_folder = 'utc_json'
     # Note that these days are chosen to be within the last 7 days so that 
     # the data can be pulled from the API without using the bulk API (and 
     # without doing any caching). It might be more efficient to pull all of 
@@ -50,7 +52,7 @@ def main(*args,**kwargs):
         terminals = get_terminals(use_cache)
     except requests.exceptions.ConnectionError:
         use_cache = True
-    success = process_data.main(use_cache=use_cache, server=server, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, spacetime = spacetime, caching_mode = 'utc_sqlite', slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 5000, filename = csv_filename)
+    success = process_data.main(use_cache=use_cache, server=server, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, spacetime = spacetime, caching_mode = 'utc_sqlite', utc_json_folder = utc_json_folder, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 5000, filename = csv_filename)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 

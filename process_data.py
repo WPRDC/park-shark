@@ -748,7 +748,7 @@ def get_doc_from_url(url):
     doc = xmltodict.parse(xml,encoding = 'utf-8')
     return doc, True
 
-def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
+def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False,utc_json_folder='utc_json'):
     """Caches parking once it's been downloaded and checks
     cache before redownloading.
 
@@ -771,7 +771,7 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
     dashless = slot_start.strftime('%y%m%d')
     if tz == pytz.utc:
-        filename = path + "utc_json/"+dashless+".json"
+        filename = path + utc_json_folder + "/" + dashless + ".json"
     else:
         filename = path + "json/"+dashless+".json"
 
@@ -836,7 +836,7 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False):
 
     return ps
 
-def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False):
+def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False,utc_json_folder="utc_json"):
     """Caches parking once it's been downloaded and checks
     cache before redownloading.
 
@@ -852,11 +852,11 @@ def get_batch_parking_for_day(slot_start,tz,cache=True,mute=False):
     files. This has been fixed by specifying the timezone
     and distinguishing between JSON-file folders."""
 
-    ps = get_day_from_json_or_api(slot_start,tz,cache,mute)
+    ps = get_day_from_json_or_api(slot_start,tz,cache,mute,utc_json_folder)
 
     return ps
 
-def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
+def get_batch_parking(slot_start,slot_end,cache,mute=False,utc_json_folder="utc_json",tz=pytz.timezone('US/Eastern'),time_field = '@PurchaseDateLocal',dt_format='%Y-%m-%dT%H:%M:%S'):
     """This function handles the situation where slot_start and slot_end are on different days
     by calling get_batch_parking_for_day in a loop.
 
@@ -880,7 +880,7 @@ def get_batch_parking(slot_start,slot_end,cache,mute=False,tz=pytz.timezone('US/
         ps_all = []
         dt_start_i = slot_start
         while dt_start_i < slot_end:
-            ps_for_whole_day = get_batch_parking_for_day(dt_start_i,tz,cache,mute)
+            ps_for_whole_day = get_batch_parking_for_day(dt_start_i,tz,cache,mute,utc_json_folder,utc_json_folder)
             ps_all += ps_for_whole_day
             dt_start_i += timedelta(days = 1)
             if not mute:
@@ -1056,7 +1056,7 @@ def add_n_years(p,dt_field,n):
         new_value = dt_value.replace(year = dt_value.year + n)
         p[dt_field] = new_value.strftime("%Y-%m-%dT%H:%M:%S")
 
-def get_utc_ps_for_utc_day_from_json(slot_start,reference_time='purchase_time_utc',cache=True,mute=False):
+def get_utc_ps_for_utc_day_from_json(slot_start,reference_time='purchase_time_utc',cache=True,mute=False,utc_json_folder='utc_json'):
     # A variant of get_utc_ps_for_day_from_json that returns
     # all the transactions for a particular UTC day (from
     # UTC midnight to UTC midnight), eliminating all the
@@ -1161,7 +1161,7 @@ def get_utc_ps_for_utc_day_from_json(slot_start,reference_time='purchase_time_ut
         ps = []
         dts = []
         t_start_fetch = time.time()
-        ps_for_whole_day = get_day_from_json_or_api(query_start,pytz.utc,cache,mute)
+        ps_for_whole_day = get_day_from_json_or_api(query_start,pytz.utc,cache,mute,utc_json_folder)
 
         # Filter down to the events in the slot #
         datetimes = []
@@ -1331,7 +1331,7 @@ def get_utc_ps_for_utc_day_from_json(slot_start,reference_time='purchase_time_ut
 
     return ps_all, dts_all
 
-def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),reference_time='purchase_time_utc',cache=True,mute=False):
+def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern'),reference_time='purchase_time_utc',cache=True,mute=False,utc_json_folder='utc_json'):
     # Solves most of the DateCreatedUtc-StartDateUtc discrepancy by
     # collecting data over two UTC days (from a function that
     # caches API query results as raw JSON files) and then filtering
@@ -1431,7 +1431,7 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
         ps = []
         dts = []
         t_start_fetch = time.time()
-        ps_for_whole_day = get_day_from_json_or_api(query_start,pytz.utc,cache,mute)
+        ps_for_whole_day = get_day_from_json_or_api(query_start,pytz.utc,cache,mute,utc_json_folder)
 
         # Filter down to the events in the slot #
         datetimes = []
@@ -1607,7 +1607,7 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
 
     return ps_all, dts_all
 
-def get_ps_for_utc_day(dt_start_i,reference_time,cache,mute):
+def get_ps_for_utc_day(dt_start_i,reference_time,cache,mute,utc_json_folder='utc_json'):
     """If possible, pull events from the sqlite cache.
 
     NOTE: If the data is already cached in a SQLite database, this
@@ -1621,10 +1621,10 @@ def get_ps_for_utc_day(dt_start_i,reference_time,cache,mute):
     if is_utc_date_cached(path,reference_time,utc_date):
         ps_for_whole_day, dts_for_whole_day = get_events_from_sqlite(path,utc_date,reference_time)
     else:
-        ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_utc_day_from_json(dt_start_i,reference_time,cache,mute)
+        ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_utc_day_from_json(dt_start_i,reference_time,cache,mute,utc_json_folder)
     return ps_for_whole_day, dts_for_whole_day
 
-def get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute):
+def get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute,utc_json_folder='utc_json'):
     """If possible, pull events from the sqlite cache.
 
     NOTE: If the data is already cached in a SQLite database, this
@@ -1638,10 +1638,10 @@ def get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute):
     if is_date_cached(path,reference_time,local_date):
         ps_for_whole_day, dts_for_whole_day = get_events_from_sqlite(path,local_date,reference_time)
     else:
-        ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute)
+        ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute,utc_json_folder)
     return ps_for_whole_day, dts_for_whole_day
 
-def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,caching_mode='utc_sqlite'):
+def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,caching_mode='utc_sqlite',utc_json_folder='utc_json'):
     # Basically, this function gets all the parking events between slot_start and start_end (using time_field)
     # to choose the field to filter on, and maintains an in-memory global cache of all parking events for the
     # entire day corresponding to the last date called. Thus, when slot_start moves from January 1st to
@@ -1685,11 +1685,11 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
         dt_start_i = slot_start
         while dt_start_i.date() <= slot_end.date():
             if caching_mode == 'utc_json':
-                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute)
+                ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute,utc_json_folder)
             elif caching_mode == 'utc_sqlite':
-                ps_for_whole_day, dts_for_whole_day = get_ps_for_utc_day(dt_start_i,reference_time,cache,mute)
+                ps_for_whole_day, dts_for_whole_day = get_ps_for_utc_day(dt_start_i,reference_time,cache,mute,utc_json_folder)
             elif caching_mode == 'sqlite':
-                ps_for_whole_day, dts_for_whole_day = get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute)
+                ps_for_whole_day, dts_for_whole_day = get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute,utc_json_folder)
                 # The reason it's OK to use get_ps_for_day_local (probably) is because the filtering down to
                 # the required time range is done at the bottom of this function.
             elif caching_mode == 'db_caching':
@@ -1738,7 +1738,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
     last_utc_date_cache = slot_start.date()
     return ps
 
-def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,caching_mode='utc_sqlite'):
+def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,caching_mode='utc_sqlite',utc_json_folder="utc_json"):
     # slot_start and slot_end must have time zones so that they
     # can be correctly converted into UTC times for interfacing
     # with the /Cah LAY/ API.
@@ -1763,13 +1763,13 @@ def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,ca
     if caching_mode in ['utc_json', 'sqlite', 'utc_sqlite'] or recent:
         #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live"
         # (recent transactions) API.
-        return cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute,caching_mode)
+        return cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute,caching_mode,utc_json_folder)
     else: # Currently utc_json mode is considered the default and the get_batch_parking
         # functions are considered to be deprecated.
         #elif caching_mode == 'local_json': # The original approach
-        return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@StartDateUtc')
-        #return get_batch_parking(slot_start,slot_end,cache,mute,pytz.utc,time_field = '@PurchaseDateUtc')
-        #return get_batch_parking(slot_start,slot_end,cache,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
+        return get_batch_parking(slot_start,slot_end,cache,mute,utc_json_folder,pytz.utc,time_field = '@StartDateUtc')
+        #return get_batch_parking(slot_start,slot_end,cache,mute,utc_json_folder,pytz.utc,time_field = '@PurchaseDateUtc')
+        #return get_batch_parking(slot_start,slot_end,cache,mute,utc_json_folder,pytz.utc,time_field = '@DateCreatedUtc',dt_format='%Y-%m-%dT%H:%M:%S.%f')
 
 def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot_start,slot_end,space_aggregate_by,time_aggregate_by,split_by_mode,transactions_only):
     # This function works for zones and sampling zones. It has now been modified
@@ -1964,6 +1964,7 @@ def main(*args, **kwargs):
         turbo_mode = True
     skip_processing = kwargs.get('skip_processing',False)
     caching_mode = kwargs.get('caching_mode','utc_sqlite')
+    utc_json_folder = kwargs.get('utc_json_folder','utc_json')
 
     threshold_for_uploading = kwargs.get('threshold_for_uploading',1000) # The
     # minimum length of the list of dicts that triggers uploading to CKAN.
@@ -2138,7 +2139,7 @@ def main(*args, **kwargs):
     if seeding_mode:
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
-        purchases = eliminate_zeros(get_parking_events(db,slot_start - warm_up_period,slot_start,pgh,True,False,caching_mode))
+        purchases = eliminate_zeros(get_parking_events(db,slot_start - warm_up_period,slot_start,pgh,True,False,caching_mode,utc_json_folder))
 
         if estimate_occupancy:
             for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
@@ -2173,7 +2174,7 @@ def main(*args, **kwargs):
         if slot_end > datetime.now(pytz.utc): # Clarify the true time bounds of slots that
             slot_end = datetime.now(pytz.utc) # run up against the limit of the current time.
 
-        purchases = eliminate_zeros(get_parking_events(db,slot_start,slot_end,pgh,True,False,caching_mode))
+        purchases = eliminate_zeros(get_parking_events(db,slot_start,slot_end,pgh,True,False,caching_mode,utc_json_folder))
         t1 = time.time()
 
         if skip_processing:
