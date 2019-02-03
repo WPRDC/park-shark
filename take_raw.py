@@ -13,6 +13,8 @@ import zipfile
 from io import BytesIO # Works only under Python 3
 from copy import copy
 
+import decimal
+
 import time, pytz
 from pprint import pprint
 from datetime import datetime, timedelta
@@ -41,6 +43,18 @@ last_utc_date_cache = None
 utc_ps_cache = []
 utc_dts_cache = []
 
+def round_schoolwise(x):
+    # This kind of rounding (at least for positive numbers, not yet tested for negative numbers)
+    # seemed necessary to match CALE's arithmetic.
+
+    # However, using it leaves 429 unresolved as opposed to 435 unresolved when using Python's round function.
+
+    # [ ] It's worth checking if this rounding is also used by ParkMobile.
+    if x > 0:
+        rounded = int(decimal.Decimal(x).quantize(decimal.Decimal('1'), rounding=decimal.ROUND_HALF_UP))
+    else:
+        rounded = int(decimal.Decimal(x).quantize(decimal.Decimal('1'), rounding=decimal.ROUND_HALF_DOWN))
+    return rounded
 
 def initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,split_by_mode,tz=pytz.timezone('US/Eastern'), transactions_only=True):
     stats = {}
@@ -391,7 +405,6 @@ def main(*args, **kwargs):
     slot_start = pgh.localize(datetime(2017,4,15,0,0))
     slot_start = pgh.localize(datetime.now() - timedelta(days=1))
     slot_start = pgh.localize(datetime(2018,5,21,10,0))
-    slot_start = pgh.localize(datetime(2019,1,28,10,0))
     slot_start = kwargs.get('slot_start',slot_start)
     timechunk = timedelta(hours=1)
 
