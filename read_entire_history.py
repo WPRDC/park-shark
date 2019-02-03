@@ -17,12 +17,14 @@
 # some kind of pipeline/job manager that can send out notifications if a 
 # particular ETL job fails.
 
-import pytz
+import pytz, requests
 from datetime import datetime, timedelta
 from dateutil import parser
 import process_data
 import sys
 from pprint import pprint
+
+from util.util import get_terminals
 
 def main(*args,**kwargs):
     pgh = pytz.timezone('US/Eastern')
