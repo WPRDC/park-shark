@@ -1912,6 +1912,7 @@ def eliminate_zeros(ps):
     # ParkMobile accepts $0 transactions out of hours (e.g., payments on Sundays, when
     # parking is free). This function filters them out, so they are not considered in
     # the analysis.
+    # return ps
     return [p for p in ps if float(p['@Amount']) != 0.0]
 
 def resource_name(spacetime):
