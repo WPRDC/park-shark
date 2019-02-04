@@ -825,6 +825,10 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False,utc_json_folder
 
 
         if cache and not too_soon:
+            # Check if directory exists.
+            directory = '/'.join(filename.split('/')[:-1])
+            if not os.path.isdir(directory):
+                os.mkdir(directory)
             # Caching data from the LiveDataExport endpoint (but not today's data) is an interesting experiment.
             with open(filename, "w") as f:
                 json.dump(purchases,f,indent=2)
