@@ -261,8 +261,7 @@ def find_payment_type(p):
         else:
             raise ValueError("Unknown payment type for @PayUnitName {} from payment {}.".format(pay_unit_name,p))
 
-
-def raw_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zones,uncharted_e_zones,turbo_mode,raw_only,transactions_only,extend=True):
+def raw_reframe(p,terminals,t_guids,group_lookup_addendum):
     """Take a dictionary and generate a new dictionary from it that samples
     the appropriate keys and renames and transforms as desired."""
 
@@ -277,28 +276,18 @@ def raw_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zo
     row['TerminalID'] = p['@TerminalID']
     if p['@TerminalGuid'] in t_guids:
         t = terminals[t_guids.index(p['@TerminalGuid'])]
-        if extend:
-            row['Latitude'] = value_or_blank('Latitude',t)
-            row['Longitude'] = value_or_blank('Longitude',t)
-            # Maybe these should be value_or_none instead.
-            row['List_of_sampling_groups'] = sampling_groups(t,uncharted_n_zones,uncharted_e_zones)
 
     # [ ] Decide whether to make a Coin+Card purchase type or
     # to split those over two rows and require the purchase medium
     # as a primary key (in addition to Purchase GUID).
-    if not transactions_only:
-        if 'Duration' in p:
-            row['Duration'] = p['Duration']
-        else:
-            row['Duration'] = None
 
     mobile = is_mobile_payment(p)
     row['Is Mobile Payment'] = mobile
     row['payment_start_utc'] = p['@PayIntervalStartUtc']
     row['payment_end_utc'] = p['@PayIntervalEndUtc']
     row['payment_end_local'] = p['@PayIntervalEndLocal']
-    row['purchase_date_utc'] = p['@PurchaseDateUtc'] if mobile else None
-    row['date_recorded_utc'] = p['@DateCreatedUtc'] if mobile else None
+    row['purchase_date_utc'] = p['@PurchaseDateUtc'] if not mobile else None
+    row['date_recorded_utc'] = p['@DateCreatedUtc'] # Only used as a timestamp proxy for non-mobile transactions.
     row['@DateCreatedUtc'] = p['@DateCreatedUtc']
 
     row['mobile_transaction_id'] = p['PurchasePayUnit']['@TransactionReference'] if (mobile and 'PurchasePayUnit' in p and '@TransactionReference' in p['PurchasePayUnit']) else None
@@ -310,6 +299,8 @@ def raw_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zo
     row['amount'] = float(p['@Amount']) # <== This amount is the total amount.
     row['cumulative_units'] = int(p['@Units'])
 
+    #########
+    row['zone'] =  numbered_zone(p['@TerminalID'],None,group_lookup_addendum)[0]
     # Payment type (cash, credit card,
     # new payment, or extension payment); [X] Done for CALE, [ ] Pending for ParkMobile
     # zone/Meter/kiosk ID; [X] meter ID [ ] Zone pending (downstream)
@@ -516,7 +507,7 @@ def main(*args, **kwargs):
         purchases = sorted(purchases, key = lambda x: x['@DateCreatedUtc'])
         rps = []
         for p in purchases:
-            rps.append(raw_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=True))
+            rps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum))
 
         # Augment raw transactions by inferring rate
         # infer_rates(rps,purchases)
@@ -613,7 +604,7 @@ def main(*args, **kwargs):
                     # Policy change: It's not necessary to assign a Duration to a transaction (since we're breaking the old inaccuate approach
                     # to calculating durations. The Duration field is only a non-None value now when the duration of the transaction can
                     # be determined (e.g., by linking transactions and untangling true segments and durations that the parker paid for).
-            reframed_ps.append(raw_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=True))
+            reframed_ps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum))
 
         # Temporary for loop to check for unconsidered virtual zone codes.
         #for rp in reframed_ps:
