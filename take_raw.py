@@ -528,26 +528,6 @@ def main(*args, **kwargs):
             session_dict = defaultdict(list) # Restart the history when a new day is encountered.
 
 
-        if False: #estimate_occupancy:
-            # First cluster into sessions
-            for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-                if 'hash' in p:                        # Keep a running history of all
-                    session_dict[p['hash']].append(p)  # purchases for a given day.
-                    linkable.append(p)
-                else:
-                    unlinkable.append(p)
-
-            all_unlinkable += unlinkable
-            # Iterate through the new purchases and add the corrected durations where possible.
-            for p in linkable:
-                session = session_dict[p['hash']] + previous_session_dict[p['hash']]
-                fix_one_duration(p,session)
-            #for p in unlinkable: # Actually, I think that durations should not be added to
-            #    add_duration(p)  # unlinkable (hash-free) transactions, since the value
-                                  # is deceptive.
-            print("{} | {} purchases, ${}, len(linkable) = {}, len(unlinkable) = {}".format(datetime.strftime(slot_start.astimezone(pgh),"%Y-%m-%d %H:%M:%S ET"),
-                len(purchases),sum([float(p['@Amount']) for p in purchases]),len(linkable), len(unlinkable)))
-
         for p in purchases: # This was previously "for p in linkable + unlinkable" before the estimate_occupancy hack was put in place.
             reframed_ps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum))
 
