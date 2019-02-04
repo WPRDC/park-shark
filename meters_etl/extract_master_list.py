@@ -1,4 +1,4 @@
-import os,csv
+import os,csv,re
 from xlrd import open_workbook
 
 from pprint import pprint
@@ -114,11 +114,15 @@ with open(path+'meters-2019-01-29.csv','r') as g:
     for d in list_of_ds:
         if d['ID'] in meter_data:
             meter = meter_data[d['ID']]
-            if meter['rate'] not in rates_by_tariff_program[d['TariffPrograms']]:
-                rates_by_tariff_program[d['TariffPrograms']].append(meter['rate'])
-            if meter['rate'] not in rates_by_meter_id[d['ID']]:
-                rates_by_meter_id[d['ID']].append(meter['rate'])
-            d['rate_master'] = meter['rate']
+            meter_rate = meter['rate']
+            if meter_rate is not None:
+                meter_rate = re.sub("\.00","",meter_rate)
+                meter_rate = re.sub("HR","hr",re.sub("Hr","hr",meter_rate))
+                if meter_rate not in rates_by_tariff_program[d['TariffPrograms']]:
+                    rates_by_tariff_program[d['TariffPrograms']].append(meter_rate)
+                if meter_rate not in rates_by_meter_id[d['ID']]:
+                    rates_by_meter_id[d['ID']].append(meter_rate)
+            d['rate_master'] = meter_rate
             d['max_hours_master'] = meter['max_hours']
             d['hours_master'] = meter['hours']
             d['restrictions_master'] = meter['restrictions']
