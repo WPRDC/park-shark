@@ -5,8 +5,7 @@ from util.util import to_dict, value_or_blank, unique_values, zone_name, is_a_lo
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
 pull_from_url, remove_field, round_to_cent, corrected_zone_name, lot_list, \
 other_zones_list, numbered_reporting_zones_list, sampling_groups, \
-add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor, \
-build_keys
+add_element_to_set_string, add_if_new, group_by_code, numbered_zone, censor
 from fetch_terminals import pull_terminals
 import requests
 import zipfile
@@ -316,6 +315,30 @@ def raw_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zo
 
     return row
 
+def build_raw_keys(space_aggregation,time_aggregation,split_by_mode):
+    """Based on the types of spatial and temporal aggregation (and now whether
+    transactions should be split by payment mode into mobile and meter purchases),
+    synthesize and return the dictionary keys (used for writing a bunch of
+    dictionaries to a CSV file."""
+    # Given that these fields appear elsewhere in the process_data.py code, it might
+    # be a good idea to refactor things some more so that there is one source for
+    # these field names.
+
+
+    if space_aggregation == 'meter':
+        space_keys = ['TerminalID', 'TerminalGUID', 'zone']
+
+    if time_aggregation is None:
+        time_keys = ['payment_start_utc', 'payment_end_utc', 'purchase_date_utc', 'date_recorded_utc']
+    base = ['amount', 'payment_type', 'purchase_type']
+
+    # [ ] Should cumulative_units be included here?
+
+    extras = ['rate', 'mobile_transaction_id']
+
+    dkeys = space_keys + time_keys + base + extras
+    return dkeys
+
 def infer_rates(ps,original_records):
     computed_rates = defaultdict(int)
     for p,rec in zip(ps,original_records):
@@ -518,9 +541,10 @@ def main(*args, **kwargs):
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
     warmup_unlinkable_count = len(purchases) - len(linkable)
-    dkeys, sampling_dkeys, occ_dkeys = build_keys(space_aggregation, time_aggregation, split_by_mode)
-
-
+    space_aggregation = 'meter'
+    time_aggregation = None
+    spacetime = 'meter'
+    dkeys = build_raw_keys(space_aggregation, time_aggregation, split_by_mode)
 
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
