@@ -1,4 +1,4 @@
-import csv
+import os,csv
 from xlrd import open_workbook
 
 from pprint import pprint
@@ -15,7 +15,10 @@ def value_or_none(record,field):
         return record[field]
     return None
 
-path = "master_list/"
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+path = dname + "/master_list/"
+
 wb = open_workbook(path+'PPA-master-list.xlsx')
 
 zones = {}
