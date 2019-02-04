@@ -464,37 +464,6 @@ def main(*args, **kwargs):
     session_dict = defaultdict(list) # hash-based sessions
     previous_session_dict = defaultdict(list)
 
-    # The current approach to calculating durations tracks the recent transaction history
-    # and subtracts the "Units" value (the number of cumulative minutes purchased)
-    # from the previous transaction to get the incremental duration of the most
-    # recent purchase.
-
-    # (Collapsing all those transactions to a single session would be the opposite
-    # process: Whenver an older predecessor transaction is found, it is folded into
-    # one big session object to represent the whole multi-part parking purchase.)
-
-    # Since this approach relies on having a purchase history, for complete consistency
-    # (no matter for which datetime the script starts processing the same durations
-    # and session-clustering should be achieved), it would be best to run the script
-    # over some number of hours (warm_up_period) during which the purchase history
-    # is built up but the data is not output to anything (save the console).
-
-    # An edge case of concern is where a parking purchase that happens at 12:05am
-    # extends a previous purchase. To handle this, two dicts are maintained:
-    # session_dict (for the day being worked on) and previous_session_dict
-    # (which holds yesterday's contents). Both must be checked when trying to
-    # link a new transaction with an existing session.
-
-    # Using a separate seeding-mode stage considerably speeds up the warming-up
-    # period (from maybe 10 minutes to closer to one or two).
-
-    # For a high-availability (like streaming solution), try running the program
-    # continuously. This would allow the recent purchase history to be stored
-    # in memory, massively cutting down on the warm-up time. You would just
-    # need to wrap process_data in a loop that sends the CALE API a new
-    # request every 30 seconds, processes those new transactions, and update
-    # the relevant output slots.
-
     rate_lookup_by_tariff, rate_lookup_by_meter = get_lookups()
 
     seeding_mode = True
@@ -520,20 +489,7 @@ def main(*args, **kwargs):
         pprint(purchases[k])
         pprint(rps[k])
 
-        if False: #estimate_occupancy:
-            for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
-                if 'hash' in p:
-                    session_dict[p['hash']].append(p)
-                    linkable.append(p)
-
-            for session in session_dict.values():
-                fix_durations(session)
-
-            print("len(session_dict) = {}, len(linkable) = {}, len(purchases) = {}".format(len(session_dict), len(linkable), len(purchases)))
-            # If we could guarantee that all transactions would be in session_dict, we could just iterate
-            # through the pre-packaged sessions.
-        else:
-            print("len(purchases) = {}".format(len(purchases)))
+        print("len(purchases) = {}".format(len(purchases)))
 
     slot_end = slot_start + timechunk
     current_day = slot_start.date()
@@ -593,56 +549,17 @@ def main(*args, **kwargs):
                 len(purchases),sum([float(p['@Amount']) for p in purchases]),len(linkable), len(unlinkable)))
 
         for p in purchases: # This was previously "for p in linkable + unlinkable" before the estimate_occupancy hack was put in place.
-            if False: #estimate_occupancy:
-                if 'Duration' not in p or p['Duration'] is None:
-                    if 'hash' in p and p['hash'] in session_dict.keys():
-                        pprint(session_dict[p['hash']])
-                    elif verbose:
-                        print("No hash found for the transaction ")
-                        pprint(p)
-                    #raise ValueError("Error!")
-                    # Policy change: It's not necessary to assign a Duration to a transaction (since we're breaking the old inaccuate approach
-                    # to calculating durations. The Duration field is only a non-None value now when the duration of the transaction can
-                    # be determined (e.g., by linking transactions and untangling true segments and durations that the parker paid for).
             reframed_ps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum))
 
-        # Temporary for loop to check for unconsidered virtual zone codes.
-        #for rp in reframed_ps:
-        #    if rp['TerminalID'][:3] == "PBP":
-        #        code = rp['TerminalID'][3:]
-        #        if code not in virtual_zone_checked:
-        #            print("\nVerifying group code {} for a purchase at terminal {}".format(code,rp['TerminalGUID']))
-        #            code_group, _, _ = group_by_code(code)
-        #            print("Found group {}".format(code_group))
-        #            virtual_zone_checked.append(code)
-
-
-        ### BEGIN AGGREGATION/STATS-COMPILATION/OUTPUT-PREPARATION. Inputs: slot_start, slot_end,
-        ### reframed_ps, stats_rows, cumulated_dicts
-        ### zone_info, zonelist, terminals, t_ids, t_guids, group_lookup_addendum, zone_kind, pgh
-        ### dkeys  # These could conceivably be replaced in the write_to_csv function
-                   # by something that extracts the keys from the schema.
-        ### server
-        ### spacetime, space_aggregation, time_aggregation, turbo_mode, output_to_csv, push_to_CKAN, overwrite
-
-        ### It would be nice to be able to package this code up and call it twice: Once for binned transactions
-        ### by payment time and once for binned transactions with durations and inferrable occupancy, by true parking times.
-
-        ### Currently (instead) there is no abstraction to bin objects and the transactions-loop code is a more
-        ### complicated version of the occupancy-loop code (chiefly due to the different kinds of aggregations
-        ### and support for sampling zones. The transactions-loop is simpler now that the occupancy and
-        ### augmented stuff has been pulled out of it.
-
-
+    # Augment raw transactions by inferring rate
+        #infer_rates(reframed_ps,purchases)
+        lookup_rates(rps,purchases,rate_lookup_by_tariff,rate_lookup_by_meter)
     # Sort transactions by some timestamp
         reframed_ps = sorted(reframed_ps, key = lambda x: x['@DateCreatedUtc'])
     # Add extension/non-extension boolean:
     #    PurchaseTypeName: Normal/TopUp
     #    purchase_type: new/(continuation|extension)
 
-    # Augment raw transactions by inferring rate
-        #infer_rates(reframed_ps,purchases)
-        lookup_rates(rps,purchases,rate_lookup_by_tariff,rate_lookup_by_meter)
 
 # [ ] Is 'Amount' definitely the sum of all payments in the transaction?
 
@@ -692,12 +609,11 @@ def main(*args, **kwargs):
         primary_keys = ['TerminalID', 'zone', 'payment_start_utc', 'date_recorded_utc']
         success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, filtered_list_of_dicts, primary_keys=primary_keys)
 
-        success_transactions = success
     else:
-        success_transactions = None # The success Boolean should be defined when push_to_CKAN is false.
+        success = None # The success Boolean should be defined when push_to_CKAN is false.
 
 
-    return success_transactions
+    return success
 
 # Overview:
 # main() calls get_parking_events to get all transactions between two times.
