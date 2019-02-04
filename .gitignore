@@ -16,10 +16,13 @@ sqlite-pdu/
 missing_data/
 csv/
 docs/
+meters_etl/*.csv
+meters_etl/archive/
+meters_etl/remote_parameters.py
+meters_etl/*backup
 cwo_refs/
 refs/
 maps/
-meters_etl/
 sample-reports/
 batch-data/
 scratch/
