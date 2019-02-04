@@ -30,7 +30,8 @@ from parameters.local_parameters import path, SETTINGS_FILE
 from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, SplitTransactionsSchema, OccupancySchema
 from pipe.gadgets import get_resource_data
 
-from process_data import get_zone_info, eliminate_zeros, get_parking_events, is_mobile_payment
+from process_data import get_zone_info, eliminate_zeros, get_parking_events, is_mobile_payment, resource_name
+from meters_etl.extract_master_list import main as get_lookups
 
 from nonchalance import add_hashes
 
@@ -217,18 +218,6 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
 
     return stats_by
 
-def resource_name(spacetime):
-    raise ValueError("Rework this function")
-    if spacetime == 'zone':
-        return 'Transactions by Zone and Time of Day'
-    elif spacetime in ['zone,month', 'month']:
-        return 'Transactions by Zone, Month, and Time of Day'
-    elif spacetime == 'meter,month':
-        return 'Transactions by Meter, Month, and Time of Day'
-    elif spacetime == 'meter':
-        return 'Transactions by Meter and Time of Day'
-    raise ValueError("No resource name specified for spacetime = {}".format(spacetime))
-
 def add_purchase_type(p,row,mobile):
     purchase_type_field = 'purchase_type'
     if not mobile:
@@ -307,6 +296,7 @@ def raw_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zo
     row['payment_end_local'] = p['@PayIntervalEndLocal']
     row['purchase_date_utc'] = p['@PurchaseDateUtc'] if mobile else None
     row['date_recorded_utc'] = p['@DateCreatedUtc'] if mobile else None
+    row['@DateCreatedUtc'] = p['@DateCreatedUtc']
 
     row['mobile_transaction_id'] = p['PurchasePayUnit']['@TransactionReference'] if (mobile and 'PurchasePayUnit' in p and '@TransactionReference' in p['PurchasePayUnit']) else None
 
@@ -353,7 +343,7 @@ def main(*args, **kwargs):
     t_begin = time.time()
 
     output_to_csv = kwargs.get('output_to_csv',False)
-    push_to_CKAN = kwargs.get('push_to_CKAN',True)
+    push_to_CKAN = kwargs.get('push_to_CKAN',False)
     server = kwargs.get('server', 'testbed') # 'sandbox'
 
     default_filename = 'raw-transactions-1.csv'
@@ -415,6 +405,7 @@ def main(*args, **kwargs):
     # to the far future so that the script runs all the way up to the most
     # recent data (based on the slot_start < now check in the loop below).
     #halting_time = pgh.localize(datetime(2017,3,2,0,0)) # Set halting time
+    halting_time = slot_start + timedelta(hours=24)
     halting_time = kwargs.get('halting_time',halting_time)
 
     # Setting slot_start and halting_time to UTC has no effect on
@@ -484,6 +475,7 @@ def main(*args, **kwargs):
     # request every 30 seconds, processes those new transactions, and update
     # the relevant output slots.
 
+    rate_lookup_by_tariff, rate_lookup_by_meter = get_lookups()
 
     seeding_mode = True
     linkable = [] # Purchases that can be sorted into hash-based sessions.
@@ -498,7 +490,8 @@ def main(*args, **kwargs):
             rps.append(raw_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=True))
 
         # Augment raw transactions by inferring rate
-        infer_rates(rps,purchases)
+        # infer_rates(rps,purchases)
+        lookup_rates(rps,purchases,rate_lookup_by_tariff,rate_lookup_by_meter)
 
         k = 0
         #while k < len(rps) and rps[k]['purchase_type'] is None:
@@ -506,7 +499,6 @@ def main(*args, **kwargs):
         k += 3
         pprint(purchases[k])
         pprint(rps[k])
-        raise ValueError("Hold on there.")
 
         if False: #estimate_occupancy:
             for p in sorted(purchases, key = lambda x: x['@DateCreatedUtc']):
@@ -628,7 +620,8 @@ def main(*args, **kwargs):
     #    purchase_type: new/(continuation|extension)
 
     # Augment raw transactions by inferring rate
-        infer_rates(reframed_ps,purchases)
+        #infer_rates(reframed_ps,purchases)
+        lookup_rates(rps,purchases,rate_lookup_by_tariff,rate_lookup_by_meter)
 
 # [ ] Is 'Amount' definitely the sum of all payments in the transaction?
 
@@ -847,4 +840,4 @@ def main(*args, **kwargs):
 # Parking Times), and augmented (to include inferred occupancy and other parameters).
 
 if __name__ == '__main__':
-    main()
+    main(output_to_csv = True)
