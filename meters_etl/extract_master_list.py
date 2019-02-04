@@ -106,8 +106,8 @@ def main():
     for r in bigboard:
         meter_data[r['meter_id']] = r
     joined = []
-    rates_by_tariff_program = defaultdict(list)
-    rates_by_meter_id = defaultdict(list)
+    rate_list_by_tariff_program = defaultdict(list)
+    rate_list_by_meter_id = defaultdict(list)
 
     with open(path+'meters-2019-01-29.csv','r') as g:
         list_of_ds = csv.DictReader(g)
@@ -119,10 +119,10 @@ def main():
                 if meter_rate is not None:
                     meter_rate = re.sub("\.00","",meter_rate)
                     meter_rate = re.sub("HR","hr",re.sub("Hr","hr",meter_rate))
-                    if meter_rate not in rates_by_tariff_program[d['TariffPrograms']]:
-                        rates_by_tariff_program[d['TariffPrograms']].append(meter_rate)
-                    if meter_rate not in rates_by_meter_id[d['ID']]:
-                        rates_by_meter_id[d['ID']].append(meter_rate)
+                    if meter_rate not in rate_list_by_tariff_program[d['TariffPrograms']]:
+                        rate_list_by_tariff_program[d['TariffPrograms']].append(meter_rate)
+                    if meter_rate not in rate_list_by_meter_id[d['ID']]:
+                        rate_list_by_meter_id[d['ID']].append(meter_rate)
                 d['rate_master'] = meter_rate
                 d['max_hours_master'] = meter['max_hours']
                 d['hours_master'] = meter['hours']
@@ -137,8 +137,10 @@ def main():
     write_to_csv(path+'joined.csv',joined,keys)
 
     rate_by_tariff = {}
-    for tariff_program,rate_list in rates_by_tariff_program.items():
+    for tariff_program,rate_list in rate_list_by_tariff_program.items():
         print("{:<5} {} {}".format(tariff_program, len(rate_list), rate_list))
+        assert len(rate_list) == 1
+        rate_by_tariff[tariff_program] = rate_list[0]
         # The results of this originally had the following different forms:
         # Pgm43 1 ['$1.75/hr']
         # Pgm73 1 [None] # <== This is an odd one.
@@ -149,11 +151,14 @@ def main():
 
 
     print("*"*40)
-    for meter_id,rate_list in rates_by_meter_id.items():
+    rate_by_meter = {}
+    for meter_id,rate_list in rate_list_by_meter_id.items():
         if len(rate_list) != 1:
             print("{:<5} {} {}".format(meter_id, len(rate_list), rate_list))
+        assert len(rate_list) == 1
+        rate_by_meter[meter_id] = rate_list[0]
 
-    return rates_by_tariff_program, rates_by_meter_id
+    return rate_by_tariff, rate_by_meter
 
 if __name__ == '__main__':
     main()
