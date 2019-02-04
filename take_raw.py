@@ -252,8 +252,12 @@ def find_payment_type(p):
     else: # In addition to "Mobile Payment" and "Coin" and "Card", there's also now "Manual", which is ignorable.
         if pay_unit_name == 'Manual':
             return 'manual', None
-        elif pay_unit_name in ['Coin', 'Card', 'None']:
-            return 'meter'
+        elif pay_unit_name == 'Coin':
+            return 'meter', 'cash'
+        elif pay_unit_name == 'Card':
+            return 'meter', 'card'
+        elif pay_unit_name == 'None':
+            return 'meter', None
         else:
             raise ValueError("Unknown payment type for @PayUnitName {} from payment {}.".format(pay_unit_name,p))
 
@@ -301,6 +305,8 @@ def raw_reframe(p,terminals,t_guids,hash_history,previous_history,uncharted_n_zo
 
     add_purchase_type(p,row,mobile) # Add 'purchase_type' field
 
+    medium, payment_type = find_payment_type(p)
+    row['payment_type'] = payment_type
     row['amount'] = float(p['@Amount']) # <== This amount is the total amount.
     row['cumulative_units'] = int(p['@Units'])
 
