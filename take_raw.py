@@ -495,7 +495,7 @@ def main(*args, **kwargs):
                 schema = SplitTransactionsSchema
             else:
                 schema = TransactionsSchema
-            primary_keys = ['meter_id', 'utc_start', 'start']
+            primary_keys = ['TerminalID', 'zone', 'payment_start_utc', 'date_recorded_utc']
             success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, cumulated_dicts, primary_keys=primary_keys)
             print("success = {}".format(success))
             if success:
