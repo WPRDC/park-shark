@@ -405,8 +405,9 @@ def main(*args, **kwargs):
     session_dict = defaultdict(list) # hash-based sessions
     previous_session_dict = defaultdict(list)
 
-    rate_lookup_by_tariff, rate_lookup_by_meter = get_lookups()
     include_rate = False
+    if include_rate:
+        rate_lookup_by_tariff, rate_lookup_by_meter = get_lookups()
 
     seeding_mode = True
     linkable = [] # Purchases that can be sorted into hash-based sessions.
