@@ -106,12 +106,12 @@ def raw_reframe(p,terminals,t_guids,group_lookup_addendum):
     row = {}
     row['GUID'] = p['@PurchaseGuid']
     try:
-        row['TerminalGUID'] = p['@TerminalGuid'] # This is useful
+        row['meter_guid'] = p['@TerminalGuid'] # This is useful
     # for connecting purchases with terminals when the ID changes
     # but the GUID does not change.
     except:
         print("p['@TerminalGuid'] is missing from {}".format(p))
-    row['TerminalID'] = p['@TerminalID']
+    row['meter_id'] = p['@TerminalID']
     if p['@TerminalGuid'] in t_guids:
         t = terminals[t_guids.index(p['@TerminalGuid'])]
 
@@ -170,7 +170,7 @@ def build_raw_keys(space_aggregation,time_aggregation,include_rate=False):
 
 
     if space_aggregation == 'meter':
-        space_keys = ['TerminalID', 'TerminalGUID', 'zone']
+        space_keys = ['meter_id', 'meter_guid', 'zone']
 
     if time_aggregation is None:
         time_keys = ['payment_start_utc', 'payment_end_utc', 'purchase_date_utc', 'date_recorded_utc']
@@ -197,7 +197,7 @@ def lookup_rates(ps,rate_lookup_by_tariff,rate_lookup_by_meter):
                 #print("Found rate ({}) for tariff = {}.".format(rate,tariff))
 
         if rate is None:
-            meter_id = p['TerminalID']
+            meter_id = p['meter_id']
             if meter_id in rate_lookup_by_meter:
                 rate = rate_lookup_by_meter[meter_id]
                 print("Found rate ({}) for meter_id = {}.".format(rate,meter_id))
@@ -245,7 +245,7 @@ def infer_rates(ps,original_records):
             # Currently expected hourly rates:  [0.5,1,1.5,1.75,2,2.5,3,4] (multiples of 25 cents)
             # and then there are the oddballs: $1.50+$2hr SR
             computed_rates[inferred_rate] += 1
-            zone, _, _ = numbered_zone(p['TerminalID'])
+            zone, _, _ = numbered_zone(p['meter_id'])
             rates_by_zone[zone].append(inferred_rate)
 
             if (p['amount'] == 0.5 and true_cumulative_duration == 8) or (p['amount'] == 0.25 and true_cumulative_duration == 4):
@@ -283,7 +283,7 @@ def infer_rates(ps,original_records):
                 if not resolved:
                     if rounded_guess == 0 or error != 0.0:
                         unresolved_count += 1
-                        meter_id = p['TerminalID']
+                        meter_id = p['meter_id']
                         unresolved_by_meter[meter_id] += 1
                     print(" * What's the deal with this one? * ")
                     pprint(p)
@@ -495,7 +495,7 @@ def main(*args, **kwargs):
                 schema = SplitTransactionsSchema
             else:
                 schema = TransactionsSchema
-            primary_keys = ['TerminalID', 'zone', 'payment_start_utc', 'date_recorded_utc']
+            primary_keys = ['meter_id', 'zone', 'payment_start_utc', 'date_recorded_utc']
             success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, cumulated_dicts, primary_keys=primary_keys)
             print("success = {}".format(success))
             if success:
@@ -524,7 +524,7 @@ def main(*args, **kwargs):
             schema = SplitTransactionsSchema
         else:
             schema = TransactionsSchema
-        primary_keys = ['TerminalID', 'zone', 'payment_start_utc', 'date_recorded_utc']
+        primary_keys = ['meter_id', 'zone', 'payment_start_utc', 'date_recorded_utc']
         success = send_data_to_pipeline(server, SETTINGS_FILE, resource_name(spacetime), schema, filtered_list_of_dicts, primary_keys=primary_keys)
 
     else:
