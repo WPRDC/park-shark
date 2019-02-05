@@ -321,7 +321,7 @@ def raw_reframe(p,terminals,t_guids,group_lookup_addendum):
 
     return row
 
-def build_raw_keys(space_aggregation,time_aggregation,split_by_mode):
+def build_raw_keys(space_aggregation,time_aggregation,include_rate=False):
     """Based on the types of spatial and temporal aggregation (and now whether
     transactions should be split by payment mode into mobile and meter purchases),
     synthesize and return the dictionary keys (used for writing a bunch of
@@ -340,7 +340,9 @@ def build_raw_keys(space_aggregation,time_aggregation,split_by_mode):
 
     # [ ] Should cumulative_units be included here?
 
-    extras = ['rate', 'mobile_transaction_id']
+    extras = ['mobile_transaction_id', 'purchase_guid']
+    if include_rate:
+        extras = ['rate'] + extras
 
     dkeys = space_keys + time_keys + base + extras
     return dkeys
@@ -474,6 +476,7 @@ def main(*args, **kwargs):
     previous_session_dict = defaultdict(list)
 
     rate_lookup_by_tariff, rate_lookup_by_meter = get_lookups()
+    include_rate = False
 
     seeding_mode = True
     linkable = [] # Purchases that can be sorted into hash-based sessions.
@@ -497,6 +500,10 @@ def main(*args, **kwargs):
         k += 3
         pprint(purchases[k])
         pprint(rps[k])
+        if include_rate:
+            # Augment raw transactions by inferring rate
+            # infer_rates(rps,purchases)
+            lookup_rates(rps,rate_lookup_by_tariff,rate_lookup_by_meter)
 
         print("len(purchases) = {}".format(len(purchases)))
 
@@ -506,7 +513,7 @@ def main(*args, **kwargs):
     space_aggregation = 'meter'
     time_aggregation = None
     spacetime = 'meter'
-    dkeys = build_raw_keys(space_aggregation, time_aggregation, split_by_mode)
+    dkeys = build_raw_keys(space_aggregation, time_aggregation, include_rate)
 
     # [ ] Check that primary keys are in fields for writing to CKAN. Maybe check that dkeys are valid fields.
 
@@ -540,9 +547,10 @@ def main(*args, **kwargs):
         for p in purchases: # This was previously "for p in linkable + unlinkable" before the estimate_occupancy hack was put in place.
             reframed_ps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum))
 
-    # Augment raw transactions by inferring rate
-        #infer_rates(reframed_ps,purchases)
-        lookup_rates(rps,purchases,rate_lookup_by_tariff,rate_lookup_by_meter)
+        if include_rate:
+            # Augment raw transactions by inferring rate
+            #infer_rates(reframed_ps,purchases)
+            lookup_rates(reframed_ps,rate_lookup_by_tariff,rate_lookup_by_meter)
     # Sort transactions by some timestamp
         reframed_ps = sorted(reframed_ps, key = lambda x: x['@DateCreatedUtc'])
     # Add extension/non-extension boolean:
