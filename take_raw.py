@@ -401,21 +401,11 @@ def main(*args, **kwargs):
         warm_up_period = timedelta(hours=12)
         print("slot_start - warm_up_period = {}".format(slot_start - warm_up_period))
         purchases = eliminate_zeros(get_parking_events(db,slot_start - warm_up_period,slot_start,pgh,True,False,caching_mode))
-        purchases = sorted(purchases, key = lambda x: x['@DateCreatedUtc'])
+        #purchases = sorted(purchases, key = lambda x: x['@DateCreatedUtc'])
         rps = []
         for p in purchases:
             rps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum))
 
-        # Augment raw transactions by inferring rate
-        # infer_rates(rps,purchases)
-        lookup_rates(rps,purchases,rate_lookup_by_tariff,rate_lookup_by_meter)
-
-        k = 0
-        #while k < len(rps) and rps[k]['purchase_type'] is None:
-        #    k += 1
-        k += 3
-        pprint(purchases[k])
-        pprint(rps[k])
         if include_rate:
             # Augment raw transactions by inferring rate
             # infer_rates(rps,purchases)
@@ -468,7 +458,7 @@ def main(*args, **kwargs):
             #infer_rates(reframed_ps,purchases)
             lookup_rates(reframed_ps,rate_lookup_by_tariff,rate_lookup_by_meter)
     # Sort transactions by some timestamp
-        reframed_ps = sorted(reframed_ps, key = lambda x: x['@DateCreatedUtc'])
+    #    reframed_ps = sorted(reframed_ps, key = lambda x: x['@DateCreatedUtc'])
     # Add extension/non-extension boolean:
     #    PurchaseTypeName: Normal/TopUp
     #    purchase_type: new/(continuation|extension)
