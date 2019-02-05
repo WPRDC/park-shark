@@ -56,6 +56,20 @@ def round_schoolwise(x):
         rounded = int(decimal.Decimal(x).quantize(decimal.Decimal('1'), rounding=decimal.ROUND_HALF_DOWN))
     return rounded
 
+def add_purchase_type(p,row,mobile):
+    purchase_type_field = 'purchase_type'
+    if not mobile:
+        if p['@PurchaseTypeName'] == 'Normal':
+            row[purchase_type_field] = 'New'
+        elif p['@PurchaseTypeName'] == 'TopUp':
+            row[purchase_type_field] = 'Extension'
+        else:
+            print("No explicit coding for @PurchaseTypeName == {}.".format(p['@PurchaseTypeName']))
+            row[purchase_type_field] = None
+    else:
+        #print("How are we going to deal with those pesky mobile transactions?")
+        row[purchase_type_field] = None
+
 def find_payment_type(p):
     # If the 'PurchasePayUnit' field cannot be found, use the terminal ID
     # to detect whether it's a virtual payment.
