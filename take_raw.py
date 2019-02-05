@@ -299,6 +299,15 @@ def raw_reframe(p,terminals,t_guids,group_lookup_addendum):
     row['amount'] = float(p['@Amount']) # <== This amount is the total amount.
     row['cumulative_units'] = int(p['@Units'])
 
+    row['purchase_guid'] = p['@PurchaseGuid']
+
+    if '@TariffPackageID' in p:
+        row['TariffProgram'] = p['@TariffPackageID']
+    else:
+        row['TariffProgram'] = None
+        print("No @TariffPackageID found.")
+        pprint(p)
+
     #########
     row['zone'] =  numbered_zone(p['@TerminalID'],None,group_lookup_addendum)[0]
     # Payment type (cash, credit card,
