@@ -171,6 +171,43 @@ def build_raw_keys(space_aggregation,time_aggregation,include_rate=False):
     dkeys = space_keys + time_keys + base + extras
     return dkeys
 
+def lookup_rates(ps,rate_lookup_by_tariff,rate_lookup_by_meter):
+    unresolved_by_meter = defaultdict(int)
+    unresolved_count = 0
+    for p in ps:
+        rate = None
+        if 'TariffProgram' in p:
+            tariff = p['TariffProgram']
+            if tariff in rate_lookup_by_tariff:
+                rate = rate_lookup_by_tariff[tariff]
+                #print("Found rate ({}) for tariff = {}.".format(rate,tariff))
+
+        if rate is None:
+            meter_id = p['TerminalID']
+            if meter_id in rate_lookup_by_meter:
+                rate = rate_lookup_by_meter[meter_id]
+                print("Found rate ({}) for meter_id = {}.".format(rate,meter_id))
+
+        if rate is None:
+            unresolved_by_meter[meter_id] += 1
+            unresolved_count += 1
+            print("Failed to find rate for {}.".format(meter_id))
+        else:
+            p['rate'] = rate
+
+        #if tariff == '20' and p['Is Mobile Payment']:
+        #    print("For tariff == 20, a rate of {} was assigned.".format(rate))
+        #    pprint(p)
+        #    if '20' in rate_lookup_by_tariff:
+        #        print("by tariff")
+        #    elif meter_id in rate_lookup_by_meter:
+        #        print("maybe by meter_id?")
+
+        #    raise ValueError("check this out")
+
+    print(" {} left unresolved out of {}.".format(unresolved_count,len(ps)))
+    pprint(unresolved_by_meter)
+
 def infer_rates(ps,original_records):
     computed_rates = defaultdict(int)
     for p,rec in zip(ps,original_records):
