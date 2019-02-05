@@ -210,23 +210,78 @@ def lookup_rates(ps,rate_lookup_by_tariff,rate_lookup_by_meter):
 
 def infer_rates(ps,original_records):
     computed_rates = defaultdict(int)
+    rates_by_zone = defaultdict(list)
+    unresolved_count = 0
+    unresolved_by_meter = defaultdict(int)
+
+    known_rates = [0.5,1,1.5,1.75,2,2.5,3,4]
     for p,rec in zip(ps,original_records):
+        resolved = False
+        payment_end_utc = parser.parse(p['payment_end_utc'])
+        payment_start_utc = parser.parse(p['payment_start_utc'])
+        assert payment_end_utc > payment_start_utc
+        true_cumulative_duration = round_schoolwise((payment_end_utc - payment_start_utc).seconds/60)
+        #if p['cumulative_units'] != true_cumulative_duration:
+        #    print("Note mismatch between p['cumulative_units'] ({}) and true_cumulative_duration ({})".format(p['cumulative_units'], true_cumulative_duration))
+        # These mismatches are all large gaps now, all (I think) resulting from purchases before parking needs to be paid for.
+        #    pprint(rec)
         if p['purchase_type'] == 'New':
-            inferred_rate = p['amount']/(p['cumulative_units']/60.0)
+            inferred_rate = p['amount']/(true_cumulative_duration/60.0)
             # Check whether rate rounds nicely.
             # Currently expected hourly rates:  [0.5,1,1.5,1.75,2,2.5,3,4] (multiples of 25 cents)
             # and then there are the oddballs: $1.50+$2hr SR
             computed_rates[inferred_rate] += 1
-            if inferred_rate not in [0.5,1,1.5,1.75,2,2.5,3,4]:
-                print("${}/{:.2f} = an inferred rate of ${}/hour.".format(p['amount'], p['cumulative_units']/60.0, inferred_rate))
-                print(" * What's the deal with this one? * ")
-                pprint(p)
-                pprint(rec)
-                print(" ********************************** ")
-    print("\nOK, here's the distribution of computed rates:")
-    pprint(computed_rates)
+            zone, _, _ = numbered_zone(p['TerminalID'])
+            rates_by_zone[zone].append(inferred_rate)
+
+            if (p['amount'] == 0.5 and true_cumulative_duration == 8) or (p['amount'] == 0.25 and true_cumulative_duration == 4):
+            #   This seems necessary since otherwise I get this:
+            #     $0.5/0.13 = an inferred rate of $3.75/hour, rounded rate = $3.75/hour.
+            #       payment/rounded_rate = 8.0 minutes vs. actual minutes (8). Error = 0.000
+            #        round(minutes_bought) == @Units, so this one seems to add up.
+                inferred_rate = 4.0
+                print("Coercing ${:.2f}, {}-minute transaction to $4/hour.".format(p['amount'], true_cumulative_duration))
+                # But then this is the result:
+                #      payment/rounded_rate = 22.5 minutes vs. actual minutes (23). Error = -0.500
+                # This suggests that CALE is not using banker's rounding...
+
+            # Some meters have mixed rates: S. Craig changes from a $3/hour rate to a $2.50/hour rate at some time (3pm?)
 
 
+            if inferred_rate not in known_rates:
+                rounded_guess = round_schoolwise(inferred_rate/(0.25))*0.25
+                # Assume the rate is what you get by rounding to the nearest multiple of 25 cents.
+                print("${}/{:.2f} = an inferred rate of ${}/hour, rounded rate = ${}/hour.".format(p['amount'], true_cumulative_duration/60.0, inferred_rate, rounded_guess))
+                # Is the number of minutes just the result of rounding to the nearest minute?
+                if rounded_guess != 0.0:
+                    minutes_bought = 60*p['amount']/rounded_guess
+                    error = minutes_bought - true_cumulative_duration
+                    print("  payment/rounded_rate = {} minutes vs. actual minutes ({}). error = {:.3f}".format(minutes_bought, true_cumulative_duration, error))
+                    if round_schoolwise(minutes_bought) == true_cumulative_duration:
+                        print("   round_schoolwise(minutes_bought) == true_cumulative_duration, so this one seems to add up.")
+                        if rounded_guess in known_rates:
+                            resolved = True
+                        else:
+                            print("rounded_guess for the rate (${}) is not in the expected set!!!!! resolved = {}".format(rounded_guess,resolved))
+                    else:
+                        print("   round_schoolwise(minutes_bought) - true_cumulative_duration == {}".format(round_schoolwise(minutes_bought) - true_cumulative_duration))
+                        print("   What's going on here?")
+                if not resolved:
+                    if rounded_guess == 0 or error != 0.0:
+                        unresolved_count += 1
+                        meter_id = p['TerminalID']
+                        unresolved_by_meter[meter_id] += 1
+                    print(" * What's the deal with this one? * ")
+                    pprint(p)
+                    pprint(rec)
+                    print(" ********************************** ")
+    #print("\nOK, here's the distribution of computed rates:")
+    #pprint(computed_rates)
+    for zone in sorted(rates_by_zone):
+        print(zone, sorted(rates_by_zone[zone]))
+
+    print(" {} left unresolved out of {}.".format(unresolved_count,len(ps)))
+    pprint(unresolved_by_meter)
 
 def main(*args, **kwargs):
     # This function accepts slot_start and halting_time datetimes as
