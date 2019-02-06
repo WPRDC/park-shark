@@ -1,11 +1,13 @@
-"""This script takes CSV exports from CALE Web Office and adds the transactions to a directory of SQLite databases, where each database holds the transactions from a particular day, where the day is chosen (and the SQLite directory is named) based on the reference_time field."""
-import sys, csv, pytz
+"""This script takes CSV exports from CALE Web Office and adds the transactions to a directory of SQLite databases, where each database holds the transactions from a particular day, where the day is chosen (and the SQLite directory is named) based on the reference_time field. 
+
+This script is a variant on grafter.py, but is designed to be the main source of data, rather than a supplement, for a given cached day."""
+import sys, csv, re, pytz
 from dateutil import parser
 from process_data import time_to_field, bulk_upsert_to_sqlite
 from collections import defaultdict
 from pprint import pprint
 
-from parameters.local_parameters import missing_data_path, path
+from parameters.local_parameters import raw_downloads_path, path
 
 def special_conversion(d):
     #Terminal - Terminal ID,Pay Unit - Name,Node,Purchase Date Local,Amount,Created in CWO,Payment Service Type - Name,Tariff Package - Name,Units,Transaction Reference,External ID,Purchase Guid,Start Date Local,Delivery Delay,End Date Local,Purchase State - Name,Pay Interval Start Local,Pay Interval End Local,Article ID
@@ -29,7 +31,6 @@ def special_conversion(d):
     # Now, one problem might be duplication of Purchase Guid values so that separate Pay Unit - Names for the same transaction can be on separate lines.
     # However, none of the transactions I downloaded have this problem.
     p = {'@TerminalID': d['Terminal - Terminal ID'],
-        '@PurchaseGuid': d['Purchase Guid'].upper(),
         '@Amount': d['Amount'],
         '@Units': d['Units'],
         '@PurchaseDateLocal': parser.parse(d['Purchase Date Local']).strftime("%Y-%m-%dT%H:%M:%S"),
@@ -45,9 +46,39 @@ def special_conversion(d):
         '@PayIntervalEndUtc': pgh.localize(parser.parse(d['Pay Interval End Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
         '@EndDateLocal': parser.parse(d['End Date Local']).strftime("%Y-%m-%dT%H:%M:%S"),
         '@EndDateUtc': pgh.localize(parser.parse(d['End Date Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
-        '@DateCreatedUtc': parser.parse(d['Created in CWO']).strftime("%Y-%m-%dT%H:%M:%S"),
+        '@DateCreatedUtc': parser.parse(d['Created in Data Warehouse']).strftime("%Y-%m-%dT%H:%M:%S"),
+        '@PurchaseTypeName': d['Purchase Type - Name'],
         }
+
+    if 'Purchase Guid' in d: # Unfortunately, some of the extracted data in raw_downloads is missing this field.
+        p['@PurchaseGuid'] = d['Purchase Guid'].upper() # But it's OK since External ID also works.
+    #if 'Net Amount' in d: 
+    #    p['net_amount'] = d['Net Amount'].upper() 
+    if 'Tariff Package - Name' in d:
+        p['@TariffPackageID'] = re.sub("Pgm","",d['Tariff Package - Name']) # normalize weirdly named tariffs
+
     return p
+
+def merge(ps):
+# [ ] One tricky part is that CWO downloads separate coin+card transactions into two separate rows, unlike the API.
+#       * Maybe compare 'Net Amount' field to 'Amount' field to see if there are two transactions that need to be joined.
+#           * However, the only good thing to join on is Purchase GUID, which is missing from a lot of the downloads.
+
+# A cash + credit card transaction could look like this in the UTC JSON file:
+#u'PurchasePayUnit': [OrderedDict([(u'@PayUnitID', u'1'), (u'@PayUnitName', u'Coin'), (u'@Amount', u'0.75'), (u'@CardFeeAmount', u'0')]),
+#                      OrderedDict([(u'@PayUnitID', u'2'), (u'@PayUnitName', u'Card'), (u'@Amount', u'4'), (u'@CardIssuer', u'Visa UPDATED $1 MIN'), (u'@TransactionReference', u'17532af64eab21dc'), (u'@CardFeeAmount', u'0')])]}
+# All we need is PayUnitName and Amount.
+
+# * Simplest solution: Just join transaction on External ID. This works.
+    new_p = dict(ps[0])
+
+    new_jsonPPU = "["
+    for p in ps:
+        new_jsonPPU += p['json_PurchasePayUnit'] #'{"@TransactionReference": "168767264", "@Amount": "3", "@PayUnitName": "Mobile Payment"}'
+    new_jsonPPU += "]"
+
+    p['json_PurchasePayUnit'] = new_jsonPPU
+    return new_p
 
 def add_missing_purchases(filepath,reference_time):
     local_tz = pytz.timezone('US/Eastern')
@@ -56,8 +87,19 @@ def add_missing_purchases(filepath,reference_time):
 
         ps_by_day = defaultdict(list)
         dts_by_day = defaultdict(list)
+        external_id_counts = defaultdict(int)
+        purchases_by_external_id = defaultdict(list)
         for d in list_of_ds:
             purchase_i = special_conversion(d)
+            purchases_by_external_id.append(purchase_i)
+            external_id_counts[d['External ID']] += 1
+
+        for ps in purchases_by_external_id:
+            if len(ps) > 1:
+                purchase_i = merge(ps)
+            elif len(ps) == 1:
+                purchase_i = ps[0]
+
             utc_reference_field, local_reference_field = time_to_field(reference_time)
             #upsert_to_sqlite(purchase_i,datetime_i,reference_time)
             datetime_i = (pytz.utc).localize(parser.parse(purchase_i[utc_reference_field]))
@@ -82,6 +124,11 @@ def add_missing_purchases(filepath,reference_time):
         elif reference_time == 'purchase_time_utc':
             bulk_upsert_to_sqlite(path,purchases,dts,day,reference_time)
 
+        # [ ] Update the sqlite date cache to consider this date handled (once all Purchase Date UTC transactions
+        # have been handled... so basically keep track of last two dates handled, and if they're consecutive,
+        # mark the previous date as cached.
+
+
 #reference_time = 'purchase_time'
 try:
     input = raw_input
@@ -92,21 +139,11 @@ reference_time = input('Choose a reference time (either purchase_time or purchas
 if reference_time not in ['purchase_time', 'purchase_time_utc']:
     raise ValueError("Invalid reference time value.")
 
-
-filenames = ['Purchases-2017-Operational.csv', 'Purchases-1801-1806-Operational.csv', 'Purchases-2018-07-Operational.csv',
-        #'Purchases-324541-FMURRY0001-through-2013.csv',
-        'Purchases-324541-FMURRY0001-2014.csv', 'Purchases-324541-FMURRY0001-2015.csv',
-        'Purchases-324541-FMURRY0001-2016.csv', 'Purchases-324541-FMURRY0001-2017-to-201809.csv',
-        #'Purchases-324542-FMURRY0002-through-2013.csv',
-        'Purchases-324542-FMURRY0002-2014.csv',  'Purchases-324542-FMURRY0002-2015.csv',
-        'Purchases-324542-FMURRY0002-2016.csv', 'Purchases-324542-FMURRY0002-2017-to-201809.csv',
-        #'Purchases-325543-JCCLOT0001-through-2013.csv',
-        'Purchases-325543-JCCLOT0001-2014.csv', 'Purchases-325543-JCCLOT0001-2015.csv',
-        'Purchases-325543-JCCLOT0001-2016.csv', 'Purchases-325543-JCCLOT0001-2017-to-201809.csv',
-        'Purchases-410190-FORBES4002-through-2018-10.csv',
+filenames = [#'Purchases-20150101-20150103-Historical.csv',
+        'Purchases-20180930-20181002-Historical.csv',
         ]
 
 for filename in filenames:
-    full_path = missing_data_path+filename
+    full_path = raw_downloads_path+filename
     print("Merging in transactions from {}".format(full_path))
     add_missing_purchases(full_path,reference_time)
