@@ -143,9 +143,11 @@ try:
 except NameError:
     pass
 
-reference_time = input('Choose a reference time (either purchase_time or purchase_time_utc): ')
-if reference_time not in ['purchase_time', 'purchase_time_utc']:
-    raise ValueError("Invalid reference time value.")
+reference_time = 'purchase_time_utc'
+#reference_time = input('Choose a reference time (either purchase_time or purchase_time_utc): ')
+#if reference_time not in ['purchase_time', 'purchase_time_utc']:
+#    raise ValueError("Invalid reference time value.")
+print("Just assuming that reference_time = {}".format(reference_time))
 
 filenames = [#'Purchases-20150101-20150103-Historical.csv',
         'Purchases-20180930-20181002-Historical.csv',
