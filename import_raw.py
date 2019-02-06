@@ -1,4 +1,4 @@
-"""This script takes CSV exports from CALE Web Office and adds the transactions to a directory of SQLite databases, where each database holds the transactions from a particular day, where the day is chosen (and the SQLite directory is named) based on the reference_time field. 
+"""This script takes CSV exports from CALE Web Office and adds the transactions to a directory of SQLite databases, where each database holds the transactions from a particular day, where the day is chosen (and the SQLite directory is named) based on the reference_time field.
 
 This script is a variant on grafter.py, but is designed to be the main source of data, rather than a supplement, for a given cached day."""
 import sys, csv, re, pytz
@@ -117,7 +117,7 @@ def add_missing_purchases(filepath,reference_time):
             elif reference_time == 'purchase_time_utc':
                 day = datetime_i.astimezone(pytz.utc).date()
             # There's a shorter set of commands to get the local day, but I am doing
-            # it this way to copy how process_data:get_utc_ps_for_day_from_json is 
+            # it this way to copy how process_data:get_utc_ps_for_day_from_json is
             # currently doing it, making the day local but the datetime UTC.
 
             ps_by_day[day].append(purchase_i)
