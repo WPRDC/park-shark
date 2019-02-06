@@ -76,7 +76,7 @@ def merge(ps):
 #                      OrderedDict([(u'@PayUnitID', u'2'), (u'@PayUnitName', u'Card'), (u'@Amount', u'4'), (u'@CardIssuer', u'Visa UPDATED $1 MIN'), (u'@TransactionReference', u'17532af64eab21dc'), (u'@CardFeeAmount', u'0')])]}
 # All we need is PayUnitName and Amount.
 
-# * Simplest solution: Just join transaction on External ID. This works.
+# * Simplest solution: Just join transactions on External ID.
     new_p = dict(ps[0])
 
     new_jsonPPU = "["
