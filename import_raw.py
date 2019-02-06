@@ -26,7 +26,10 @@ def special_conversion(d):
 
     pgh = pytz.timezone('US/Eastern')
     utc = pytz.utc
-    jsonPPU = '{{"@TransactionReference": "{}", "@Amount": "{}", "@PayUnitName": "{}"}}'.format(d['Transaction Reference'], d['Amount'], d['Pay Unit - Name'])
+    if 'TransactionReference' in d:
+        jsonPPU = '{{"@TransactionReference": "{}", "@Amount": "{}", "@PayUnitName": "{}"}}'.format(d['Transaction Reference'], d['Amount'], d['Pay Unit - Name'])
+    else:
+        jsonPPU = '{{"@Amount": "{}", "@PayUnitName": "{}"}}'.format(d['Amount'], d['Pay Unit - Name'])
 
     # Now, one problem might be duplication of Purchase Guid values so that separate Pay Unit - Names for the same transaction can be on separate lines.
     # However, none of the transactions I downloaded have this problem.
