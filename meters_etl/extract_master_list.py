@@ -140,7 +140,8 @@ def main():
     for tariff_program,rate_list in rate_list_by_tariff_program.items():
         print("{:<5} {} {}".format(tariff_program, len(rate_list), rate_list))
         assert len(rate_list) == 1
-        rate_by_tariff[tariff_program] = rate_list[0]
+        tariff_id = re.sub("Pgm","",tariff_program)
+        rate_by_tariff[tariff_id] = rate_list[0]
         # The results of this originally had the following different forms:
         # Pgm43 1 ['$1.75/hr']
         # Pgm73 1 [None] # <== This is an odd one.
