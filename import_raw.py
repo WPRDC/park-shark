@@ -96,14 +96,13 @@ def add_missing_purchases(filepath,reference_time):
 
         ps_by_day = defaultdict(list)
         dts_by_day = defaultdict(list)
-        external_id_counts = defaultdict(int)
         purchases_by_external_id = defaultdict(list)
         for d in list_of_ds:
             purchase_i = special_conversion(d)
-            purchases_by_external_id.append(purchase_i)
-            external_id_counts[d['External ID']] += 1
+            external_id = d['External ID']
+            purchases_by_external_id[external_id].append(purchase_i)
 
-        for ps in purchases_by_external_id:
+        for ps in purchases_by_external_id.values():
             if len(ps) > 1:
                 purchase_i = merge(ps)
             elif len(ps) == 1:
