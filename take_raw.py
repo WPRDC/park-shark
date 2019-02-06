@@ -64,8 +64,11 @@ def add_purchase_type(p,row,mobile):
         elif p['@PurchaseTypeName'] == 'TopUp':
             row[purchase_type_field] = 'Extension'
         else:
-            print("No explicit coding for @PurchaseTypeName == {}.".format(p['@PurchaseTypeName']))
-            row[purchase_type_field] = None
+            # This can be assumed to happen for those missing transactions, as they are stuck in an
+            # incomplete state in the CALE system.
+            if row['zone'][:3] not in ['324', '325', '410']:
+                print("No explicit coding for @PurchaseTypeName == {}.".format(p['@PurchaseTypeName']))
+                row[purchase_type_field] = None
     else:
         #print("How are we going to deal with those pesky mobile transactions?")
         row[purchase_type_field] = None
@@ -127,6 +130,9 @@ def raw_reframe(p,terminals,t_guids,group_lookup_addendum,include_rate):
     row['purchase_date_utc'] = p['@PurchaseDateUtc'] if not mobile else None
     row['date_recorded_utc'] = p['@DateCreatedUtc'] # Only used as a timestamp proxy for non-mobile transactions.
     row['@DateCreatedUtc'] = p['@DateCreatedUtc']
+    #########
+    row['zone'] =  numbered_zone(p['@TerminalID'],None,group_lookup_addendum)[0]
+    #########
 
     row['mobile_transaction_id'] = p['PurchasePayUnit']['@TransactionReference'] if (mobile and 'PurchasePayUnit' in p and '@TransactionReference' in p['PurchasePayUnit']) else None
 
@@ -147,8 +153,6 @@ def raw_reframe(p,terminals,t_guids,group_lookup_addendum,include_rate):
             print("No @TariffPackageID found.")
             pprint(p)
 
-    #########
-    row['zone'] =  numbered_zone(p['@TerminalID'],None,group_lookup_addendum)[0]
     # Payment type (cash, credit card,
     # new payment, or extension payment); [X] Done for CALE, [ ] Pending for ParkMobile
     # zone/Meter/kiosk ID; [X] meter ID [ ] Zone pending (downstream)
