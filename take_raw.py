@@ -1,4 +1,4 @@
-import os, re, csv, json, xmltodict
+import os, sys, re, csv, json, xmltodict
 import dataset, random
 from collections import OrderedDict, Counter, defaultdict
 from util.util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
@@ -577,4 +577,60 @@ def main(*args, **kwargs):
 # Parking Times), and augmented (to include inferred occupancy and other parameters).
 
 if __name__ == '__main__':
-    main(output_to_csv = True)
+    if len(sys.argv) > 1:
+        args = sys.argv[1:]
+        output_to_csv = False
+        push_to_CKAN = False
+
+        copy_of_args = list(args)
+
+        pgh = pytz.timezone('US/Eastern')
+
+        list_of_servers = ["meters-etl", #"official-terminals",
+                "transactions-production",
+                "transactions-payment-time-of",
+                "transactions-prototype",
+                "transactions-by-pdl",
+                "split-transactions-by-pdl",
+                "debug",
+                "testbed",
+                "sandbox",
+                #"aws-test"
+                ] # This list could be automatically harvested from SETTINGS_FILE.
+
+        slot_start = None
+        halting_time = None
+        kwparams = {}
+        # This is a new way of parsing command-line arguments that cares less about position
+        # and just does its best to identify the user's intent.
+        for k,arg in enumerate(copy_of_args):
+            if arg in ['scan', 'save', 'csv']:
+                output_to_csv = True
+                args.remove(arg)
+            #elif arg in ['pull', 'push', 'ckan']:
+            #    push_to_CKAN = True
+            #    args.remove(arg)
+            #elif arg in list_of_servers:
+            #    kwparams['server'] = arg
+            #    args.remove(arg)
+            elif slot_start is None:
+                slot_start_string = arg
+                slot_start = pgh.localize(parser.parse(slot_start_string))
+                kwparams['slot_start'] = slot_start
+                args.remove(arg)
+                #except:
+                #    slot_start = pgh.localize(datetime.strptime(slot_start_string,'%Y-%m-%dT%H:%M:%S'))
+            elif halting_time is None:
+                halting_time_string = arg
+                halting_time = pgh.localize(parser.parse(halting_time_string))
+                kwparams['halting_time'] = halting_time
+                args.remove(arg)
+            else:
+                print("I have no idea what do with args[{}] = {}.".format(k,arg))
+
+        kwparams['output_to_csv'] = output_to_csv
+        kwparams['push_to_CKAN'] = push_to_CKAN
+        pprint(kwparams)
+        main(**kwparams)
+    else:
+        raise ValueError("Please specify some command-line parameters")
