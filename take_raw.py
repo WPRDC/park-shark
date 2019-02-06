@@ -99,7 +99,7 @@ def find_payment_type(p):
         else:
             raise ValueError("Unknown payment type for @PayUnitName {} from payment {}.".format(pay_unit_name,p))
 
-def raw_reframe(p,terminals,t_guids,group_lookup_addendum):
+def raw_reframe(p,terminals,t_guids,group_lookup_addendum,include_rate):
     """Take a dictionary and generate a new dictionary from it that samples
     the appropriate keys and renames and transforms as desired."""
 
@@ -139,12 +139,13 @@ def raw_reframe(p,terminals,t_guids,group_lookup_addendum):
 
     row['purchase_guid'] = p['@PurchaseGuid']
 
-    if '@TariffPackageID' in p:
-        row['TariffProgram'] = p['@TariffPackageID']
-    else:
-        row['TariffProgram'] = None
-        print("No @TariffPackageID found.")
-        pprint(p)
+    if include_rate:
+        if '@TariffPackageID' in p:
+            row['TariffProgram'] = p['@TariffPackageID']
+        else:
+            row['TariffProgram'] = None
+            print("No @TariffPackageID found.")
+            pprint(p)
 
     #########
     row['zone'] =  numbered_zone(p['@TerminalID'],None,group_lookup_addendum)[0]
@@ -419,7 +420,7 @@ def main(*args, **kwargs):
         #purchases = sorted(purchases, key = lambda x: x['@DateCreatedUtc'])
         rps = []
         for p in purchases:
-            rps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum))
+            rps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum,include_rate))
 
         if include_rate:
             # Augment raw transactions by inferring rate
@@ -466,7 +467,7 @@ def main(*args, **kwargs):
 
 
         for p in purchases: # This was previously "for p in linkable + unlinkable" before the estimate_occupancy hack was put in place.
-            reframed_ps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum))
+            reframed_ps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum,include_rate))
 
         if include_rate:
             # Augment raw transactions by inferring rate
