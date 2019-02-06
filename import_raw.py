@@ -55,8 +55,9 @@ def special_conversion(d):
 
     if 'Purchase Guid' in d: # Unfortunately, some of the extracted data in raw_downloads is missing this field.
         p['@PurchaseGuid'] = d['Purchase Guid'].upper() # But it's OK since External ID also works.
-    #if 'Net Amount' in d: 
-    #    p['net_amount'] = d['Net Amount'].upper() 
+    else: # Unfortunately, my SQLite import process is using @PurchaseGuid as a unique ID, so
+        # something must go here for it to work, so as a klugy workaround...
+        p['@PurchaseGuid'] = d['External ID'] + d['Ticket Number']
     if 'Tariff Package - Name' in d:
         p['@TariffPackageID'] = re.sub("Pgm","",d['Tariff Package - Name']) # normalize weirdly named tariffs
 
