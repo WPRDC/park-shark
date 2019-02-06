@@ -58,6 +58,9 @@ def special_conversion(d):
     else: # Unfortunately, my SQLite import process is using @PurchaseGuid as a unique ID, so
         # something must go here for it to work, so as a klugy workaround...
         p['@PurchaseGuid'] = d['External ID'] + d['Ticket Number']
+
+    if 'Net Amount' in d:
+        p['net_amount'] = d['Net Amount']
     if 'Tariff Package - Name' in d:
         p['@TariffPackageID'] = re.sub("Pgm","",d['Tariff Package - Name']) # normalize weirdly named tariffs
 
@@ -82,6 +85,8 @@ def merge(ps):
     new_jsonPPU += "]"
 
     p['json_PurchasePayUnit'] = new_jsonPPU
+    p['Amount'] = p['net_amount']
+    del p['net_amount']
     return new_p
 
 def add_missing_purchases(filepath,reference_time):
