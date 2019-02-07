@@ -57,9 +57,9 @@ def cull_fields(ps):
     #purchases = remove_field(purchases,'@EndDateLocal')
     #purchases = remove_field(purchases,'@EndDateUtc')#
     #purchases = remove_field(purchases,'@PaymentServiceType')
-    purchases = remove_field(purchases,'@TicketNumber')
-    purchases = remove_field(purchases,'@TariffPackageID')
-    purchases = remove_field(purchases,'@ExternalID')#
+    #purchases = remove_field(purchases,'@TicketNumber') # commented out 2019-02-07
+    #purchases = remove_field(purchases,'@TariffPackageID') # commented out 2019-02-07
+    #purchases = remove_field(purchases,'@ExternalID') # commented out 2019-02-07
     purchases = remove_field(purchases,'@PurchaseStateName')
     purchases = remove_field(purchases,'@PurchaseTriggerTypeName')
     #purchases = remove_field(purchases,'@PurchaseTypeName')#
