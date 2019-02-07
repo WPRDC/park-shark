@@ -133,8 +133,10 @@ def raw_reframe(p,terminals,t_guids,t_ids,group_lookup_addendum,include_rate):
     row['payment_end_utc'] = p['@PayIntervalEndUtc']
     row['payment_end_local'] = p['@PayIntervalEndLocal']
     row['purchase_date_utc'] = p['@PurchaseDateUtc'] if not mobile else None
-    row['date_recorded_utc'] = p['@DateCreatedUtc'] # Only used as a timestamp proxy for non-mobile transactions.
-    row['@DateCreatedUtc'] = p['@DateCreatedUtc']
+    if '@DateCreatedUtc' not in p:
+        print("Replacing missing @DateCreatedUtc field with an empty string.")
+    row['date_recorded_utc'] = p['@DateCreatedUtc'] if '@DateCreatedUtc' in p else "" # Only used as a timestamp proxy for non-mobile transactions.
+    row['@DateCreatedUtc'] = p['@DateCreatedUtc'] if '@DateCreatedUtc' in p else ""
     #########
     row['zone'] =  numbered_zone(p['@TerminalID'],None,group_lookup_addendum)[0]
     #########
