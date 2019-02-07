@@ -3,9 +3,11 @@
 This script is a variant on grafter.py, but is designed to be the main source of data, rather than a supplement, for a given cached day."""
 import sys, csv, re, pytz
 from dateutil import parser
-from process_data import time_to_field, bulk_upsert_to_sqlite
+#from process_data import
 from collections import defaultdict
 from pprint import pprint
+
+from util.sqlite_util import mark_utc_date_as_cached, time_to_field, bulk_upsert_to_sqlite
 
 from parameters.local_parameters import raw_downloads_path, path
 
@@ -129,9 +131,12 @@ def add_missing_purchases(filepath,reference_time):
         dts = dts_by_day[day]
         if reference_time == 'purchase_time':
             bulk_upsert_to_sqlite_local(path,purchases,dts,day,reference_time)
+            raise ValueError('purchase_time reference time is not supported by import_raw.py.')
+
+
         elif reference_time == 'purchase_time_utc':
             bulk_upsert_to_sqlite(path,purchases,dts,day,reference_time)
-
+            mark_utc_date_as_cached(path,reference_time,day)
         # [ ] Update the sqlite date cache to consider this date handled (once all Purchase Date UTC transactions
         # have been handled... so basically keep track of last two dates handled, and if they're consecutive,
         # mark the previous date as cached.
