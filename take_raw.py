@@ -102,21 +102,26 @@ def find_payment_type(p):
         else:
             raise ValueError("Unknown payment type for @PayUnitName {} from payment {}.".format(pay_unit_name,p))
 
-def raw_reframe(p,terminals,t_guids,group_lookup_addendum,include_rate):
+def raw_reframe(p,terminals,t_guids,t_ids,group_lookup_addendum,include_rate):
     """Take a dictionary and generate a new dictionary from it that samples
     the appropriate keys and renames and transforms as desired."""
 
     row = {}
     row['GUID'] = p['@PurchaseGuid']
-    try:
-        row['meter_guid'] = p['@TerminalGuid'] # This is useful
-    # for connecting purchases with terminals when the ID changes
-    # but the GUID does not change.
-    except:
-        print("p['@TerminalGuid'] is missing from {}".format(p))
     row['meter_id'] = p['@TerminalID']
-    if p['@TerminalGuid'] in t_guids:
-        t = terminals[t_guids.index(p['@TerminalGuid'])]
+    t = None
+    if '@TerminalGuid' in p: # This field is just not available in raw downloads from CWO.
+        row['meter_guid'] = p['@TerminalGuid'] # This is useful
+        # for connecting purchases with terminals when the ID changes
+        # but the GUID does not change.
+
+        if p['@TerminalGuid'] in t_guids:
+            t = terminals[t_guids.index(p['@TerminalGuid'])]
+    if t is None:
+        if '@TerminalId' in p:
+            if p['@TerminalId'] in t_ids:
+                t = terminals[t_ids.index(p['@TerminalId'])]
+
 
     # [ ] Decide whether to make a Coin+Card purchase type or
     # to split those over two rows and require the purchase medium
@@ -175,7 +180,7 @@ def build_raw_keys(space_aggregation,time_aggregation,include_rate=False):
 
 
     if space_aggregation == 'meter':
-        space_keys = ['meter_id', 'meter_guid', 'zone']
+        space_keys = ['meter_id', 'zone']
 
     if time_aggregation is None:
         time_keys = ['payment_start_utc', 'payment_end_utc', 'purchase_date_utc', 'date_recorded_utc']
@@ -424,7 +429,7 @@ def main(*args, **kwargs):
         #purchases = sorted(purchases, key = lambda x: x['@DateCreatedUtc'])
         rps = []
         for p in purchases:
-            rps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum,include_rate))
+            rps.append(raw_reframe(p,terminals,t_guids,t_ids,group_lookup_addendum,include_rate))
 
         if include_rate:
             # Augment raw transactions by inferring rate
@@ -471,7 +476,7 @@ def main(*args, **kwargs):
 
 
         for p in purchases: # This was previously "for p in linkable + unlinkable" before the estimate_occupancy hack was put in place.
-            reframed_ps.append(raw_reframe(p,terminals,t_guids,group_lookup_addendum,include_rate))
+            reframed_ps.append(raw_reframe(p,terminals,t_guids,t_ids,group_lookup_addendum,include_rate))
 
         if include_rate:
             # Augment raw transactions by inferring rate
