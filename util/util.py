@@ -17,7 +17,12 @@ lot_list = ['18-CARSO-L', '18-SIDNE-L', '19-CARSO-L', '20-SIDNE-L', '42-BUTLE-L'
 
 other_zones_list = ['ALLENTOWN', 'BAKERY-SQ', 'BEECHVIEW', 'BLOOMFIELD', 'BROOKLINE', 'CARRICK', 'DOWNTOWN1', 'DOWNTOWN2', 'EASTLIB', 'HILL-DIST', 'KNOXVILLE', 'LAWRENCEV', 'MELONPARK', 'MT.WASH', 'NORTHSHORE', 'NORTHSIDE', 'OAKLAND1', 'OAKLAND2', 'OAKLAND3', 'OAKLAND4', 'SOUTHSIDE', 'STRIPDIST', 'TECHNOLOGY', 'WEST END', 'Z - Inactive/Removed Terminals']
 
+excluded_zones_list = ['FRIENDSHIP AVE RPP', 'Z - Inactive/Removed Terminals']
+
 designated_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'Hill District']
+# "Mini-zones" is another designation for sampling groups, the distinction being that sampling groups/zones
+# had been inferred from zones that were not numbered reporting zones or enforcement zones, while
+# mini-zones are those being explicitly requested.
 
 # The reporting zones of the form '123 - Description'.
 numbered_reporting_zones_list = ['301 - Sheridan Harvard Lot',
