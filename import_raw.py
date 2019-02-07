@@ -175,6 +175,15 @@ filenames = [#'Purchases-20150101-20150103-Historical.csv',
         'Purchases-20180930-20181002-Historical.csv',
         'Purchases-20181003-20181004-Historical.csv'
         ]
+process_all_files = False
+
+if process_all_files:
+    # Get all filenames from the directory.
+    from os import listdir
+    from os.path import isfile, join
+    onlyfiles = [f for f in listdir(mypath) if isfile(join(raw_downloads_path, f)) and re.search(".csv$", f) is not None]
+    # Sort them by date range.
+    filenames = sorted(onlyfiles)
 
 passes_by_date = defaultdict(int)
 
