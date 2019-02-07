@@ -51,7 +51,6 @@ def special_conversion(d):
         '@PayIntervalEndUtc': pgh.localize(parser.parse(d['Pay Interval End Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
         '@EndDateLocal': parser.parse(d['End Date Local']).strftime("%Y-%m-%dT%H:%M:%S"),
         '@EndDateUtc': pgh.localize(parser.parse(d['End Date Local'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"),
-        '@DateCreatedUtc': parser.parse(d['Created in Data Warehouse']).strftime("%Y-%m-%dT%H:%M:%S"),
         '@PurchaseTypeName': d['Purchase Type - Name'],
         }
 
@@ -60,6 +59,12 @@ def special_conversion(d):
     else: # Unfortunately, my SQLite import process is using @PurchaseGuid as a unique ID, so
         # something must go here for it to work, so as a klugy workaround...
         p['@PurchaseGuid'] = d['External ID'] + d['Ticket Number']
+
+    if 'Created in CWO' in d:
+        p['@DateCreatedUtc'] = pgh.localize(parser.parse(d['Created in CWO'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"), # 'Created in CWO' is a local time which must be converted to UTC.
+    #else:
+    #    print("Note that this will not match @DateCreatedUtc values from the API.
+    #    p['@DateCreatedUtc'] = pgh.localize(parser.parse(d['Created in Data Warehouse'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"), # 'Created in Data Warehouse' is a local time which must be converted to UTC.
 
     if 'Net Amount' in d:
         p['net_amount'] = d['Net Amount']
