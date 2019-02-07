@@ -6,6 +6,7 @@ from dateutil import parser
 #from process_data import
 from collections import defaultdict
 from pprint import pprint
+from datetime import timedelta
 
 from util.sqlite_util import mark_utc_date_as_cached, time_to_field, bulk_upsert_to_sqlite
 
@@ -96,7 +97,7 @@ def merge(ps):
     del p['net_amount']
     return new_p
 
-def add_missing_purchases(filepath,reference_time):
+def add_missing_purchases(filepath,reference_time,passes_by_date):
     local_tz = pytz.timezone('US/Eastern')
     with open(filepath) as f:
         list_of_ds = csv.DictReader(f)
@@ -134,6 +135,7 @@ def add_missing_purchases(filepath,reference_time):
         print("Grafting missing purchases from {} onto corresponding sqlite database.".format(day))
         purchases = ps_by_day[day]
         dts = dts_by_day[day]
+        passes_by_date[day] += 1
         if reference_time == 'purchase_time':
             bulk_upsert_to_sqlite_local(path,purchases,dts,day,reference_time)
             raise ValueError('purchase_time reference time is not supported by import_raw.py.')
@@ -141,11 +143,21 @@ def add_missing_purchases(filepath,reference_time):
 
         elif reference_time == 'purchase_time_utc':
             bulk_upsert_to_sqlite(path,purchases,dts,day,reference_time)
-            mark_utc_date_as_cached(path,reference_time,day)
-        # [ ] Update the sqlite date cache to consider this date handled (once all Purchase Date UTC transactions
-        # have been handled... so basically keep track of last two dates handled, and if they're consecutive,
-        # mark the previous date as cached.
+            previous_day = day - timedelta(days=1)
+            if passes_by_date[previous_day] >= 1:
+                mark_utc_date_as_cached(path,reference_time,day)
+                print(" * Marked the UTC date {} as cached. *".format(day))
 
+        # Update the sqlite date cache to consider this date handled (once all Purchase Date UTC transactions
+        # have been handled...
+        #       * "Last date handled" is a bit tricky. The raw downloads files generally have two or three
+        #         days of transactions in local time. Midnight UTC would be 7pm or 8pm Eastern, so if a day
+        #         has been seen, and the previous day has been seen, the day may be considered cached.
+
+        # How can we really know if all transactions have been uploaded if 1am UTC transactions could be in
+        # one file and 10am UTC could be in another file (or in the same file)? The best way is to check
+        # whether THE PREVIOUS DAY has been processed yet. When processing all files consecutively in one
+        # run, this can be done by maintaining a "passes_by_date" dictionary.
 
 #reference_time = 'purchase_time'
 try:
@@ -161,9 +173,12 @@ print("Just assuming that reference_time = {}".format(reference_time))
 
 filenames = [#'Purchases-20150101-20150103-Historical.csv',
         'Purchases-20180930-20181002-Historical.csv',
+        'Purchases-20181003-20181004-Historical.csv'
         ]
+
+passes_by_date = defaultdict(int)
 
 for filename in filenames:
     full_path = raw_downloads_path+filename
     print("Merging in transactions from {}".format(full_path))
-    add_missing_purchases(full_path,reference_time)
+    add_missing_purchases(full_path,reference_time,passes_by_date)
