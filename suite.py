@@ -585,7 +585,7 @@ def get_stats_from_file(ref_filepath):
         ref_transaction_count = stats['No of Purchases (Sum)']
         return ref_revenue, ref_transaction_count
 
-def compare_to_ref(date_string,repo_name,ref_filename=None):
+def compare_to_ref(date_string,repo_name,ref_filename=None,minizone=None):
     # This function should be able to compare two CKAN repositories (by code name)
     # or one CKAN repository and one local reference file (pulled from CALE Web
     # Office). Local reference files are in cwo_refs/.
@@ -599,7 +599,10 @@ def compare_to_ref(date_string,repo_name,ref_filename=None):
     path = os.path.dirname(os.path.abspath(__file__)) # The filepath of this script.
     ref_path = path + "/cwo_refs/"
     if ref_filename is None:
-        ref_filepath = ref_path + '{}-all-Summary.csv'.format(date_string)
+        if minizone is None:
+            ref_filepath = ref_path + '{}-all-Summary.csv'.format(date_string)
+        else:
+            ref_filepath = ref_path + '{}-{}-Summary.csv'.format(date_string,minizone)
     else:
         ref_filepath = ref_path + ref_filename
 
@@ -616,7 +619,9 @@ def compare_to_ref(date_string,repo_name,ref_filename=None):
         start_date = start_dt.date()
         end_date = end_dt.date()
         set_table(ref_time,package_id_override=source['package_id'])
-        revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=None,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
+        revenue, transaction_count = get_revenue_and_count(split_by_mode=split_by_mode,ref_time=ref_time,zone=zone,start_date=start_date,end_date=end_date,start_hour=start_hour,end_hour=end_hour,start_dt=start_dt,end_dt=end_dt,save_all=False,package_id_override=source['package_id'])
+        if minizone is not None:
+            print("Looking at mini-zone = {}.".format(minizone))
         print("Pulling from the CKAN {} repository, for start_dt = {}, end_dt = {}, start_hour = {}, end_hour = {}, we get \n  {} purchases, totalling ${}."
         .format(source['repo_name'],start_dt,end_dt,start_hour,end_hour,transaction_count,revenue))
         print("    delta revenue = ${:<.2f}, delta transaction count = {}".format(revenue - ref_revenue, transaction_count - ref_transaction_count))
