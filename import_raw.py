@@ -26,7 +26,7 @@ def special_conversion(d):
 
     pgh = pytz.timezone('US/Eastern')
     utc = pytz.utc
-    if 'TransactionReference' in d:
+    if 'Transaction Reference' in d and d['Transaction Reference'] != "":
         jsonPPU = '{{"@TransactionReference": "{}", "@Amount": "{}", "@PayUnitName": "{}"}}'.format(d['Transaction Reference'], d['Amount'], d['Pay Unit - Name'])
     else:
         jsonPPU = '{{"@Amount": "{}", "@PayUnitName": "{}"}}'.format(d['Amount'], d['Pay Unit - Name'])
