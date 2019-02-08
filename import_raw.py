@@ -62,7 +62,7 @@ def special_conversion(d):
         p['@PurchaseGuid'] = d['External ID'] + d['Ticket Number']
 
     if 'Created in CWO' in d:
-        p['@DateCreatedUtc'] = pgh.localize(parser.parse(d['Created in CWO'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"), # 'Created in CWO' is a local time which must be converted to UTC.
+        p['@DateCreatedUtc'] = pgh.localize(parser.parse(d['Created in CWO'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S") # 'Created in CWO' is a local time which must be converted to UTC.
     #else:
     #    print("Note that this will not match @DateCreatedUtc values from the API.
     #    p['@DateCreatedUtc'] = pgh.localize(parser.parse(d['Created in Data Warehouse'])).astimezone(utc).strftime("%Y-%m-%dT%H:%M:%S"), # 'Created in Data Warehouse' is a local time which must be converted to UTC.
@@ -171,19 +171,23 @@ reference_time = 'purchase_time_utc'
 #    raise ValueError("Invalid reference time value.")
 print("Just assuming that reference_time = {}".format(reference_time))
 
-filenames = [#'Purchases-20150101-20150103-Historical.csv',
-        'Purchases-20180930-20181002-Historical.csv',
-        'Purchases-20181003-20181004-Historical.csv'
-        ]
-process_all_files = False
+if len(sys.argv) > 1:
+    # Interpret command-line arguments as filenames.
+    filenames = sys.argv[1:]
+else:
+    filenames = [#'Purchases-20150101-20150103-Historical.csv',
+            'Purchases-20180930-20181002-Historical.csv',
+            'Purchases-20181003-20181004-Historical.csv'
+            ]
+    process_all_files = False
 
-if process_all_files:
-    # Get all filenames from the directory.
-    from os import listdir
-    from os.path import isfile, join
-    onlyfiles = [f for f in listdir(mypath) if isfile(join(raw_downloads_path, f)) and re.search(".csv$", f) is not None]
-    # Sort them by date range.
-    filenames = sorted(onlyfiles)
+    if process_all_files:
+        # Get all filenames from the directory.
+        from os import listdir
+        from os.path import isfile, join
+        onlyfiles = [f for f in listdir(mypath) if isfile(join(raw_downloads_path, f)) and re.search(".csv$", f) is not None]
+        # Sort them by date range.
+        filenames = sorted(onlyfiles)
 
 passes_by_date = defaultdict(int)
 
