@@ -66,9 +66,9 @@ def add_purchase_type(p,row,mobile):
         else:
             # This can be assumed to happen for those missing transactions, as they are stuck in an
             # incomplete state in the CALE system.
+            row[purchase_type_field] = None
             if row['zone'][:3] not in ['324', '325', '410']:
-                print("No explicit coding for @PurchaseTypeName == {}.".format(p['@PurchaseTypeName']))
-                row[purchase_type_field] = None
+                print("No explicit coding for @PurchaseTypeName == {}, where zone = {}.".format(p['@PurchaseTypeName'],row['zone']))
     else:
         #print("How are we going to deal with those pesky mobile transactions?")
         row[purchase_type_field] = None
