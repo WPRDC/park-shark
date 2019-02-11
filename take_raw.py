@@ -190,7 +190,8 @@ def build_raw_keys(space_aggregation,time_aggregation,include_rate=False):
 
     # [ ] Should cumulative_units be included here?
 
-    extras = ['mobile_transaction_id', 'purchase_guid']
+    #extras = ['mobile_transaction_id', 'purchase_guid']
+    extras = ['mobile_transaction_id']
     if include_rate:
         extras = ['rate'] + extras
 

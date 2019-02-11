@@ -16,11 +16,13 @@ sqlite-pdu/
 missing_data/
 csv/
 docs/
+dst-resources/
 meters_etl/*.csv
 meters_etl/archive/
 meters_etl/remote_parameters.py
 meters_etl/*backup
 cwo_refs/
+raw_downloads/
 refs/
 maps/
 sample-reports/
@@ -40,3 +42,4 @@ linkable/
 unlinkable/
 proto_get_revenue.py
 credentials.py
+utc_json_completed/
