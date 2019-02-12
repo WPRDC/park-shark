@@ -4,6 +4,7 @@ from xlrd import open_workbook
 from pprint import pprint
 from collections import defaultdict
 import string
+from dateutil import parser
 
 def write_to_csv(filename,list_of_dicts,keys):
     with open(filename, 'w') as output_file:
@@ -66,6 +67,7 @@ def main():
 
 
     bigboard = []
+    meter_ids = []
     for s in wb.sheets():
         #print('Sheet:',s.name)
         sheet_zone = s.name
@@ -129,7 +131,12 @@ def main():
     rate_list_by_tariff_program = defaultdict(list)
     rate_list_by_meter_id = defaultdict(list)
 
-    with open(path+'meters-2019-01-29.csv','r') as g:
+    filename = 'meters-2019-01-29.csv'
+    filename_w_o_extension, extension = filename.split('.')
+
+    date_from_filename = parser.parse(re.sub("^meters-","",filename_w_o_extension)).date()
+
+    with open(path+filename,'r') as g:
         list_of_ds = csv.DictReader(g)
 
         for d in list_of_ds:
