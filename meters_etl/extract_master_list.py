@@ -148,13 +148,13 @@ def main():
                 d['hours'] = meter['hours']
                 d['restrictions'] = meter['restrictions']
                 d['special_events'] = meter['special_events']
-                d['rate_as_of'] = '2019-01-29'
             else:
                 print("{} is missing from the master list.".format(d['ID']))
+            d['rate_as_of'] = date_from_filename.isoformat()
 
             joined.append(d)
 
-    keys = ['ID', 'Zone', 'Location', 'Latitude', 'Longitude', 'Status', 'ParentStructure', 'all_groups', 'GUID', 'Rate information', 'rate', 'TariffPrograms', 'TariffDescriptions', 'max_hours', 'hours', 'restrictions', 'special_events', 'created_utc', 'in_service_utc', 'removed_utc', 'rate_as_of']
+    keys = ['ID', 'Zone', 'Location', 'location_type', 'Latitude', 'Longitude', 'Status', 'ParentStructure', 'all_groups', 'GUID', 'Rate information', 'rate', 'TariffPrograms', 'TariffDescriptions', 'max_hours', 'hours', 'restrictions', 'special_events', 'created_utc', 'in_service_utc', 'removed_utc', 'rate_as_of']
     write_to_csv(path+'joined.csv',joined,keys)
 
     rate_by_tariff = {}
