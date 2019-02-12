@@ -3,6 +3,7 @@ from xlrd import open_workbook
 
 from pprint import pprint
 from collections import defaultdict
+import string
 
 def write_to_csv(filename,list_of_dicts,keys):
     with open(filename, 'w') as output_file:
@@ -14,6 +15,12 @@ def value_or_none(record,field):
     if field in record:
         return record[field]
     return None
+
+def printable(s):
+    if s is None:
+        return s
+    printable_chars = set(string.printable)
+    return ''.join(list(filter(lambda x: x in printable_chars, s)))
 
 def main():
     abspath = os.path.abspath(__file__)
@@ -81,22 +88,35 @@ def main():
                     record[headers[j]] = cell_value
                     values.append(cell_value)
                 records.append(record)
-                str_values = [str(v) for v in values]
+                #try:
+                #    str_values = [printable(v) for v in values]
+                #except:
+                #    pprint(values)
+                #    print(values[0])
+                #    print(len(values[0]))
+                #    print("{} ({})".format(printable(values[0]),len(printable(values[0]))))
+
+                    #str_values = [str(v) for v in values]
                 #print(','.join(str_values))
 
-                if sheet_zone != 'Inactive Meters' or True:
+                #if sheet_zone != 'Inactive Meters'
+                if True:
                     # Inactive Meters don't have most of these fields.
                     bigboard_record = {}
-                    bigboard_record['meter_id'] = record['Meter ID']
-                    bigboard_record['zone'] = zone
-                    bigboard_record['max_hours'] = value_or_none(record, 'Max Hours')
-                    bigboard_record['hours'] = value_or_none(record, 'Hours')
-                    bigboard_record['rate'] = value_or_none(record, 'Rate')
-                    bigboard_record['restrictions'] = value_or_none(record, 'Restrictions')
-                    bigboard_record['special_events'] = value_or_none(record, 'Special Events')
-                    bigboard.append(bigboard_record)
+                    meter_id = record['Meter ID']
+                    bigboard_record['meter_id'] = printable(meter_id)
+                    bigboard_record['zone'] = printable(zone)
+                    bigboard_record['max_hours'] = printable(value_or_none(record, 'Max Hours'))
+                    bigboard_record['hours'] = printable(value_or_none(record, 'Hours'))
+                    bigboard_record['rate'] = printable(value_or_none(record, 'Rate'))
+                    bigboard_record['restrictions'] = printable(value_or_none(record, 'Restrictions'))
+                    bigboard_record['special_events'] = printable(value_or_none(record, 'Special Events'))
+
+                    if meter_id not in meter_ids: # Make sure that this is not a duplicate Inactive Meters record for a meter
+                        bigboard.append(bigboard_record) # that's already been recorded (otherwise, it winds up getting
+                        # overwritten and rate information does not show up in the extracted data).
+                        meter_ids.append(meter_id)
                     pprint(bigboard_record)
-                    #pprint(record)
 
     keys = ['meter_id', 'zone', 'max_hours', 'hours', 'rate', 'restrictions', 'special_events']
     write_to_csv(path+'meters_master_list.csv',bigboard,keys)
@@ -123,17 +143,18 @@ def main():
                         rate_list_by_tariff_program[d['TariffPrograms']].append(meter_rate)
                     if meter_rate not in rate_list_by_meter_id[d['ID']]:
                         rate_list_by_meter_id[d['ID']].append(meter_rate)
-                d['rate_master'] = meter_rate
-                d['max_hours_master'] = meter['max_hours']
-                d['hours_master'] = meter['hours']
-                d['restrictions_master'] = meter['restrictions']
-                d['special_events_master'] = meter['special_events']
+                d['rate'] = meter_rate
+                d['max_hours'] = meter['max_hours']
+                d['hours'] = meter['hours']
+                d['restrictions'] = meter['restrictions']
+                d['special_events'] = meter['special_events']
+                d['rate_as_of'] = '2019-01-29'
             else:
                 print("{} is missing from the master list.".format(d['ID']))
 
             joined.append(d)
 
-    keys = ['ID', 'Zone', 'Location', 'Latitude', 'Longitude', 'Status', 'ParentStructure', 'all_groups', 'GUID', 'Rate information', 'rate_master', 'TariffPrograms', 'TariffDescriptions', 'max_hours_master', 'hours_master', 'restrictions_master', 'special_events_master', 'created_utc', 'in_service_utc', 'removed_utc']
+    keys = ['ID', 'Zone', 'Location', 'Latitude', 'Longitude', 'Status', 'ParentStructure', 'all_groups', 'GUID', 'Rate information', 'rate', 'TariffPrograms', 'TariffDescriptions', 'max_hours', 'hours', 'restrictions', 'special_events', 'created_utc', 'in_service_utc', 'removed_utc', 'rate_as_of']
     write_to_csv(path+'joined.csv',joined,keys)
 
     rate_by_tariff = {}
