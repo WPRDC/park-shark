@@ -56,6 +56,14 @@ class MetersSchema(pl.BaseSchema):
     class Meta:
         ordered = True
 
+class ExtendedMetersSchema(MetersSchema):
+    rate = fields.String(allow_none=True)
+    max_hours = fields.String(allow_none=True)
+    hours = fields.String(allow_none=True)
+    restrictions = fields.String(allow_none=True)
+    special_events = fields.String(allow_none=True)
+    rate_as_of = fields.Date(allow_none=False)
+
 class CumulativeMetersSchema(MetersSchema):
     year_month = fields.String(dump_only=True,dump_to='year_month',default=datetime.datetime.now().strftime("%Y-%m")) 
     # The year and month for which the meters data was pulled.
