@@ -26,6 +26,18 @@ from pprint import pprint
 
 from util.util import get_terminals
 
+list_of_servers = ["meters-etl", #"official-terminals",
+    "transactions-production",
+    "transactions-payment-time-of",
+    "transactions-prototype",
+    "transactions-by-pdl",
+    "split-transactions-by-pdl",
+    "debug",
+    "testbed",
+    "sandbox",
+    #"aws-test"
+    ] # This list could be automatically harvested from SETTINGS_FILE.
+
 def main(*args,**kwargs):
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
@@ -65,18 +77,6 @@ if __name__ == '__main__':
         copy_of_args = list(args)
 
         pgh = pytz.timezone('US/Eastern')
-
-        list_of_servers = ["meters-etl", #"official-terminals", 
-                "transactions-production",
-                "transactions-payment-time-of",
-                "transactions-prototype",
-                "transactions-by-pdl",
-                "split-transactions-by-pdl",
-                "debug",
-                "testbed",
-                "sandbox",
-                #"aws-test"
-                ] # This list could be automatically harvested from SETTINGS_FILE.
 
         slot_start = None
         halting_time = None
