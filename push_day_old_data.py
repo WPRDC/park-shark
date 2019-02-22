@@ -10,6 +10,7 @@ from pprint import pprint
 import process_data
 from util.util import get_terminals
 from read_entire_history import main, list_of_servers
+from notify import send_to_slack
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
@@ -57,6 +58,6 @@ if __name__ == '__main__':
             msg = ''.join('!! ' + line for line in lines)
             msg = 'push_day_old_data.py: ' + msg
             print(msg) # Log it or whatever here
+            send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
     else:
         raise ValueError("Please specify some command-line parameters")
-
