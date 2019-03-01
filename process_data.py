@@ -40,6 +40,8 @@ last_utc_date_cache = None
 utc_ps_cache = []
 utc_dts_cache = []
 
+global_warnings = defaultdict(int)
+
 temp_zone_info = {'344 - 18th & Carson Lot': {'Latitude': 40.428484093957401,
                  'Longitude': -79.98027965426445},
  '345 - 20th & Sidney Lot': {'Latitude': 40.429380412222464,
@@ -488,6 +490,8 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
 
     # If 'Duration' does not have a non-None value in any of the rps,
     # distill_stats will not add Durations and car-minutes fields.
+    global global_warnings
+
     for k,rp in enumerate(rps):
         t_guid = rp['TerminalGUID']
         t_id = rp['TerminalID']
@@ -569,7 +573,13 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                                 # each case, which is what I've done.
                                 # This output seems to be the same as before space-time aggregation
                                 # was added.
-                                stats_by[a_key]['parent_zone'] = '|'.join(parent_zones[zone])
+                                if zone in parent_zones:
+                                    stats_by[a_key]['parent_zone'] = '|'.join(parent_zones[zone])
+                                else:
+                                    msg = "sampling zone = {} is not listed in parent_zones, though this may just because process_data.py is working off of a cached file.".format(zone)
+                                    print(msg)
+                                    global_warnings[msg] += 1
+                                    stats_by[a_key]['parent_zone'] = ''
 
                         elif space_aggregate_by == 'meter':
                             stats_by[a_key]['Meter GUID'] = t_guid
@@ -2501,6 +2511,14 @@ def main(*args, **kwargs):
         print("Occupancy estimation is turned off.")
     else:
         print("Occupancy estimation (currently on) needs to be fixed.")
+
+    # Deal with accumulated warnings (rather than sending a Slack message for each one)
+    global global_warnings
+    if len(global_warnings) > 0:
+        msg = 'process_data.py warnings: \n'
+        for warning,count in global_warnings.items():
+            msg += "{} ({})\n".format(warning,count)
+        send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
 
     return success_transactions
 
