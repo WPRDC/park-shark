@@ -65,75 +65,84 @@ def pull_terminals(*args, **kwargs):
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
 
-    # [ ] Note that cached mode could break if a new parking zone is
-    # created and is therefore a) not in the cached_terminals.xml
-    # file (used by the get_terminals function) and b) not entered
-    # into the hard-coded extra zones below.
-    #
-    # Indeed, no thought has been given yet to incorporating new
-    # zones into corresponding extra zones.
-    if use_cache:
-        if return_extra_zones:
-            sampling_zones = ['HILL-DIST-2',
-                        'SQ.HILL1',
-                        'Hill District',
-                        'W CIRC DR',
-                        'Southside Lots',
-                        'CMU Study',
-                        'Marathon/CMU',
-                        'SHADYSIDE1',
-                        'SHADYSIDE2',
-                        'UPTOWN1',
-                        'East Liberty (On-street only)',
-                        'UPTOWN2',
-                        'S. Craig',
-                        'SQ.HILL2']
-            parent_zones = {'CMU Study': ['410 - Oakland 4'],
-                 'East Liberty (On-street only)': ['412 - East Liberty'],
-                 'HILL-DIST-2': ['403 - Uptown'],
-                 'Hill District': ['426 - Hill District'],
-                 'Marathon/CMU': ['415 - SS & SSW',
-                                  '401 - Downtown 1',
-                                  '404 - Strip Disctrict',
-                                  '408 - Oakland 2',
-                                  '407 - Oakland 1',
-                                  '409 - Oakland 3',
-                                  '406 - Bloomfield (On-street)',
-                                  '410 - Oakland 4',
-                                  '402 - Downtown 2',
-                                  '422 - Northshore'],
-                 'S. Craig': ['409 - Oakland 3'],
-                 'SHADYSIDE1': ['411 - Shadyside'],
-                 'SHADYSIDE2': ['411 - Shadyside'],
-                 'SQ.HILL1': ['413 - Squirrel Hill'],
-                 'SQ.HILL2': ['413 - Squirrel Hill'],
-                 'Southside Lots': ['344 - 18th & Carson Lot',
-                                    '345 - 20th & Sidney Lot',
-                                    '343 - 19th & Carson Lot',
-                                    '342 - East Carson Lot',
-                                    '341 - 18th & Sidney Lot'],
-                 'UPTOWN1': ['403 - Uptown'],
-                 'UPTOWN2': ['403 - Uptown'],
-                 'W CIRC DR': ['410 - Oakland 4']}
-
-            return (sampling_zones, parent_zones, ['426 - Hill District'], ['Hill District'], {'426': '426 - Hill District'})
-        else:
-            return None, None
-
-    url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
-    r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
-
-    # Convert Cale's XML into a Python dictionary
-    doc = xmltodict.parse(r.text,encoding = r.encoding)
-    terminals = doc['Terminals']['Terminal']
+    # Cached mode now derives sampling zones, parent zones,
+    # and other results from cached API calls (e.g., cached_terminals.xml)
+    # (also used by the get_terminals function), so all
+    # information about terminals should be internally consistent.
     f_terminals = path + "cached_terminals.xml"
-    with open(f_terminals,'w+') as g:
-        g.write(r.text)
+    f_attributes = path + "cached_attributes.xml"
+    if use_cache:
+        if not return_extra_zones:
+            return None, None
+        else:
+            #sampling_zones = ['HILL-DIST-2',
+            #            'SQ.HILL1',
+            #            'Hill District',
+            #            'W CIRC DR',
+            #            'Southside Lots',
+            #            'CMU Study',
+            #            'Marathon/CMU',
+            #            'SHADYSIDE1',
+            #            'SHADYSIDE2',
+            #            'UPTOWN1',
+            #            'East Liberty (On-street only)',
+            #            'UPTOWN2',
+            #            'S. Craig',
+            #            'SQ.HILL2']
+            #parent_zones = {'CMU Study': ['410 - Oakland 4'],
+            #     'East Liberty (On-street only)': ['412 - East Liberty'],
+            #     'HILL-DIST-2': ['403 - Uptown'],
+            #     'Hill District': ['426 - Hill District'],
+            #     'Marathon/CMU': ['415 - SS & SSW',
+            #                      '401 - Downtown 1',
+            #                      '404 - Strip Disctrict',
+            #                      '408 - Oakland 2',
+            #                      '407 - Oakland 1',
+            #                      '409 - Oakland 3',
+            #                      '406 - Bloomfield (On-street)',
+            #                      '410 - Oakland 4',
+            #                      '402 - Downtown 2',
+            #                      '422 - Northshore'],
+            #     'S. Craig': ['409 - Oakland 3'],
+            #     'SHADYSIDE1': ['411 - Shadyside'],
+            #     'SHADYSIDE2': ['411 - Shadyside'],
+            #     'SQ.HILL1': ['413 - Squirrel Hill'],
+            #     'SQ.HILL2': ['413 - Squirrel Hill'],
+            #     'Southside Lots': ['344 - 18th & Carson Lot',
+            #                        '345 - 20th & Sidney Lot',
+            #                        '343 - 19th & Carson Lot',
+            #                        '342 - East Carson Lot',
+            #                        '341 - 18th & Sidney Lot'],
+            #     'UPTOWN1': ['403 - Uptown'],
+            #     'UPTOWN2': ['403 - Uptown'],
+            #     'W CIRC DR': ['410 - Oakland 4']}
 
-    attributes_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
-    r = requests.get(attributes_url, auth=(CALE_API_user, CALE_API_password))
-    doc = xmltodict.parse(r.text,encoding = r.encoding)
-    attributes = doc['CustomAttributes']['Data']
+            #return (sampling_zones, parent_zones, ['426 - Hill District'], ['Hill District'], {'426': '426 - Hill District'})
+            file_encoding = 'utf-8'
+            with open(f_terminals,'r') as g:
+                terminals_text = g.read()
+            t_doc = xmltodict.parse(terminals_text,encoding = file_encoding)
+
+            with open(f_attributes,'r') as g:
+                attributes_text = g.read()
+            a_doc = xmltodict.parse(attributes_text,encoding = file_encoding)
+    else: # if not use_cache
+        url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
+        r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
+        with open(f_terminals,'w+') as g:
+            g.write(r.text)
+
+        # Convert Cale's XML into a Python dictionary
+        t_doc = xmltodict.parse(r.text,encoding = r.encoding)
+
+        attributes_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
+        r = requests.get(attributes_url, auth=(CALE_API_user, CALE_API_password))
+        with open(f_attributes,'w+') as g:
+            g.write(r.text)
+        a_doc = xmltodict.parse(r.text,encoding = r.encoding)
+
+    terminals = t_doc['Terminals']['Terminal']
+    attributes = a_doc['CustomAttributes']['Data'] # [ ] Consider eliminating the attributes if they are not being used anywhere.
 
     rates, restrictions, install_dates = {}, {}, {}
     for a in attributes:
@@ -333,6 +342,7 @@ def pull_terminals(*args, **kwargs):
         # any effect on process_data.py
     else:
         return list_of_dicts, dkeys # The data that was previously written to the payment_points.csv file.
+        # This mode that returns just two objects is no longer needed (it just needs to be edited out of pipelines.py).
 ############
 
 # At present, the default when running this script (or the pull_terminals function) is not to output the results to
