@@ -1,4 +1,4 @@
-import os
+import os, sys
 import requests
 import xmltodict
 from datetime import datetime
@@ -348,4 +348,7 @@ def pull_terminals(*args, **kwargs):
 # At present, the default when running this script (or the pull_terminals function) is not to output the results to
 # a CSV file.
 if __name__ == '__main__':
-    pull_terminals(output_to_csv=True)
+    if len(sys.argv) > 1 and 'use_cache' in sys.argv[1:]:
+        pull_terminals(output_to_csv=False, use_cache=True)
+    else:
+        pull_terminals(output_to_csv=True)
