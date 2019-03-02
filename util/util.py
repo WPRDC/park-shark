@@ -19,7 +19,9 @@ other_zones_list = ['ALLENTOWN', 'BAKERY-SQ', 'BEECHVIEW', 'BLOOMFIELD', 'BROOKL
 
 excluded_zones_list = ['FRIENDSHIP AVE RPP', 'Z - Inactive/Removed Terminals']
 
-designated_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'Hill District']
+designated_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'HILL-DIST-2', 'S. Craig', 'Southside Lots'] # designated_minizones is not
+# being used by the censor function to select acceptable sampling zones.
+
 # "Mini-zones" is another designation for sampling groups, the distinction being that sampling groups/zones
 # had been inferred from zones that were not numbered reporting zones or enforcement zones, while
 # mini-zones are those being explicitly requested.
