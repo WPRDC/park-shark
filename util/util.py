@@ -267,14 +267,17 @@ def unique_values(xs,field):
 def censored(x):
     return re.search("^TEST",x) is not None
 
-def censor(xs):
+def censor(xs,space_aggregate_by):
     # Eliminate all strings in the list xs that contain forbidden
     # patterns (e.g., those that start with "TEST").
-    ys = []
-    for x in xs:
-        if not censored(x):
-            ys.append(x)
-    return ys
+    if space_aggregate_by == 'sampling zone':
+        ys = []
+        for x in xs:
+            if not censored(x) and x in designated_minizones:
+                ys.append(x)
+        return ys
+    else:
+        return xs
 
 def is_a_lot(t):
     return t['ParentTerminalStructure']['@Name'][-2:] == "-L"

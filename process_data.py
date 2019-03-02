@@ -530,8 +530,10 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                 # the user would have both ID and GUID in this meter-month-hour
                 # aggregation mode.
 
+
         if space_aggregation_keys != []:
-            space_aggregation_keys = censor(space_aggregation_keys)
+            space_aggregation_keys = censor(space_aggregation_keys,space_aggregate_by) # Here it seems that the censor function can be used to only approve certain zones
+            # and eliminate others.
             if time_aggregate_by is None:
                 aggregation_keys = space_aggregation_keys
             elif time_aggregate_by == 'month':
