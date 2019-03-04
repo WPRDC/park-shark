@@ -267,7 +267,7 @@ def unique_values(xs,field):
 #set([u'Completed', u'Ongoing'])
 
 def censored(x):
-    return re.search("^TEST",x) is not None
+    return (re.search("^TEST",x) is not None) and (x not in excluded_zones_list)
 
 def censor(xs,space_aggregate_by):
     # Eliminate all strings in the list xs that contain forbidden
