@@ -2520,7 +2520,11 @@ def main(*args, **kwargs):
         msg = 'process_data.py warnings: \n'
         for warning,count in global_warnings.items():
             msg += "{} ({})\n".format(warning,count)
-        send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+        try:
+            send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+        except requests.exceptions.ConnectionError:
+            print("Unable to transmit this message to Slack")
+            print(msg)
 
     return success_transactions
 
