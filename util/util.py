@@ -372,6 +372,17 @@ def sampling_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
     return sgs
 
 def group_by_code(code,t=None,group_lookup_addendum={}):
+    # This function tries hard to identify the group (basically,
+    # the numbered reporting zone in the set that divides the city
+    # up such that each meter is in one primary zone (e.g., '401 - Downtown 1').
+    # If there are new terminal groups, it will try to assign it to one of
+    # those if it makes sense. This could eventually fail with the emergence
+    # of new redundant numbered reporting groups (like if a 428 zone were
+    # created, with subzones '428 - Neighborhood of Make-Believe' and
+    # '428 - Someplace Else'), but generally a weird terminal like
+    # FRIENDSHIP AVE RPP will have no associated groups and will return
+    # a group value of None.
+
     # Here 'code' is a string which may look like '310' or '402' or
     # (in the worst case scenario) '355-2'.
 
@@ -562,6 +573,8 @@ def infer_group(t=None,t_id=None,group_lookup_addendum={}):
 def numbered_zone(t_id,t=None,group_lookup_addendum={}):
     # This is the new slimmed-down approach to determining the numbered
     # reporting zone for the meter purely from the meter ID.
+    # For meters where the numbered zone cannot be determined, the
+    # returned value of num_zone is None.
     num_zone = None
     if t_id[:3] == 'PBP': #is_virtual(t)
         num_zone, new_num_zone, new_old_zone = infer_group(t,t_id,group_lookup_addendum)
