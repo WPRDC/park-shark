@@ -1901,8 +1901,8 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
                 d['space_count'] = base['spaces']
                 d['zone_type'] = base['type']
 
-            if augment and zone in zonelist: # By adding zone in zonelist, I'm boxing out the
-            # "zone in stats_rows.keys()" condition below, that was letting in things like
+            if augment and zone in zonelist: # By adding the "zone in zonelist" condition, I'm boxing
+            #out the "zone in stats_rows.keys()" condition below, that was letting in things like
             # zone = CMU Study.
                 if 'inferred_occupancy' not in d:
                     print("zone = {}, d = ".format(zone))
