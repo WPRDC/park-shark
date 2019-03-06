@@ -1921,7 +1921,6 @@ def package_for_output(stats_rows,zonelist,inferred_occupancy, zone_info,tz,slot
             # unless someone (maybe the ParkMobile user entering a code)
             # makes an error.
     #            print("Found a zone not listed in zone_info: {}".format(zone))
-
     return list_of_dicts, augmented
 
 def eliminate_zeros(ps):

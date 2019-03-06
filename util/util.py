@@ -20,6 +20,7 @@ other_zones_list = ['ALLENTOWN', 'BAKERY-SQ', 'BEECHVIEW', 'BLOOMFIELD', 'BROOKL
 excluded_zones_list = ['FRIENDSHIP AVE RPP'] # It's really important to not exclude the Inactive/Removed Terminals zone
     # since that knocks out transactions associated with some removed terminals.
     # , 'Z - Inactive/Removed Terminals'] #  fetch_terminals has its own excluded_zones list.
+    # excluded_zones_list is currently not needed anywhere.
 
 designated_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'HILL-DIST-2', 'S. Craig', 'Southside Lots'] # designated_minizones is not
 # being used by the censor function to select acceptable sampling zones.
@@ -267,7 +268,7 @@ def unique_values(xs,field):
 #set([u'Completed', u'Ongoing'])
 
 def censored(x):
-    return (re.search("^TEST",x) is not None) and (x not in excluded_zones_list)
+    return (re.search("^TEST",x) is not None)
 
 def censor(xs,space_aggregate_by):
     # Eliminate all strings in the list xs that contain forbidden
