@@ -17,11 +17,6 @@ lot_list = ['18-CARSO-L', '18-SIDNE-L', '19-CARSO-L', '20-SIDNE-L', '42-BUTLE-L'
 
 other_zones_list = ['ALLENTOWN', 'BAKERY-SQ', 'BEECHVIEW', 'BLOOMFIELD', 'BROOKLINE', 'CARRICK', 'DOWNTOWN1', 'DOWNTOWN2', 'EASTLIB', 'HILL-DIST', 'KNOXVILLE', 'LAWRENCEV', 'MELONPARK', 'MT.WASH', 'NORTHSHORE', 'NORTHSIDE', 'OAKLAND1', 'OAKLAND2', 'OAKLAND3', 'OAKLAND4', 'SOUTHSIDE', 'STRIPDIST', 'TECHNOLOGY', 'WEST END', 'Z - Inactive/Removed Terminals']
 
-excluded_zones_list = ['FRIENDSHIP AVE RPP'] # It's really important to not exclude the Inactive/Removed Terminals zone
-    # since that knocks out transactions associated with some removed terminals.
-    # , 'Z - Inactive/Removed Terminals'] #  fetch_terminals has its own excluded_zones list.
-    # excluded_zones_list is currently not needed anywhere.
-
 designated_minizones = ['SHADYSIDE1', 'SHADYSIDE2', 'SQ.HILL1', 'SQ.HILL2', 'UPTOWN1', 'UPTOWN2', 'W CIRC DR', 'HILL-DIST-2', 'S. Craig', 'Southside Lots'] # designated_minizones is not
 # being used by the censor function to select acceptable sampling zones.
 
@@ -276,7 +271,7 @@ def censor(xs,space_aggregate_by):
     if space_aggregate_by == 'sampling zone':
         ys = []
         for x in xs:
-            if not censored(x) and x in designated_minizones:
+            if not censored(x) and x in designated_minizones: # This catches FRIENDSHIP AVE RPP.
                 ys.append(x)
         return ys
     else:
