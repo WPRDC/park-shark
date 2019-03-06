@@ -162,7 +162,7 @@ def pull_terminals(*args, **kwargs):
     uncharted_enforcement_zones = []
     group_lookup_addendum = {}
 
-    ids_to_ignore = ['Friendship Ave RPP']
+    ids_to_ignore = ['Friendship Ave RPP'] # These are terminal IDs which should not be saved to CSV files or pushed to CKAN repositories.
     for k,t in enumerate(terminals):
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
@@ -204,7 +204,8 @@ def pull_terminals(*args, **kwargs):
             new_entry['location_type'] = "Lot"
         elif is_a_virtual_zone(t):
             new_entry['location_type'] = "Virtual Zone"
-        new_entry['Zone'], new_numbered_zone, new_enforcement_zone  = numbered_zone(t['@Id'],t)
+        new_entry['Zone'], new_numbered_zone, new_enforcement_zone = numbered_zone(t['@Id'],t)
+
         if new_numbered_zone is not None:
             uncharted_numbered_zones.append(new_numbered_zone)
             if new_enforcement_zone is not None:
