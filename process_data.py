@@ -513,7 +513,9 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                 if zone_kind == 'old':
                     zone = corrected_zone_name(None,t_ids,rp['TerminalID'])
 
-            if zone is not None:
+            if zone is not None: # zone can be None if a numbered zone cannot be identified, meaning that
+                # space_aggregation_keys will be empty, and the transaction will not be have a bin to
+                # be published in.
                 space_aggregation_keys = [zone]
         elif space_aggregate_by == 'sampling zone':
             if 'List_of_sampling_groups' in rp and rp['List_of_sampling_groups'] != []:
@@ -530,10 +532,9 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
                 # the user would have both ID and GUID in this meter-month-hour
                 # aggregation mode.
 
-
         if space_aggregation_keys != []:
-            space_aggregation_keys = censor(space_aggregation_keys,space_aggregate_by) # Here it seems that the censor function can be used to only approve certain zones
-            # and eliminate others.
+            space_aggregation_keys = censor(space_aggregation_keys,space_aggregate_by) # The censor function filters out
+            # forbidden zones, both for regular zones and sampling zones.
             if time_aggregate_by is None:
                 aggregation_keys = space_aggregation_keys
             elif time_aggregate_by == 'month':
