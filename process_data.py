@@ -534,7 +534,8 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
 
         if space_aggregation_keys != []:
             space_aggregation_keys = censor(space_aggregation_keys,space_aggregate_by) # The censor function filters out
-            # forbidden zones, both for regular zones and sampling zones.
+            # forbidden zones, both for regular zones and sampling zones and requires that sampling zones be
+            # pre-approved (that is, in the designated_minizones list).
             if time_aggregate_by is None:
                 aggregation_keys = space_aggregation_keys
             elif time_aggregate_by == 'month':
@@ -552,58 +553,57 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
             if aggregation_keys != []:
                 for a_key in aggregation_keys:
                     zone = a_key.split('|')[0]
-                    if zone != 'FRIENDSHIP AVE RPP': # Exclude bogus zones
-                        if a_key not in stats_by:
-                            stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,split_by_mode, tz=pytz.timezone('US/Eastern'), transactions_only=transactions_only)
+                    if a_key not in stats_by:
+                        stats_by[a_key] = initialize_zone_stats(start_time,end_time,space_aggregate_by,time_aggregate_by,split_by_mode, tz=pytz.timezone('US/Eastern'), transactions_only=transactions_only)
 
-                        stats_by[a_key]['zone'] = zone
+                    stats_by[a_key]['zone'] = zone
 
-                        if space_aggregate_by == 'sampling zone':
-                            if 'parent_zone' in stats_by[a_key]:
-                                #for zone in space_aggregation_keys:
-                                # There are now cases where getting the zone from space_aggregation_keys
-                                # for space_aggregate_by == 'sampling zone' results in multiple zones
-                                # since the value comes from rp['List_of_sampling_groups']. Basically,
-                                # a terminal group can be assigned to an arbitary number of Terminal
-                                # Groups, and we are getting the ones that are not sampling zones,
-                                # so one terminal can be both in 'CMU Study' and 'Marathon/CMU', for
-                                # instance.
-                                #
-                                # It seems like the correct thing to do in this case is add the
-                                # transactions to both sampling zones.
-                                # This should actually happen naturally if the space part of the
-                                # aggregation key could be pulled off and used as the zone in
-                                # each case, which is what I've done.
-                                # This output seems to be the same as before space-time aggregation
-                                # was added.
-                                if zone in parent_zones:
-                                    stats_by[a_key]['parent_zone'] = '|'.join(parent_zones[zone])
-                                else:
-                                    msg = "sampling zone = {} is not listed in parent_zones, though this may just because process_data.py is working off of a cached file.".format(zone)
-                                    print(msg)
-                                    global_warnings[msg] += 1
-                                    stats_by[a_key]['parent_zone'] = ''
-
-                        elif space_aggregate_by == 'meter':
-                            stats_by[a_key]['Meter GUID'] = t_guid
-                            stats_by[a_key]['Meter ID'] = t_id
-                            nz, _, _ = numbered_zone(t_id,None,group_lookup_addendum)
-                            stats_by[a_key]['zone'] = nz
-
-                        if not split_by_mode:
-                            stats_by[a_key]['transactions'] += 1
-                            stats_by[a_key]['Payments'] += rp['Amount']
-                        else: # Split payments into mobile and meter payments
-                            if rp['Is Mobile Payment']:
-                                stats_by[a_key]['mobile_transactions'] += 1
-                                stats_by[a_key]['Mobile Payments'] += rp['Amount']
+                    if space_aggregate_by == 'sampling zone':
+                        if 'parent_zone' in stats_by[a_key]:
+                            #for zone in space_aggregation_keys:
+                            # There are now cases where getting the zone from space_aggregation_keys
+                            # for space_aggregate_by == 'sampling zone' results in multiple zones
+                            # since the value comes from rp['List_of_sampling_groups']. Basically,
+                            # a terminal group can be assigned to an arbitary number of Terminal
+                            # Groups, and we are getting the ones that are not sampling zones,
+                            # so one terminal can be both in 'CMU Study' and 'Marathon/CMU', for
+                            # instance.
+                            #
+                            # It seems like the correct thing to do in this case is add the
+                            # transactions to both sampling zones.
+                            # This should actually happen naturally if the space part of the
+                            # aggregation key could be pulled off and used as the zone in
+                            # each case, which is what I've done.
+                            # This output seems to be the same as before space-time aggregation
+                            # was added.
+                            if zone in parent_zones:
+                                stats_by[a_key]['parent_zone'] = '|'.join(parent_zones[zone])
                             else:
-                                stats_by[a_key]['meter_transactions'] += 1
-                                stats_by[a_key]['Meter Payments'] += rp['Amount']
+                                msg = "sampling zone = {} is not listed in parent_zones, though this may just be because process_data.py is working off of a cached file.".format(zone)
+                                print(msg)
+                                global_warnings[msg] += 1
+                                stats_by[a_key]['parent_zone'] = ''
 
-                        if not transactions_only and 'Duration' in rp and rp['Duration'] is not None:
-                            stats_by[a_key]['car_minutes'] += rp['Duration']
-                            stats_by[a_key]['Durations'].append(rp['Duration'])
+                    elif space_aggregate_by == 'meter':
+                        stats_by[a_key]['Meter GUID'] = t_guid
+                        stats_by[a_key]['Meter ID'] = t_id
+                        nz, _, _ = numbered_zone(t_id,None,group_lookup_addendum)
+                        stats_by[a_key]['zone'] = nz
+
+                    if not split_by_mode:
+                        stats_by[a_key]['transactions'] += 1
+                        stats_by[a_key]['Payments'] += rp['Amount']
+                    else: # Split payments into mobile and meter payments
+                        if rp['Is Mobile Payment']:
+                            stats_by[a_key]['mobile_transactions'] += 1
+                            stats_by[a_key]['Mobile Payments'] += rp['Amount']
+                        else:
+                            stats_by[a_key]['meter_transactions'] += 1
+                            stats_by[a_key]['Meter Payments'] += rp['Amount']
+
+                    if not transactions_only and 'Duration' in rp and rp['Duration'] is not None:
+                        stats_by[a_key]['car_minutes'] += rp['Duration']
+                        stats_by[a_key]['Durations'].append(rp['Duration'])
 
     return stats_by
 
