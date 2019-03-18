@@ -23,6 +23,14 @@ def printable(s):
     printable_chars = set(string.printable)
     return ''.join(list(filter(lambda x: x in printable_chars, s)))
 
+def remap_rate(x):
+    """Standardize variable rates to make them parsable."""
+    if x == '$1.50+$2hr SR':
+        return '$1.50($2 after 2pm)/hr'
+    if x == '$3+$2.50':
+        return '$3($2.50 after 2pm)/hr'
+    return x
+
 def main():
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
@@ -110,7 +118,7 @@ def main():
                     bigboard_record['zone'] = printable(zone)
                     bigboard_record['max_hours'] = printable(value_or_none(record, 'Max Hours'))
                     bigboard_record['hours'] = printable(value_or_none(record, 'Hours'))
-                    bigboard_record['rate'] = printable(value_or_none(record, 'Rate'))
+                    bigboard_record['rate'] = remap_rate(printable(value_or_none(record, 'Rate')))
                     bigboard_record['restrictions'] = printable(value_or_none(record, 'Restrictions'))
                     bigboard_record['special_events'] = printable(value_or_none(record, 'Special Events'))
 
