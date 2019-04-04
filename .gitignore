@@ -28,6 +28,7 @@ maps/
 sample-reports/
 batch-data/
 scratch/
+snark/
 old/
 old-scripts/
 *settings.json
