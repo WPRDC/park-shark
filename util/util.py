@@ -277,7 +277,10 @@ def censor(xs,space_aggregate_by):
     else:
         return xs
 
-def is_a_lot(t):
+def is_a_lot(t,zone):
+    if t['ParentTerminalStructure']['@Name'] == "Z - Inactive/Removed Terminals":
+        # Switch to making the decision based on the zone designation:
+        return zone[0] == '3'
     return t['ParentTerminalStructure']['@Name'][-2:] == "-L"
 
 def is_virtual(t):
@@ -294,11 +297,11 @@ def is_virtual(t):
         print("Here is a terminal with no @Id field!: {}".format(t))
     return virtual
 
-def is_a_virtual_lot(t):
-    return (is_a_lot(t) and is_virtual(t))
+def is_a_virtual_lot(t,zone):
+    return (is_a_lot(t,zone) and is_virtual(t))
 
-def is_a_virtual_zone(t):
-    return (is_virtual(t) and not is_a_lot(t) and t['@Id'][:3] == "PBP")
+def is_a_virtual_zone(t,zone):
+    return (is_virtual(t) and not is_a_lot(t,zone) and t['@Id'][:3] == "PBP")
 
 def convert_group_to_zone(t,group):
     if group in zone_lookup:

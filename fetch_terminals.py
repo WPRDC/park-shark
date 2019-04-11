@@ -198,13 +198,13 @@ def pull_terminals(*args, **kwargs):
         # Convert the Location Type to "Lot" if the Parent Terminal Structure
         # ends in "-L". (Using the Parent Terminal Structure also snags
         # virtual terminals).
-        if is_a_virtual_lot(t):
-            new_entry['location_type'] = "Virtual Lot"
-        elif is_a_lot(t):
-            new_entry['location_type'] = "Lot"
-        elif is_a_virtual_zone(t):
-            new_entry['location_type'] = "Virtual Zone"
         new_entry['Zone'], new_numbered_zone, new_enforcement_zone = numbered_zone(t['@Id'],t)
+        if is_a_virtual_lot(t,new_entry['Zone']):
+            new_entry['location_type'] = "Virtual Lot"
+        elif is_a_lot(t,new_entry['Zone']):
+            new_entry['location_type'] = "Lot"
+        elif is_a_virtual_zone(t,new_entry['Zone']):
+            new_entry['location_type'] = "Virtual Zone"
 
         if new_numbered_zone is not None:
             uncharted_numbered_zones.append(new_numbered_zone)
