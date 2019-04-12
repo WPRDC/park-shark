@@ -2085,7 +2085,10 @@ def main(*args, **kwargs):
     # Therefore, (until the real reason is uncovered), slot_start and halting_time
     # will only be converted to UTC when using database caching.
 
-    sampling_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=use_cache,return_extra_zones=True)
+    try:
+        sampling_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=use_cache,return_extra_zones=True)
+    except KeyError: # Address occasional glitches in looking up Terminals or CustomAttributes.
+        sampling_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=False,return_extra_zones=True)
     print("sampling zones = {}".format(sampling_zones))
 
     print("parent_zones = ...")
