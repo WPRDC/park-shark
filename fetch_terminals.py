@@ -319,10 +319,51 @@ def pull_terminals(*args, **kwargs):
             write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
 
 
-    excluded_zones = ['TEST - South Craig - Reporting', 'FRIENDSHIP AVE RPP']
-    print("Here is the list of all groups not already in lot_list or other_zones_list or numbered_reporting_zones_list or exclude_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
+    excluded_zones = ['TEST - South Craig - Reporting', 'FRIENDSHIP AVE RPP', 'Marathon/CMU', 'CMU Study',
+     'Northshore Pgm 66', 'Northshore Pgm 67', 'Uptown Pgm 81', 'Uptown Pgm 82',
+     'West Circuit', # The same as W CIRC DR
+     '410 - West Circuit', # The same as W CIRC DR
+     'Hill District', # The same as zone 426
+     'HILL DISTRICT 2', # The same as HILL-DIST-2
+     '403 - HILL DISTRICT 2', # The same as HILL-DIST-2
+     'East Liberty (On-street only)',
+       ]
+    print("Here is the list of all groups not already in lot_list or other_zones_list or numbered_reporting_zones_list or excluded_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
     maybe_sampling_zones = set_of_all_groups - set(lot_list) - set(other_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
-    sampling_zones = censor(maybe_sampling_zones)
+    print(maybe_sampling_zones)
+    candidate_sampling_zones = censor(maybe_sampling_zones,'sampling zone') # censor() now only returns designated minizones
+
+    whitelisted_sampling_zones = ['W CIRC DR',
+     #'West Circuit', # The same as W CIRC DR
+     #'410 - West Circuit', # The same as W CIRC DR
+     'UPTOWN1',
+     'UPTOWN2',
+     #'Hill District', # The same as zone 426
+     'HILL-DIST-2',
+     #'HILL DISTRICT 2', # The same as HILL-DIST-2
+     #'403 - HILL DISTRICT 2', # The same as HILL-DIST-2
+     'SQ.HILL1',
+     'SQ.HILL2',
+     'Southside Lots',
+     #'East Liberty (On-street only)',
+     'SHADYSIDE1',
+     'SHADYSIDE2',
+     'S. Craig',
+     ]
+    #sampling_zones = list(whitelisted_sampling_zones)
+    uncategorized_sampling_zones = list(set(maybe_sampling_zones) - set(candidate_sampling_zones) - set(excluded_zones))
+    if len(uncategorized_sampling_zones) > 0:
+        msg = "Some uncategorized sampling zones were found: {}".format(uncategorized_sampling_zones)
+        print(msg)
+        msg = "fetch_terminals.py: " + msg
+        try:
+            send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+        except requests.exceptions.ConnectionError:
+            print("Unable to transmit this message to Slack:")
+            print(msg)
+
+    print("All sampling zones:")
+    sampling_zones = candidate_sampling_zones
     pprint(sampling_zones)
 
     parent_zones = {}
