@@ -42,7 +42,7 @@ class SpacesSchema(pl.BaseSchema):
     spaces = fields.Integer(allow_none=False)
     rate = fields.Float(allow_none=True)
     rate_description = fields.String(dump_to='rate_description')
-    meters = fields.Integer()
+    meters = fields.Integer(allow_none=True)
     type = fields.String(allow_none=False)
 
     class Meta:
