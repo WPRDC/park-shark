@@ -750,7 +750,7 @@ def lot_code(t):
 def is_timezoneless(d):
     return d.tzinfo is None or d.tzinfo.utcoffset(d) is None
 
-def get_terminals(use_cache = False):
+def get_terminals(use_cache = False, attempts = 0):
     if not use_cache:
         url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
@@ -762,8 +762,13 @@ def get_terminals(use_cache = False):
             text = f.read()
         doc = xmltodict.parse(text,encoding = 'utf-8')
 
-    terminals = doc['Terminals']['Terminal']
-    return terminals
+    if 'Terminals' in doc and 'Terminal' in doc['Terminals']:
+        terminals = doc['Terminals']['Terminal']
+        return terminals
+    elif attempts < 2:
+        return get_terminals(use_cache=(not use_cache), attempts=attempts+1) # Switch methods
+    else:
+        raise ValueError("Unable to pull terminals from API or cache.")
 
 def cast_fields(original_dicts,ordered_fields):
     # This can become pre_load functions in a Marshmallow schema.
