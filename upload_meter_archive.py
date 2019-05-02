@@ -29,7 +29,7 @@ class ModifiedCumulativeMetersSchema(MetersSchema):
     as_of = fields.DateTime(dump_to='as_of')
     # The datetime when the meters data was (originally) pulled.
 
-cumulative_resource_name = 'Payment Points (Monthly Archives)'
+cumulative_resource_name = 'Payment Points (Archives)'
 schema = ModifiedCumulativeMetersSchema
 key_fields = ['id','year_month','guid']
 shoving_method = 'upsert' # Here upserting means that every time we run this
