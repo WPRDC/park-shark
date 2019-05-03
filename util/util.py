@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
+from parameters.local_parameters import path
 from notify import send_to_slack
 
 lot_list = ['18-CARSO-L', '18-SIDNE-L', '19-CARSO-L', '20-SIDNE-L', '42-BUTLE-L', '5224BUTL-L', 'ANSL-BEA-L', 'ASTE-WAR-L', 'BEAC-BAR-L', 'BEECHVIE-L', 'BROOKLIN-L', 'BROW-SAN-L', 'CENT-CRA-L', 'DOUG-PHI-L', 'EASTCARS-L', 'EASTOHIO-L', 'EVA-BEAT-L', 'FORB-MUR-L', 'FORB-SHA-L', 'FRIE-CED-L', 'HOME-ZEN-L', 'IVY-BELL-L', 'JCC-L', 'MAIN-ALE-L', 'OBSERHIL-L', 'PENNC.NW-L', 'SHER-HAR-L', 'SHER-KIR-L', 'SHILOH-L', 'TAME-BEA-L', 'TAYLOR-L', 'WALT-WAR-L'] # Harvard-Beatty-Inferred-L is missing from this list.
@@ -750,7 +751,7 @@ def lot_code(t):
 def is_timezoneless(d):
     return d.tzinfo is None or d.tzinfo.utcoffset(d) is None
 
-def get_terminals(use_cache = False, attempts = 0):
+def get_terminals(use_cache=False,attempts=0):
     if not use_cache:
         url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
@@ -758,7 +759,7 @@ def get_terminals(use_cache = False, attempts = 0):
         # Convert Cale's XML into a Python dictionary
         doc = xmltodict.parse(r.text,encoding = r.encoding)
     else:
-        with open("cached_terminals.xml",'r') as f:
+        with open(path+"cached_terminals.xml",'r') as f:
             text = f.read()
         doc = xmltodict.parse(text,encoding = 'utf-8')
 
