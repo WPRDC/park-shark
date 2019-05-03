@@ -129,17 +129,24 @@ def pull_terminals(*args, **kwargs):
     else: # if not use_cache
         url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
-        with open(f_terminals,'w+') as g:
-            g.write(r.text)
 
         # Convert Cale's XML into a Python dictionary
         t_doc = xmltodict.parse(r.text,encoding = r.encoding)
+        if 'Terminals' in t_doc and 'Terminal' in t_doc['Terminals']: # Check validity of file before saving to local cache.
+            with open(f_terminals,'w+') as g:
+                g.write(r.text)
+        else:
+            raise ValueError("The version of the terminals data pulled from the API is not valid.")
 
         attributes_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
         r = requests.get(attributes_url, auth=(CALE_API_user, CALE_API_password))
-        with open(f_attributes,'w+') as g:
-            g.write(r.text)
+
         a_doc = xmltodict.parse(r.text,encoding = r.encoding)
+        if 'CustomAttributes' in a_doc and 'Data' in a_doc['CustomAttributes']: # Check validity of file before saving to local cache.
+            with open(f_attributes,'w+') as g:
+                g.write(r.text)
+        else:
+            raise ValueError("The version of the attributes data pulled from the API is not valid.")
 
     terminals = t_doc['Terminals']['Terminal']
     attributes = a_doc['CustomAttributes']['Data'] # [ ] Consider eliminating the attributes if they are not being used anywhere.
