@@ -159,7 +159,7 @@ def pull_terminals(*args, **kwargs):
             restrictions[a['@Guid']] = a['@Value']
         elif a['@Attribute'] == 'Installation Date':
             install_dates[a['@Guid']] = a['@Value']
-        # Note that some look like this 7/14/2013 and some are zero-padded, like this: 07/11/2013.
+        # Note that some look like this "7/14/2013" and some are zero-padded, like this "07/11/2013".
 
     points_in_zone = defaultdict(list)
     zone_type = {}
