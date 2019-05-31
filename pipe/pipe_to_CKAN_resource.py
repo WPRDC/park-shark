@@ -8,6 +8,7 @@ from pipe.gadgets import get_package_parameter
 from datetime import datetime
 
 sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
+sys.path.insert(0, '/home/sds25/wprdc-etl') # A path that we need to import code from
 import pipeline as pl
 
 #sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl/pipeline') 
