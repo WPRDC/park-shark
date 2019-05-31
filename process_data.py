@@ -22,7 +22,7 @@ from dateutil import parser
 from util.sqlite_util import get_events_from_sqlite, bulk_upsert_to_sqlite, bulk_upsert_to_sqlite_local, time_to_field, mark_date_as_cached, is_date_cached, mark_utc_date_as_cached, is_utc_date_cached
 from notify import send_to_slack
 
-from util.carto_util import update_map
+#from util.carto_util import update_map
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path, SETTINGS_FILE
 from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, SplitTransactionsSchema, SamplingTransactionsSchema, SplitSamplingTransactionsSchema, OccupancySchema
