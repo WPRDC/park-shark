@@ -1624,7 +1624,7 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
 
     return ps_all, dts_all
 
-def get_ps_for_utc_day(dt_start_i,reference_time,cache,mute,utc_json_folder='utc_json'):
+def get_ps_for_utc_day(dt_start_i,reference_time,cache,mute,caching_mode,utc_json_folder='utc_json'):
     """If possible, pull events from the sqlite cache.
 
     NOTE: If the data is already cached in a SQLite database, this
@@ -1635,7 +1635,8 @@ def get_ps_for_utc_day(dt_start_i,reference_time,cache,mute,utc_json_folder='utc
     # and is_date_cached wants a UTC date.
     utc_date = dt_start_i.astimezone(pytz.utc).date()
 
-    if is_utc_date_cached(path,reference_time,utc_date):
+    if caching_mode not in ['none'] and is_utc_date_cached(path,reference_time,utc_date): # First check
+        # whether caching_mode == 'none' to avoid searching for non-existent cached_dates.db file.
         ps_for_whole_day, dts_for_whole_day = get_events_from_sqlite(path,utc_date,reference_time)
     else:
         ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_utc_day_from_json(dt_start_i,reference_time,cache,mute,utc_json_folder)
@@ -1704,7 +1705,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
             if caching_mode == 'utc_json':
                 ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute,utc_json_folder)
             elif caching_mode in ['utc_sqlite', 'none']:
-                ps_for_whole_day, dts_for_whole_day = get_ps_for_utc_day(dt_start_i,reference_time,cache,mute,utc_json_folder)
+                ps_for_whole_day, dts_for_whole_day = get_ps_for_utc_day(dt_start_i,reference_time,cache,mute,caching_mode,utc_json_folder)
             elif caching_mode == 'sqlite':
                 ps_for_whole_day, dts_for_whole_day = get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute,utc_json_folder)
                 # The reason it's OK to use get_ps_for_day_local (probably) is because the filtering down to
