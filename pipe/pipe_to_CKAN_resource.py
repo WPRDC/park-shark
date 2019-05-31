@@ -225,7 +225,7 @@ def send_data_to_pipeline(server,settings_file_path,resource_name,schema,list_of
                                       log_status=False,
                                       settings_file=settings_file_path,
                                       settings_from_file=True,
-                                      start_from_chunk=0,
+                                      #start_from_chunk=0, # Unsupported by /home/sds25/wprdc-etl/ version of pipeline.
                                       chunk_size=chunk_size
                                       ) \
         .connect(pl.FileConnector, target, encoding='utf-8') \
