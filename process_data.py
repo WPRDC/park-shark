@@ -1,5 +1,5 @@
 import os, re, csv, json, xmltodict
-import dataset, random
+import random
 from collections import OrderedDict, Counter, defaultdict
 from util.util import to_dict, value_or_blank, unique_values, zone_name, is_a_lot, \
 lot_code, is_virtual, get_terminals, is_timezoneless, write_or_append_to_csv, \
