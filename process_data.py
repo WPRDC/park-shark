@@ -1113,7 +1113,7 @@ def get_utc_ps_for_utc_day_from_json(slot_start,reference_time='purchase_time_ut
     # This function gets parking purchases, either from a
     # JSON cache (if the date appears to have been cached)
     # or else from the API (and then caches the whole thing
-    # if cache = True), by using get_batch_parking_for_day.
+    # if cache == True), by using get_batch_parking_for_day.
 
     # Note that no matter what time of day is associated with slot_start,
     # this function will get all of the transactions for that entire day.
@@ -1703,7 +1703,7 @@ def cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute=False,
         while dt_start_i.date() <= slot_end.date():
             if caching_mode == 'utc_json':
                 ps_for_whole_day, dts_for_whole_day = get_utc_ps_for_day_from_json(dt_start_i,local_tz,reference_time,cache,mute,utc_json_folder)
-            elif caching_mode == 'utc_sqlite':
+            elif caching_mode in ['utc_sqlite', 'none']:
                 ps_for_whole_day, dts_for_whole_day = get_ps_for_utc_day(dt_start_i,reference_time,cache,mute,utc_json_folder)
             elif caching_mode == 'sqlite':
                 ps_for_whole_day, dts_for_whole_day = get_ps_for_day_local(dt_start_i,local_tz,reference_time,cache,mute,utc_json_folder)
@@ -1776,8 +1776,10 @@ def get_parking_events(db,slot_start,slot_end,local_tz,cache=False,mute=False,ca
     # does this line use a locally hard-coded value of the local timezone,
     # while calls below use the value passed in local_tz?
 
-
-    if caching_mode in ['utc_json', 'sqlite', 'utc_sqlite'] or recent:
+    if caching_mode in ['none']:
+        # Override cache variable, setting it to False in the cache_in_memory_and_filter call.
+        return cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,False,mute,caching_mode,utc_json_folder) # Here cache=False.
+    elif caching_mode in ['utc_json', 'sqlite', 'utc_sqlite'] or recent:
         #cache = cache and (not recent) # Don't cache (as JSON files) data from the "Live"
         # (recent transactions) API.
         return cache_in_memory_and_filter(db,slot_start,slot_end,local_tz,cache,mute,caching_mode,utc_json_folder)
