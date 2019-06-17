@@ -10,6 +10,8 @@ from collections import OrderedDict, defaultdict
 import re
 from util.util import to_dict, write_to_csv, value_or_blank, is_a_lot, is_a_virtual_lot, is_a_virtual_zone, corrected_zone_name, char_delimit, all_groups, lot_list, other_zones_list, numbered_reporting_zones_list, zone_lookup, is_virtual, numbered_zone, censor
 
+from notify import send_to_slack
+
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 
 from parameters.local_parameters import path
