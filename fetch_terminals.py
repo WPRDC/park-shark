@@ -340,6 +340,7 @@ def pull_terminals(*args, **kwargs):
      'HILL DISTRICT 2', # The same as HILL-DIST-2
      '403 - HILL DISTRICT 2', # The same as HILL-DIST-2
      'East Liberty (On-street only)',
+     'Purchase Receipt',
        ]
     print("Here is the list of all groups not already in lot_list or other_zones_list or numbered_reporting_zones_list or excluded_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
     maybe_sampling_zones = set_of_all_groups - set(lot_list) - set(other_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
