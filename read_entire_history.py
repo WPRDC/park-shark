@@ -49,7 +49,7 @@ def main(*args,**kwargs):
     halting_time = kwargs.get('halting_time', pgh.localize(datetime(3030,4,13,0,0)))
     spacetime = kwargs.get('spacetime','zone')
     server = kwargs.get('server','debug')
-    caching_mode = 'utc_sqlite'
+    caching_mode = kwargs.get('caching_mode','utc_sqlite')
     csv_filename = 'test-{}.csv'.format(slot_start.date())
     #utc_json_folder = 'utc_json_completed'
     utc_json_folder = 'utc_json'
