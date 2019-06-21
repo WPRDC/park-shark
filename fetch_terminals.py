@@ -54,6 +54,9 @@ def csv_file_path():
     csv_path = path+'/'+filename
     return csv_path
 
+def exclude(zs, zones_to_exclude):
+    return [z for z in zs if z not in zones_to_exclude]
+
 def pull_terminals(*args, **kwargs):
     # This function accepts keyword arguments use_cache (to
     # set whether cached data is used, for offline testing),
@@ -171,6 +174,12 @@ def pull_terminals(*args, **kwargs):
     uncharted_enforcement_zones = []
     group_lookup_addendum = {}
 
+    definitely_excluded_zones = ['TEST - South Craig - Reporting',
+     'FRIENDSHIP AVE RPP', 'Marathon/CMU', 'CMU Study', 'Northshore Pgm 66',
+     'Northshore Pgm 67', 'Uptown Pgm 81', 'Uptown Pgm 82',
+     'East Liberty (On-street only)',
+     'Purchase Receipt',
+       ]
     ids_to_ignore = ['Friendship Ave RPP'] # These are terminal IDs which should not be saved to CSV files or pushed to CKAN repositories.
     for k,t in enumerate(terminals):
         new_entry = {}
@@ -232,7 +241,8 @@ def pull_terminals(*args, **kwargs):
                 print("      FOUND A NEW group_lookup PAIR: {}".format(group_lookup_addendum))
 
         #print('{}: ID = {}, new zone = {}'.format(k,t['@Id'],new_entry['Zone']))
-        new_entry['all_groups'] = char_delimit(all_groups(t),'|')
+        allowed_groups = exclude(all_groups(t), definitely_excluded_zones)
+        new_entry['all_groups'] = char_delimit(allowed_groups,'|')
 
         set_of_all_groups.update(all_groups(t))
 
@@ -328,16 +338,14 @@ def pull_terminals(*args, **kwargs):
             write_to_csv('zone-centroids.csv',sorted_zone_dicts,sorted_zone_keys)
 
 
-    excluded_zones = ['TEST - South Craig - Reporting', 'FRIENDSHIP AVE RPP', 'Marathon/CMU', 'CMU Study',
-     'Northshore Pgm 66', 'Northshore Pgm 67', 'Uptown Pgm 81', 'Uptown Pgm 82',
+    extra_excluded_zones = [
      'West Circuit', # The same as W CIRC DR
      '410 - West Circuit', # The same as W CIRC DR
      'Hill District', # The same as zone 426
      'HILL DISTRICT 2', # The same as HILL-DIST-2
      '403 - HILL DISTRICT 2', # The same as HILL-DIST-2
-     'East Liberty (On-street only)',
-     'Purchase Receipt',
-       ]
+     ]
+    excluded_zones = definitely_excluded_zones + extra_excluded_zones
     print("Here is the list of all groups not already in lot_list or other_zones_list or numbered_reporting_zones_list or excluded_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
     maybe_sampling_zones = set_of_all_groups - set(lot_list) - set(other_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
     print(maybe_sampling_zones)
