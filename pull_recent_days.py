@@ -10,11 +10,6 @@
 # all at once but be run daily, rather than pulling in small increments and 
 # updating frequently like the quasi-live pull_from_last_hour.py.
 
-# The main() function returns a Boolean indicating whether this operation 
-# succeeded or failed. In this way, this function can still be called by 
-# some kind of pipeline/job manager that can send out notifications if 
-# a particular ETL job fails.
-
 import sys, pytz
 from datetime import datetime, timedelta
 import process_data
@@ -43,7 +38,6 @@ def main(*args,**kwargs):
     print("Started processing at {}.".format(script_start))
     success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
-    return success
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
