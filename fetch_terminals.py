@@ -250,7 +250,7 @@ def pull_terminals(*args, **kwargs):
 
         set_of_all_groups.update(all_groups(t))
 
-        new_entry['ParentStructure'] = t['ParentTerminalStructure']['@Name']
+        new_entry['ParentStructure'] = t['ParentTerminalStructure']['@Name'] if ((t['ParentTerminalStructure'] is not None) and ('@Name' in t['ParentTerminalStructure'])) else None
         new_entry['OldZone'] = corrected_zone_name(t)
 
         if new_entry['location_type'] not in ['','Virtual Lot','Virtual Zone']:
@@ -260,7 +260,7 @@ def pull_terminals(*args, **kwargs):
             # and it would be more robust to keep a list of types and then
             # check that they are all the same before committing to that type.
 
-        if value_or_blank('Latitude',t) != '' and t['ParentTerminalStructure']['@Name'] != 'Z - Inactive/Removed Terminals':
+        if value_or_blank('Latitude',t) != '' and new_entry['ParentStructure'] != 'Z - Inactive/Removed Terminals':
             lat = float(value_or_blank('Latitude',t))
             lon = float(value_or_blank('Longitude',t))
             points_in_zone[new_entry['Zone']].append([lat,lon])
