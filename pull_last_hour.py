@@ -49,3 +49,5 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         print("raw_only = {}, test_mode = {}".format(raw_only,test_mode))
     main(raw_only = raw_only, test_mode = test_mode)
+# To run in test mode, do this:
+# > python pull_last_hour.py raw test

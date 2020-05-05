@@ -1,5 +1,13 @@
 from parameters.remote_parameters import webhook_url
 
+def file_name():
+    import os
+    full_path = os.path.realpath(__file__)
+    parts = full_path.split('/')
+    if len(parts) < 3:
+        return full_path
+    return '/'.join(parts[-2:])
+
 def send_to_slack(message,username=None,channel=None,icon=None):
     """This script sends the given message to a particular channel on
     Slack, as configured by the webhook_url. Note that this shouldn't 
@@ -17,9 +25,9 @@ def send_to_slack(message,username=None,channel=None,icon=None):
     caboose = "(Sent from {} running on a computer called {} at {}.)".format(name_of_current_script, hostname, IP_address)
     # Set the webhook_url to the one provided by Slack when you create the webhook at https://my.slack.com/services/new/incoming-webhook/
     slack_data = {'text': message + " " + caboose}
-    slack_data['username'] = 'TACHYON'
+    slack_data['username'] = "({})".format(file_name()) #'TACHYON'
     if username is not None:
-        slack_data['username'] = username
+        slack_data['username'] = "{} ({})".format(username, file_name())
     #To send this as a direct message instead, use the following line. 
     if channel is not None:
         slack_data['channel'] = channel

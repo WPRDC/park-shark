@@ -278,11 +278,38 @@ def censor(xs,space_aggregate_by):
     else:
         return xs
 
+def standardize_group_name(name):
+    if name in correction_lookup.keys():
+        return correction_lookup[name]
+    return name
+
+def all_groups(t):
+    all_group_names = []
+    if 'TerminalGroups' in t:
+        if 'TerminalGroup' in t['TerminalGroups']:
+            list_of_groups = t['TerminalGroups']['TerminalGroup']
+            if type(list_of_groups) == type(OrderedDict()):
+                all_group_names += [standardize_group_name(list_of_groups['@TerminalGroupName'])]
+            else:
+                all_group_names += [standardize_group_name(g['@TerminalGroupName']) for g in list_of_groups]
+    if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
+        if '@Name' in t['ParentTerminalStructure']:
+            pts = t['ParentTerminalStructure']['@Name']
+            if pts not in all_group_names:
+                all_group_names.append(pts)
+    return all_group_names
+
 def is_a_lot(t,zone):
-    if t['ParentTerminalStructure']['@Name'] == "Z - Inactive/Removed Terminals":
-        # Switch to making the decision based on the zone designation:
-        return zone[0] == '3'
-    return t['ParentTerminalStructure']['@Name'][-2:] == "-L"
+    if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None and '@Name' in t['ParentTerminalStructure']:
+        if t['ParentTerminalStructure']['@Name'] == "Z - Inactive/Removed Terminals":
+            # Switch to making the decision based on the zone designation:
+            return zone[0] == '3'
+        return t['ParentTerminalStructure']['@Name'][-2:] == "-L"
+    else: # Handle a new case found in 2020 where a terminal lacks a ParentTerminalStructure.
+        for group in all_groups(t):
+            if len(group) > 1 and group[-2:] == "-L":
+                return True
+    return False
 
 def is_virtual(t):
     virtual = False
@@ -312,27 +339,6 @@ def convert_group_to_zone(t,group):
 
 def char_delimit(xs,ch):
     return(ch.join(xs))
-
-def standardize_group_name(name):
-    if name in correction_lookup.keys():
-        return correction_lookup[name]
-    return name
-
-def all_groups(t):
-    all_group_names = []
-    if 'TerminalGroups' in t:
-        if 'TerminalGroup' in t['TerminalGroups']:
-            list_of_groups = t['TerminalGroups']['TerminalGroup']
-            if type(list_of_groups) == type(OrderedDict()):
-                all_group_names += [standardize_group_name(list_of_groups['@TerminalGroupName'])]
-            else:
-                all_group_names += [standardize_group_name(g['@TerminalGroupName']) for g in list_of_groups]
-    if 'ParentTerminalStructure' in t:
-        if '@Name' in t['ParentTerminalStructure']:
-            pts = t['ParentTerminalStructure']['@Name']
-            if pts not in all_group_names:
-                all_group_names.append(pts)
-    return all_group_names
 
 def is_three_digits(s):
     return (re.match("\d\d\d", s) is not None)

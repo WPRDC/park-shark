@@ -76,7 +76,32 @@ def pull_terminals(*args, **kwargs):
     # information about terminals should be internally consistent.
     f_terminals = path + "cached_terminals.xml"
     f_attributes = path + "cached_attributes.xml"
-    if use_cache:
+    fall_back_to_cache = False
+    if not use_cache:
+        url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
+        r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
+
+        # Convert Cale's XML into a Python dictionary
+        t_doc = xmltodict.parse(r.text,encoding = r.encoding)
+        if 'Terminals' in t_doc and 'Terminal' in t_doc['Terminals']: # Check validity of file before saving to local cache.
+            with open(f_terminals,'w+') as g:
+                g.write(r.text)
+        else:
+            print("The version of the terminals data pulled from the API is not valid. Falling back to the cache")
+            fall_back_to_cache = True
+
+        attributes_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
+        r = requests.get(attributes_url, auth=(CALE_API_user, CALE_API_password))
+
+        a_doc = xmltodict.parse(r.text,encoding = r.encoding)
+        if 'CustomAttributes' in a_doc and 'Data' in a_doc['CustomAttributes']: # Check validity of file before saving to local cache.
+            with open(f_attributes,'w+') as g:
+                g.write(r.text)
+        else:
+            print("The version of the attributes data pulled from the API is not valid. Falling back to the cache.")
+            fall_back_to_cache = True
+
+    if use_cache or fall_back_to_cache:
         if not return_extra_zones:
             return None, None
         else:
@@ -131,27 +156,6 @@ def pull_terminals(*args, **kwargs):
             with open(f_attributes,'r') as g:
                 attributes_text = g.read()
             a_doc = xmltodict.parse(attributes_text,encoding = file_encoding)
-    else: # if not use_cache
-        url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
-        r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
-
-        # Convert Cale's XML into a Python dictionary
-        t_doc = xmltodict.parse(r.text,encoding = r.encoding)
-        if 'Terminals' in t_doc and 'Terminal' in t_doc['Terminals']: # Check validity of file before saving to local cache.
-            with open(f_terminals,'w+') as g:
-                g.write(r.text)
-        else:
-            raise ValueError("The version of the terminals data pulled from the API is not valid.")
-
-        attributes_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
-        r = requests.get(attributes_url, auth=(CALE_API_user, CALE_API_password))
-
-        a_doc = xmltodict.parse(r.text,encoding = r.encoding)
-        if 'CustomAttributes' in a_doc and 'Data' in a_doc['CustomAttributes']: # Check validity of file before saving to local cache.
-            with open(f_attributes,'w+') as g:
-                g.write(r.text)
-        else:
-            raise ValueError("The version of the attributes data pulled from the API is not valid.")
 
     terminals = t_doc['Terminals']['Terminal']
     attributes = a_doc['CustomAttributes']['Data'] # [ ] Consider eliminating the attributes if they are not being used anywhere.
@@ -164,7 +168,7 @@ def pull_terminals(*args, **kwargs):
             restrictions[a['@Guid']] = a['@Value']
         elif a['@Attribute'] == 'Installation Date':
             install_dates[a['@Guid']] = a['@Value']
-        # Note that some look like this 7/14/2013 and some are zero-padded, like this: 07/11/2013.
+        # Note that some look like this "7/14/2013" and some are zero-padded, like this "07/11/2013".
 
     points_in_zone = defaultdict(list)
     zone_type = {}
@@ -246,7 +250,7 @@ def pull_terminals(*args, **kwargs):
 
         set_of_all_groups.update(all_groups(t))
 
-        new_entry['ParentStructure'] = t['ParentTerminalStructure']['@Name']
+        new_entry['ParentStructure'] = t['ParentTerminalStructure']['@Name'] if ((t['ParentTerminalStructure'] is not None) and ('@Name' in t['ParentTerminalStructure'])) else None
         new_entry['OldZone'] = corrected_zone_name(t)
 
         if new_entry['location_type'] not in ['','Virtual Lot','Virtual Zone']:
@@ -256,7 +260,7 @@ def pull_terminals(*args, **kwargs):
             # and it would be more robust to keep a list of types and then
             # check that they are all the same before committing to that type.
 
-        if value_or_blank('Latitude',t) != '' and t['ParentTerminalStructure']['@Name'] != 'Z - Inactive/Removed Terminals':
+        if value_or_blank('Latitude',t) != '' and new_entry['ParentStructure'] != 'Z - Inactive/Removed Terminals':
             lat = float(value_or_blank('Latitude',t))
             lon = float(value_or_blank('Longitude',t))
             points_in_zone[new_entry['Zone']].append([lat,lon])
