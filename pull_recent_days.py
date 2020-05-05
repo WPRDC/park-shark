@@ -10,14 +10,10 @@
 # all at once but be run daily, rather than pulling in small increments and 
 # updating frequently like the quasi-live pull_from_last_hour.py.
 
-# The main() function returns a Boolean indicating whether this operation 
-# succeeded or failed. In this way, this function can still be called by 
-# some kind of pipeline/job manager that can send out notifications if 
-# a particular ETL job fails.
-
 import sys, pytz
 from datetime import datetime, timedelta
 import process_data
+from read_entire_history import list_of_servers
 
 def main(*args,**kwargs):
     raw_only = kwargs.get('raw_only',False)
@@ -42,18 +38,46 @@ def main(*args,**kwargs):
     print("Started processing at {}.".format(script_start))
     success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
-    return success
 
 if __name__ == '__main__':
-    raw_only = True
-    test_mode = False
-    if len(sys.argv) > 1 and sys.argv[1] in ['raw','raw_only']:
-        raw_only = True
-    elif len(sys.argv) > 1 and sys.argv[1] in ['cooked','well-done','well_done','done']:
-        raw_only = False
-    if len(sys.argv) > 2 and sys.argv[2] in ['test','test_mode']:
-        test_mode = True
-
     if len(sys.argv) > 1:
-        print("raw_only = {}, test_mode = {}".format(raw_only,test_mode))
-    main(raw_only = raw_only, test_mode = test_mode)
+        args = sys.argv[1:]
+        output_to_csv = False
+        push_to_CKAN = False
+        raw_only = True
+        test_mode = False
+
+        copy_of_args = list(args)
+
+        kwparams = {}
+        # This is a new way of parsing command-line arguments that cares less about position
+        # and just does its best to identify the user's intent.
+        for k,arg in enumerate(copy_of_args):
+            if arg in ['scan', 'save', 'csv']:
+                output_to_csv = True
+                args.remove(arg)
+            elif arg in ['pull', 'push', 'ckan']:
+                push_to_CKAN = True
+                args.remove(arg)
+            elif arg in ['raw','raw_only']:
+                raw_only = True
+            elif arg ['cooked','well-done','well_done','done']:
+                raw_only = False
+            elif arg in ['test','test_mode']:
+                test_mode = True
+            elif arg in list_of_servers:
+                kwparams['server'] = arg
+                args.remove(arg)
+            else:
+                print("I have no idea what do with args[{}] = {}.".format(k,arg))
+
+        kwparams['raw_only'] = raw_only
+        kwparams['test_mode'] = test_mode
+        kwparams['server'] = server
+
+        kwparams['output_to_csv'] = output_to_csv
+        kwparams['push_to_CKAN'] = push_to_CKAN
+        pprint(kwparams)
+        main(**kwparams)
+    else:
+        raise ValueError("Please specify some command-line parameters")
