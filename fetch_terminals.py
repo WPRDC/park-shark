@@ -183,8 +183,11 @@ def pull_terminals(*args, **kwargs):
      'Northshore Pgm 67', 'Uptown Pgm 81', 'Uptown Pgm 82',
      'East Liberty (On-street only)',
      'Purchase Receipt',
+     'GARAGE', # Not yet sure what to do with this one.
        ]
-    ids_to_ignore = ['Friendship Ave RPP'] # These are terminal IDs which should not be saved to CSV files or pushed to CKAN repositories.
+    print("Figure out what to do with the GARAGE zone and associated terminals.")
+
+    ids_to_ignore = ['Friendship Ave RPP', '209001-MONWHARF', '213001-2NDAVEPZA'] # These are terminal IDs which should not be saved to CSV files or pushed to CKAN repositories.
     for k,t in enumerate(terminals):
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
@@ -349,6 +352,7 @@ def pull_terminals(*args, **kwargs):
      'HILL DISTRICT 2', # The same as HILL-DIST-2
      '403 - HILL DISTRICT 2', # The same as HILL-DIST-2
      ]
+
     excluded_zones = definitely_excluded_zones + extra_excluded_zones
     print("Here is the list of all groups not already in lot_list or other_zones_list or numbered_reporting_zones_list or excluded_zones (or those that start with 'TEST') or newly discovered uncharted zones:")
     maybe_sampling_zones = set_of_all_groups - set(lot_list) - set(other_zones_list) - set(numbered_reporting_zones_list) - set(excluded_zones) - set(uncharted_numbered_zones) - set(uncharted_enforcement_zones)
