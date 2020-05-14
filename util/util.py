@@ -272,7 +272,7 @@ def censor(xs,space_aggregate_by):
     if space_aggregate_by == 'sampling zone':
         ys = []
         for x in xs:
-            if not censored(x) and x in designated_minizones: # This catches FRIENDSHIP AVE RPP.
+            if not censored(x) and x in designated_minizones: # This catches FRIENDSHIP AVE RPP and presumably the GARAGE zones.
                 ys.append(x)
         return ys
     else:
@@ -486,6 +486,8 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
                         '427': '427 - Knoxville'
     }
     group_lookup_base['Fri'] = None # Workaround for oddball 'Friendship Ave RPP' ID.
+    group_lookup_base['209'] = None # '209 - Mon Wharf' # A garage - leave this and related records out for now
+    group_lookup_base['213'] = None # '213 - Second Avenue Plaza' # Another garage - leave this and related records out for now
 
     group_lookup = {**group_lookup_addendum, **group_lookup_base} # This works in Python 3.5 and higher.
     # Is the group already hard-coded in? If so, return it.
