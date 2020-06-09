@@ -14,6 +14,7 @@ import sys, pytz
 from datetime import datetime, timedelta
 import process_data
 from read_entire_history import list_of_servers
+from pprint import pprint
 
 def main(*args,**kwargs):
     raw_only = kwargs.get('raw_only',False)
@@ -50,6 +51,7 @@ if __name__ == '__main__':
         copy_of_args = list(args)
 
         kwparams = {}
+        server = 'debug'
         # This is a new way of parsing command-line arguments that cares less about position
         # and just does its best to identify the user's intent.
         for k,arg in enumerate(copy_of_args):
@@ -61,7 +63,7 @@ if __name__ == '__main__':
                 args.remove(arg)
             elif arg in ['raw','raw_only']:
                 raw_only = True
-            elif arg ['cooked','well-done','well_done','done']:
+            elif arg in ['cooked','well-done','well_done','done']:
                 raw_only = False
             elif arg in ['test','test_mode']:
                 test_mode = True
