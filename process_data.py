@@ -2252,7 +2252,7 @@ def main(*args, **kwargs):
                         # be determined (e.g., by linking transactions and untangling true segments and durations that the parker paid for).
                 reframed_ps.append(hash_reframe(p,terminals,t_guids,session_dict,previous_session_dict,uncharted_numbered_zones,uncharted_enforcement_zones,turbo_mode,raw_only,transactions_only=True))
 
-            # Temporary for loop to check for unconsidered virtual zone codes.
+            # Temporary for loop to check for unconsidered virtual zone codes (will not work for Flowbird App zones).
             #for rp in reframed_ps:
             #    if rp['TerminalID'][:3] == "PBP":
             #        code = rp['TerminalID'][3:]
