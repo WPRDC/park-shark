@@ -273,14 +273,14 @@ def write_or_append_to_csv(filename,list_of_dicts,keys,actually_overwrite=False)
     if not os.path.isfile(filename) or actually_overwrite:
         with open(filename, 'w') as g: # Does encoding="utf-8" need to be added, as elsewhere?
             g.write(','.join(keys)+'\n')
-    with open(filename, 'a') as output_file: 
+    with open(filename, 'a') as output_file:
         dict_writer = csv.DictWriter(output_file, keys, extrasaction='ignore', lineterminator='\n')
         #dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
 
 
 def write_to_csv(filename,list_of_dicts,keys):
-    with open(filename, 'w') as output_file: 
+    with open(filename, 'w') as output_file:
         dict_writer = csv.DictWriter(output_file, keys, extrasaction='ignore', lineterminator='\n')
         dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
@@ -290,8 +290,8 @@ def build_keys(space_aggregation,time_aggregation,split_by_mode):
     transactions should be split by payment mode into mobile and meter purchases),
     synthesize and return the dictionary keys (used for writing a bunch of
     dictionaries to a CSV file."""
-    # Given that these fields appear elsewhere in the process_data.py code, it might 
-    # be a good idea to refactor things some more so that there is one source for 
+    # Given that these fields appear elsewhere in the process_data.py code, it might
+    # be a good idea to refactor things some more so that there is one source for
     # these field names.
 
 
@@ -591,7 +591,7 @@ def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
         return list(candidate_groups)[0], True, None, None
 
     # OK, that didn't work. Let's start looking through the numbered
-    # reporting groups for a match that we can identify as a new 
+    # reporting groups for a match that we can identify as a new
     # numbered reporting group.
     if len(candidate_groups) == 0:
         if t is None:
@@ -600,7 +600,7 @@ def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
         else:
             # An option at this point would be to use other information
             # in the terminal record to infer the group, matching the code
-            # to the numbered reporting zone, but this approach is not 
+            # to the numbered reporting zone, but this approach is not
             # futureproof and could break.
 
             pprint(t)
@@ -747,7 +747,7 @@ def zone_name(t):
     # should be more widely used in these scripts.
 
     # The old way:
-    #code = t['ParentTerminalStructure']['@Name'] 
+    #code = t['ParentTerminalStructure']['@Name']
 
     # This scheme maps virtual terminals that correspond to zones to the correct zones, though it also keeps lots and virtual lots separate:
     # UPTOWN2 			403372-5THAVE1402
@@ -762,7 +762,7 @@ def zone_name(t):
     # Superzone? Zone w/lots? (This still ignores garages.)
 
 
-    # One problem with this is that the new Hill District meter has an Enforcement Zone name 
+    # One problem with this is that the new Hill District meter has an Enforcement Zone name
     # (Hill District) that differs from its Parent Terminal Structure (HILL-DIST).
     # The new way:
     enforcement_zones = groups_of_type('Enforcement',t)
