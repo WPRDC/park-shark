@@ -66,6 +66,7 @@ def pull_terminals(*args, **kwargs):
     # channels).
 
     use_cache = kwargs.get('use_cache',False)
+    mute_alerts = kwargs.get('mute_alerts', False)
     return_extra_zones = kwargs.get('return_extra_zones',True)
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
@@ -223,7 +224,7 @@ def pull_terminals(*args, **kwargs):
         # Convert the Location Type to "Lot" if the Parent Terminal Structure
         # ends in "-L". (Using the Parent Terminal Structure also snags
         # virtual terminals).
-        new_entry['Zone'], new_numbered_zone, new_enforcement_zone = numbered_zone(t['@Id'],t)
+        new_entry['Zone'], new_numbered_zone, new_enforcement_zone = numbered_zone(t['@Id'], t, {}, mute_alerts)
         if is_a_virtual_lot(t,new_entry['Zone']):
             new_entry['location_type'] = "Virtual Lot"
         elif is_a_lot(t,new_entry['Zone']):
@@ -254,7 +255,7 @@ def pull_terminals(*args, **kwargs):
         set_of_all_groups.update(all_groups(t))
 
         new_entry['ParentStructure'] = t['ParentTerminalStructure']['@Name'] if ((t['ParentTerminalStructure'] is not None) and ('@Name' in t['ParentTerminalStructure'])) else None
-        new_entry['OldZone'] = corrected_zone_name(t)
+        new_entry['OldZone'] = corrected_zone_name(t, mute_alerts)
 
         if new_entry['location_type'] not in ['','Virtual Lot','Virtual Zone']:
             zone_type[new_entry['Zone']] = new_entry['location_type']
@@ -381,12 +382,13 @@ def pull_terminals(*args, **kwargs):
     if len(uncategorized_sampling_zones) > 0:
         msg = "Some uncategorized sampling zones were found: {}".format(uncategorized_sampling_zones)
         print(msg)
-        msg = "fetch_terminals.py: " + msg
-        try:
-            send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
-        except requests.exceptions.ConnectionError:
-            print("Unable to transmit this message to Slack:")
-            print(msg)
+        if not mute_alerts:
+            msg = "fetch_terminals.py: " + msg
+            try:
+                send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+            except requests.exceptions.ConnectionError:
+                print("Unable to transmit this message to Slack:")
+                print(msg)
 
     print("All sampling zones:")
     sampling_zones = candidate_sampling_zones
@@ -416,7 +418,11 @@ def pull_terminals(*args, **kwargs):
 # At present, the default when running this script (or the pull_terminals function) is not to output the results to
 # a CSV file.
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and 'use_cache' in sys.argv[1:]:
-        pull_terminals(output_to_csv=False, use_cache=True)
-    else:
-        pull_terminals(output_to_csv=True)
+    use_cache = False
+    mute_alerts = False
+    if len(sys.argv) > 1:
+        if 'use_cache' in sys.argv[1:]:
+            use_cache = True
+        if 'mute_alerts' in sys.argv[1:]:
+            mute_alerts= True
+    pull_terminals(output_to_csv=False, use_cache=use_cache, mute_alerts=mute_alerts)

@@ -20,6 +20,7 @@ import process_data
 def main(*args,**kwargs):
     raw_only = kwargs.get('raw_only',False)
     test_mode = kwargs.get('test_mode',False)
+    mute_alerts = kwargs.get('mute_alerts',False)
     if test_mode:
         output_to_csv = True
         push_to_CKAN = False
@@ -32,22 +33,25 @@ def main(*args,**kwargs):
     halting_time = datetime.now(pgh) #process_data.round_time(datetime.now(pgh), slot_width)
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100)
+    success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100, mute_alerts = mute_alerts)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
 if __name__ == '__main__':
     raw_only = True
     test_mode = False
+    mute_alerts = False
     if len(sys.argv) > 1 and sys.argv[1] in ['raw','raw_only']:
         raw_only = True
     elif len(sys.argv) > 1 and sys.argv[1] in ['cooked','well-done','well_done','done']:
         raw_only = False
     if len(sys.argv) > 2 and sys.argv[2] in ['test','test_mode']:
         test_mode = True
+    if len(sys.argv) > 1 and 'mute' in sys.argv[1:] or 'mute_alerts' in sys.argv[1:]:
+        mute_alerts = True
 
     if len(sys.argv) > 1:
-        print("raw_only = {}, test_mode = {}".format(raw_only,test_mode))
-    main(raw_only = raw_only, test_mode = test_mode)
+        print("raw_only = {}, test_mode = {}, mute_alerts = {}".format(raw_only, test_mode, mute_alerts))
+    main(raw_only = raw_only, test_mode = test_mode, mute_alerts = mute_alerts)
 # To run in test mode, do this:
 # > python pull_last_hour.py raw test

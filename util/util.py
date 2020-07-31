@@ -377,7 +377,8 @@ def sampling_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
     sgs = [name for name in all_group_names if name not in non_sampling_zones]
     return sgs
 
-def group_by_code(code,t=None,group_lookup_addendum={}):
+def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
+
     # This function tries hard to identify the group (basically,
     # the numbered reporting zone in the set that divides the city
     # up such that each meter is in one primary zone (e.g., '401 - Downtown 1').
@@ -412,7 +413,6 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
     # If those numbers could be integrated with this in an ETL process, one
     # table could be used to get all the information needed for the reports.
     # (Maybe a human-readable name would be in there as well.)
-    mute_alerts = False
 
     group_lookup_base = {'301': '301 - Sheridan Harvard Lot',
                         '302': '302 - Sheridan Kirkwood Lot',
@@ -567,25 +567,24 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
 
     #return code, False, None, None
 
-def infer_group(t=None,t_id=None,group_lookup_addendum={}):
-    # This function only works for virtual groups.
+def infer_group(t=None, t_id=None, group_lookup_addendum={}, mute_alerts=False):
     if t_id is None:
         t_id = t['@Id']
     if t_id[:3] != 'PBP':
         return None
     code = t_id[3:] # Split off the part after 'PBP' (Pay By Phone?).
     # The above code could be factored out into part of an infer_code() function.
-    group, matched, new_numbered_zone, new_old_zone = group_by_code(code,t,group_lookup_addendum)
+    group, matched, new_numbered_zone, new_old_zone = group_by_code(code, t, group_lookup_addendum, mute_alerts)
     return group, new_numbered_zone, new_old_zone
 
-def numbered_zone(t_id,t=None,group_lookup_addendum={}):
+def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
     # This is the new slimmed-down approach to determining the numbered
     # reporting zone for the meter purely from the meter ID.
     # For meters where the numbered zone cannot be determined, the
     # returned value of num_zone is None.
     num_zone = None
     if t_id[:3] == 'PBP': #is_virtual(t)
-        num_zone, new_num_zone, new_old_zone = infer_group(t,t_id,group_lookup_addendum)
+        num_zone, new_num_zone, new_old_zone = infer_group(t, t_id, group_lookup_addendum, mute_alerts)
     else:
         try:
             zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3],t,group_lookup_addendum)
@@ -649,7 +648,7 @@ def zone_name(t):
     code = enforcement_zones[0]
     return code
 
-def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
+def corrected_zone_name(t, mute_alerts=False, t_ids=[], t_id=None, group_lookup_addendum={}):
     lost_zone_names = {'401354-OLIVER0301': 'DOWNTOWN1',# 401354-OLIVER0301
     # has no TerminalGroups, but clearly it should be in DOWNTOWN1
     '402384-1STAVE0404': 'DOWNTOWN2',
@@ -736,7 +735,7 @@ def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
             if zn == "Z - Inactive/Removed Terminals":
                 #print("\nGrody terminal listed with zone_name 'Z - Inactive/Removed Terminals':")
                 #pprint(to_dict(t))
-                num_zone, new_num_zone, new_old_zone = numbered_zone(t['@Id'],t,group_lookup_addendum)
+                num_zone, new_num_zone, new_old_zone = numbered_zone(t['@Id'], t, group_lookup_addendum, mute_alerts)
                 zn = convert_group_to_zone(t,num_zone)
                 if zn is None:
                     if new_old_zone is not None:

@@ -1951,6 +1951,7 @@ def main(*args, **kwargs):
     # to control those output channels.
     t_begin = time.time()
 
+    mute_alerts = kwargs.get('mute_alerts',False)
     output_to_csv = kwargs.get('output_to_csv',False)
     push_to_CKAN = kwargs.get('push_to_CKAN',True)
     server = kwargs.get('server', 'testbed') # 'sandbox'
@@ -2089,9 +2090,9 @@ def main(*args, **kwargs):
     # will only be converted to UTC when using database caching.
 
     try:
-        sampling_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=use_cache,return_extra_zones=True)
+        sampling_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=use_cache, mute_alerts=mute_alerts, return_extra_zones=True)
     except KeyError: # Address occasional glitches in looking up Terminals or CustomAttributes.
-        sampling_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=False,return_extra_zones=True)
+        sampling_zones, parent_zones, uncharted_numbered_zones, uncharted_enforcement_zones, group_lookup_addendum = pull_terminals(use_cache=False, mute_alerts=mute_alerts, return_extra_zones=True)
     print("sampling zones = {}".format(sampling_zones))
 
     print("parent_zones = ...")
@@ -2526,11 +2527,12 @@ def main(*args, **kwargs):
         msg = 'process_data.py warnings: \n'
         for warning,count in global_warnings.items():
             msg += "{} ({})\n".format(warning,count)
-        try:
-            send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
-        except requests.exceptions.ConnectionError:
-            print("Unable to transmit this message to Slack")
-            print(msg)
+        if not mute_alerts:
+            try:
+                send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+            except requests.exceptions.ConnectionError:
+                print("Unable to transmit this message to Slack")
+                print(msg)
 
     return success_transactions
 
