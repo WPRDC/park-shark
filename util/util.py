@@ -9,10 +9,13 @@ import requests
 import xmltodict
 import time
 from datetime import datetime
+from icecream import ic
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path
 from notify import send_to_slack
+
+FLOWBIRD_REGEX = 'f[l]?owbird '
 
 lot_list = ['18-CARSO-L', '18-SIDNE-L', '19-CARSO-L', '20-SIDNE-L', '42-BUTLE-L', '5224BUTL-L', 'ANSL-BEA-L', 'ASTE-WAR-L', 'BEAC-BAR-L', 'BEECHVIE-L', 'BROOKLIN-L', 'BROW-SAN-L', 'CENT-CRA-L', 'DOUG-PHI-L', 'EASTCARS-L', 'EASTOHIO-L', 'EVA-BEAT-L', 'FORB-MUR-L', 'FORB-SHA-L', 'FRIE-CED-L', 'HOME-ZEN-L', 'IVY-BELL-L', 'JCC-L', 'MAIN-ALE-L', 'OBSERHIL-L', 'PENNC.NW-L', 'SHER-HAR-L', 'SHER-KIR-L', 'SHILOH-L', 'TAME-BEA-L', 'TAYLOR-L', 'WALT-WAR-L'] # Harvard-Beatty-Inferred-L is missing from this list.
 
@@ -155,6 +158,73 @@ zone_lookup = OrderedDict([
 
 correction_lookup = {'427-Knoxville': '427 - Knoxville'}
 
+flowbird_zone_lookup = OrderedDict([
+    #(u'301 - Sheridan Harvard Lot', u'SHER-HAR-L'),
+    #(u'302 - Sheridan Kirkwood Lot', u'SHER-KIR-L'),
+    #(u'304 - Tamello Beatty Lot', u'TAME-BEA-L'),
+    #(u'307 - Eva Beatty Lot', u'EVA-BEAT-L'),
+    #(u'311 - Ansley Beatty Lot', u'ANSL-BEA-L'),
+    #(u'314 - Penn Circle NW Lot', u'PENNC.NW-L'),
+    #(u'321 - Beacon Bartlett Lot', u'BEAC-BAR-L'),
+    #(u'322 - Forbes Shady Lot', u'FORB-SHA-L'),
+    #(u'323 - Douglas Phillips Lot', u'DOUG-PHI-L'),
+    #(u'324 - Forbes Murray Lot', u'FORB-MUR-L'),
+    #(u'325 - JCC/Forbes Lot', u'JCC-L'),
+    #(u'328 - Ivy Bellefonte Lot', u'IVY-BELL-L'),
+    #(u'331 - Homewood Zenith Lot', u'HOME-ZEN-L'),
+    #(u'334 - Taylor Street Lot', u'TAYLOR-L'),
+    #(u'335 - Friendship Cedarville Lot', u'FRIE-CED-L'),
+    #(u'337 - 52nd & Butler Lot', u'5224BUTL-L'),
+    #(u'338 - 42nd & Butler Lot', u'42-BUTLE-L'),
+    #(u'341 - 18th & Sidney Lot', u'18-SIDNE-L'),
+    #(u'342 - East Carson Lot', u'EASTCARS-L'),
+    #(u'343 - 19th & Carson Lot', u'19-CARSO-L'),
+    #(u'344 - 18th & Carson Lot', u'18-CARSO-L'),
+    #(u'345 - 20th & Sidney Lot', u'20-SIDNE-L'),
+    #(u'351 - Brownsville & Sandkey Lot', u'BROW-SAN-L'),
+    #(u'354 - Walter/Warrington Lot', u'WALT-WAR-L'),
+    #(u'355 - Asteroid Warrington Lot', u'ASTE-WAR-L'),
+    #(u'357 - Shiloh Street Lot', u'SHILOH-L'),
+    #(u'361 - Brookline Lot', u'BROOKLIN-L'),
+    #(u'363 - Beechview Lot', u'BEECHVIE-L'),
+    #(u'369 - Main/Alexander Lot', u'MAIN-ALE-L'),
+    #(u'371 - East Ohio Street Lot', u'EASTOHIO-L'),
+    #(u'375 - Oberservatory Hill Lot', u'OBSERHIL-L'),
+    ('Downtown 1', '401 - Downtown 1'),
+    ('Downtown 2', '402 - Downtown 2'),
+    ####(u'403 - Uptown', u'OAKLAND1'),
+    ('Uptown 1', '403 - Uptown'), # It's ambiguous which of these two
+    ####(u'403 - Uptown', u'UPTOWN2'), # this group should map to.
+    #(u'404 - Strip Disctrict', u'STRIPDIST'),
+    ('Lawrenceville', '405 - Lawrenceville'),
+    ('Bloomfield', '406 - Bloomfield (On-street)'),
+    ('Oakland 1', '407 - Oakland 1'),
+    #(u'408 - Oakland 2', u'OAKLAND2'),
+    #(u'409 - Oakland 3', u'OAKLAND3'),
+    #(u'410 - Oakland 4', u'OAKLAND4'),
+    ####(u'410 - Oakland 4', u'W CIRC DR'),
+    ('Shadyside 1', '411 - Shadyside'),
+    ####(u'411 - Shadyside', u'SHADYSIDE2'),
+    ('East Liberty', '412 - East Liberty'),
+    ('Sq Hill 1', '413 - Squirrel Hill'),
+    ('Sq Hill 2', '413 - Squirrel Hill'),
+    ('Mellon Park', '414 - Mellon Park'),
+    #(u'415 - SS & SSW', u'SOUTHSIDE'),
+    ('Carrick', '416 - Carrick'),
+    ('Allentown', '417 - Allentown'),
+    ('Beechview', '418 - Beechview'),
+    ('Brookline', '419 - Brookline'),
+    ('Mt Washington', '420 - Mt. Washington'),
+    ('Northside', '421 - NorthSide'),
+    ('Northshore', '422 - Northshore'),
+    ('West End', '423 - West End'),
+    ('Technology', '424 - Technology Drive'),
+    ('Bakery Sq', '425 - Bakery Sq'),
+    ('Hill District', '426 - Hill District'),
+    ('Hill District 2', '426 - Hill District'), # [ ] Actually isn't this the Hill District 2 minizone?
+    ('Knoxville', '427 - Knoxville'),
+])
+
 def to_dict(input_ordered_dict):
     return loads(dumps(input_ordered_dict))
 
@@ -206,14 +276,14 @@ def write_or_append_to_csv(filename,list_of_dicts,keys,actually_overwrite=False)
     if not os.path.isfile(filename) or actually_overwrite:
         with open(filename, 'w') as g: # Does encoding="utf-8" need to be added, as elsewhere?
             g.write(','.join(keys)+'\n')
-    with open(filename, 'a') as output_file: 
+    with open(filename, 'a') as output_file:
         dict_writer = csv.DictWriter(output_file, keys, extrasaction='ignore', lineterminator='\n')
         #dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
 
 
 def write_to_csv(filename,list_of_dicts,keys):
-    with open(filename, 'w') as output_file: 
+    with open(filename, 'w') as output_file:
         dict_writer = csv.DictWriter(output_file, keys, extrasaction='ignore', lineterminator='\n')
         dict_writer.writeheader()
         dict_writer.writerows(list_of_dicts)
@@ -223,8 +293,8 @@ def build_keys(space_aggregation,time_aggregation,split_by_mode):
     transactions should be split by payment mode into mobile and meter purchases),
     synthesize and return the dictionary keys (used for writing a bunch of
     dictionaries to a CSV file."""
-    # Given that these fields appear elsewhere in the process_data.py code, it might 
-    # be a good idea to refactor things some more so that there is one source for 
+    # Given that these fields appear elsewhere in the process_data.py code, it might
+    # be a good idea to refactor things some more so that there is one source for
     # these field names.
 
 
@@ -299,12 +369,33 @@ def all_groups(t):
                 all_group_names.append(pts)
     return all_group_names
 
-def is_a_lot(t,zone):
+def is_a_flowbird_zone(t_id, t):
+    """Try to identify the new Flowbird App zones."""
+    if t is not None:
+        if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
+            if '@Name' in t['ParentTerminalStructure']:
+                name = t['ParentTerminalStructure']['@Name'].lower()
+                if re.search(FLOWBIRD_REGEX, name) is not None:
+                    return True
+            elif '@Description' in t['ParentTerminalStructure']:
+                description = t['ParentTerminalStructure']['@Description'].lower()
+                if re.search(FLOWBIRD_REGEX, description) is not None:
+                    return True
+    return False
+
+def is_a_lot(t, zone):
+    if is_a_flowbird_zone(None, t):
+        # Use the zone designation.
+        if zone is not None: # Meaning it's a new Flowbird App zone that has not yet been hard-coded.
+            return zone[0] == '3' # If this value is '2', it's a garage.
+        # Otherwise, try using the remaining code to check for whether this is a lot.
     if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None and '@Name' in t['ParentTerminalStructure']:
         if t['ParentTerminalStructure']['@Name'] == "Z - Inactive/Removed Terminals":
             # Switch to making the decision based on the zone designation:
-            return zone[0] == '3'
+            if zone is not None:
+                return zone[0] == '3' # If this value is '2', it's a garage.
         return t['ParentTerminalStructure']['@Name'][-2:] == "-L"
+
     else: # Handle a new case found in 2020 where a terminal lacks a ParentTerminalStructure.
         for group in all_groups(t):
             if len(group) > 1 and group[-2:] == "-L":
@@ -313,7 +404,9 @@ def is_a_lot(t,zone):
 
 def is_virtual(t):
     virtual = False
-    if 'Location' in t:
+    if is_a_flowbird_zone(None, t):
+        virtual = True
+    elif 'Location' in t:
         if t['Location'] == 'Virtual Terminal for ParkMobile':
             virtual = True
         if t['Location'] == 'Virtual terminal for ParkMobile':
@@ -377,7 +470,9 @@ def sampling_groups(t,uncharted_numbered_zones,uncharted_enforcement_zones):
     sgs = [name for name in all_group_names if name not in non_sampling_zones]
     return sgs
 
-def group_by_code(code,t=None,group_lookup_addendum={}):
+def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
+    ### This function is not to be called for Flowbird App zones.
+
     # This function tries hard to identify the group (basically,
     # the numbered reporting zone in the set that divides the city
     # up such that each meter is in one primary zone (e.g., '401 - Downtown 1').
@@ -412,7 +507,6 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
     # If those numbers could be integrated with this in an ETL process, one
     # table could be used to get all the information needed for the reports.
     # (Maybe a human-readable name would be in there as well.)
-    mute_alerts = False
 
     group_lookup_base = {'301': '301 - Sheridan Harvard Lot',
                         '302': '302 - Sheridan Kirkwood Lot',
@@ -504,7 +598,7 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
         return list(candidate_groups)[0], True, None, None
 
     # OK, that didn't work. Let's start looking through the numbered
-    # reporting groups for a match that we can identify as a new 
+    # reporting groups for a match that we can identify as a new
     # numbered reporting group.
     if len(candidate_groups) == 0:
         if t is None:
@@ -513,7 +607,7 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
         else:
             # An option at this point would be to use other information
             # in the terminal record to infer the group, matching the code
-            # to the numbered reporting zone, but this approach is not 
+            # to the numbered reporting zone, but this approach is not
             # futureproof and could break.
 
             pprint(t)
@@ -567,37 +661,67 @@ def group_by_code(code,t=None,group_lookup_addendum={}):
 
     #return code, False, None, None
 
-def infer_group(t=None,t_id=None,group_lookup_addendum={}):
-    # This function only works for virtual groups.
+def infer_group(t=None, t_id=None, group_lookup_addendum={}, mute_alerts=False):
+    # This function only works for virtual groups and is not to be
+    # called on Flowbird zones.
     if t_id is None:
         t_id = t['@Id']
     if t_id[:3] != 'PBP':
         return None
     code = t_id[3:] # Split off the part after 'PBP' (Pay By Phone?).
     # The above code could be factored out into part of an infer_code() function.
-    group, matched, new_numbered_zone, new_old_zone = group_by_code(code,t,group_lookup_addendum)
+    group, matched, new_numbered_zone, new_old_zone = group_by_code(code, t, group_lookup_addendum, mute_alerts)
     return group, new_numbered_zone, new_old_zone
 
-def numbered_zone(t_id,t=None,group_lookup_addendum={}):
+def infer_flowbird_zone(t_id, t):
+    """This function takes a Flowbird App terminal and figures out which of the
+    traditional numbered zones it belongs to.
+
+    Of course, the terminal's location field describes its microzone."""
+
+    zone = None
+    flowbird_zone = None
+    matched = False
+    new_numbered_zone = None
+    new_old_zone = None
+    if t is not None:
+        if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
+            if '@Name' in t['ParentTerminalStructure'] and re.search(FLOWBIRD_REGEX, t['ParentTerminalStructure']['@Name'].lower()) is not None:
+                flowbird_zone = re.sub(FLOWBIRD_REGEX, '', t['ParentTerminalStructure']['@Name'], flags=re.IGNORECASE)
+                # This enforcement zone will look something like 'Bloomfield' or 'Downtown 1'.
+                assert flowbird_zone != ''
+                if flowbird_zone in flowbird_zone_lookup:
+                    zone = flowbird_zone_lookup[flowbird_zone] # Find the numbered zone based on the Flowbird zone.
+                    matched = True
+                else:
+                    new_old_zone = flowbird_zone
+    return zone, flowbird_zone, matched, new_numbered_zone, new_old_zone
+
+def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
     # This is the new slimmed-down approach to determining the numbered
     # reporting zone for the meter purely from the meter ID.
     # For meters where the numbered zone cannot be determined, the
     # returned value of num_zone is None.
     num_zone = None
     if t_id[:3] == 'PBP': #is_virtual(t)
-        num_zone, new_num_zone, new_old_zone = infer_group(t,t_id,group_lookup_addendum)
+        num_zone, new_num_zone, new_old_zone = infer_group(t, t_id, group_lookup_addendum, mute_alerts)
     else:
-        try:
-            zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3],t,group_lookup_addendum)
-        except:
-            if t_id == "B0010X00786401372-STANWX0601":
-                # Workaround for weird terminal ID spotted in
-                # November 8th, 2012 data.
-                zone_in_ID, matched, new_num_zone, new_old_zone = '401 - Downtown 1', True, None, None
-            else:
-                if not mute_alerts:
-                    msg = "Unable to find a numbered zone for terminal ID {} where terminal = {}".format(t_id,t)
-                    send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
+        # We can't just use the first three characters of the @Id field to infer the group
+        # any longer, with the advent of Flowbird App terminals.
+        if is_a_flowbird_zone(t_id, t):
+            zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone = infer_flowbird_zone(t_id, t)
+        else:
+            try:
+                zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3], t, group_lookup_addendum, mute_alerts)
+            except:
+                if t_id == "B0010X00786401372-STANWX0601":
+                    # Workaround for weird terminal ID spotted in
+                    # November 8th, 2012 data.
+                    zone_in_ID, matched, new_num_zone, new_old_zone = '401 - Downtown 1', True, None, None
+                else:
+                    if not mute_alerts:
+                        msg = "Unable to find a numbered zone for terminal ID {} where terminal = {}".format(t_id,t)
+                        send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
         if matched:
             num_zone = zone_in_ID
     return num_zone, new_num_zone, new_old_zone
@@ -606,6 +730,18 @@ def sort_dict(d):
     return sorted(d.items(), key=operator.itemgetter(1))
 
 def zone_name(t):
+    """This function is supposed to return the 'old zone name', a.k.a., the
+    enforcement zone. This field is not being published anywhere.
+    It also doesn't seem that it is used anywhere in the code any more.
+
+    Looking through all the code, it seems that the uncharted_enforcement_zones
+    (which represent the enforcement zone auto-extracted from a new terminal
+    with a new zone which has not been manually added to these Python scripts)
+    are only being collected to ensure that they are not included in the
+    sampling groups (which I think might become the sampling zones). For these
+    reasons, it's fine to not modify zone_name to do anything special
+    with the new Flowbird App zones."""
+
     # For now, use t['ParentTerminalStructure']['@Name'] as the zone
     # identifier, knowing that this may be wrong for W.CIRC.DR.
 
@@ -618,7 +754,7 @@ def zone_name(t):
     # should be more widely used in these scripts.
 
     # The old way:
-    #code = t['ParentTerminalStructure']['@Name'] 
+    #code = t['ParentTerminalStructure']['@Name']
 
     # This scheme maps virtual terminals that correspond to zones to the correct zones, though it also keeps lots and virtual lots separate:
     # UPTOWN2 			403372-5THAVE1402
@@ -633,7 +769,7 @@ def zone_name(t):
     # Superzone? Zone w/lots? (This still ignores garages.)
 
 
-    # One problem with this is that the new Hill District meter has an Enforcement Zone name 
+    # One problem with this is that the new Hill District meter has an Enforcement Zone name
     # (Hill District) that differs from its Parent Terminal Structure (HILL-DIST).
     # The new way:
     enforcement_zones = groups_of_type('Enforcement',t)
@@ -649,7 +785,7 @@ def zone_name(t):
     code = enforcement_zones[0]
     return code
 
-def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
+def corrected_zone_name(t, mute_alerts=False, t_ids=[], t_id=None, group_lookup_addendum={}):
     lost_zone_names = {'401354-OLIVER0301': 'DOWNTOWN1',# 401354-OLIVER0301
     # has no TerminalGroups, but clearly it should be in DOWNTOWN1
     '402384-1STAVE0404': 'DOWNTOWN2',
@@ -736,7 +872,7 @@ def corrected_zone_name(t,t_ids=[],t_id=None,group_lookup_addendum={}):
             if zn == "Z - Inactive/Removed Terminals":
                 #print("\nGrody terminal listed with zone_name 'Z - Inactive/Removed Terminals':")
                 #pprint(to_dict(t))
-                num_zone, new_num_zone, new_old_zone = numbered_zone(t['@Id'],t,group_lookup_addendum)
+                num_zone, new_num_zone, new_old_zone = numbered_zone(t['@Id'], t, group_lookup_addendum, mute_alerts)
                 zn = convert_group_to_zone(t,num_zone)
                 if zn is None:
                     if new_old_zone is not None:

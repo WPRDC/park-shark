@@ -102,7 +102,7 @@ def move_to_front(f,f_ts):
     remaining_fs = [d for d in f_ts if d['id'] != f]
     return popped + remaining_fs
 
-def main(keep_archive):
+def main(keep_archive, mute_alerts):
     yesterday = datetime.date.today() - datetime.timedelta(days=1)
 
     monthly_resource_name = 'Payment Points - {:02d}/{}'.format(yesterday.month, yesterday.year)
@@ -141,7 +141,7 @@ def main(keep_archive):
 
     # Run the pull_terminals function to get the tabular data on parking
     # meter parameters, and also output that data to a CSV file.
-    unfixed_list_of_dicts, unfixed_keys = pull_terminals(output_to_csv=True,return_extra_zones=False)
+    unfixed_list_of_dicts, unfixed_keys = pull_terminals(output_to_csv=True, return_extra_zones=False, mute_alerts=mute_alerts)
 
     csv_path = csv_file_path()
 
@@ -242,12 +242,15 @@ def main(keep_archive):
 
 if __name__ == '__main__':
     keep_archive = False
+    mute_alerts = False
     if len(sys.argv) > 1:
         to_store = sys.argv[1]
-        if to_store in ['keep','store','archive']:
+        if to_store in ['keep', 'store', 'archive']:
             keep_archive = True
+        if 'mute' in sys.argv[1:] or 'mute_alerts' in sys.argv[1:]:
+            mute_alerts = True
     try:
-        main(keep_archive=keep_archive)
+        main(keep_archive=keep_archive, mute_alerts=mute_alerts)
     except:
         e = sys.exc_info()[0]
         print("Error: {} : ".format(e))
@@ -256,8 +259,6 @@ if __name__ == '__main__':
         traceback_msg = ''.join('!! ' + line for line in lines)
         print(traceback_msg)  # Log it or whatever here
         msg = "pipelines.py ran into an error: {}.\nHere's the traceback:\n{}".format(e,traceback_msg)
-        #mute_alerts = kwargs.get('mute_alerts',False)
-        mute_alerts = False
         if not mute_alerts:
             send_to_slack(msg,username='Leaky Pipe',channel='@david',icon=':droplet:')
 
