@@ -43,8 +43,9 @@ def main(*args,**kwargs):
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
     #slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=6))
     #halting_time = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=2))
+    mute_alerts = kwargs.get('mute_alerts',False)
     output_to_csv = kwargs.get('output_to_csv',False)
-    push_to_CKAN= kwargs.get('push_to_CKAN',False)
+    push_to_CKAN = kwargs.get('push_to_CKAN',False)
     slot_start = kwargs.get('slot_start',pgh.localize(datetime(2012,7,23,0,0)))
     halting_time = kwargs.get('halting_time', pgh.localize(datetime(3030,4,13,0,0)))
     spacetime = kwargs.get('spacetime','zone')
@@ -65,7 +66,7 @@ def main(*args,**kwargs):
         terminals = get_terminals(use_cache)
     except requests.exceptions.ConnectionError:
         use_cache = True
-    success = process_data.main(use_cache=use_cache, server=server, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, spacetime = spacetime, caching_mode = caching_mode, utc_json_folder = utc_json_folder, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 5000, filename = csv_filename)
+    success = process_data.main(use_cache=use_cache, server=server, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, spacetime = spacetime, caching_mode = caching_mode, utc_json_folder = utc_json_folder, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 5000, filename = csv_filename, mute_alerts = mute_alerts)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
     return success
 
@@ -74,6 +75,7 @@ if __name__ == '__main__':
         args = sys.argv[1:]
         output_to_csv = False
         push_to_CKAN = False
+        mute_alerts = False
 
         copy_of_args = list(args)
 
@@ -90,6 +92,9 @@ if __name__ == '__main__':
                 args.remove(arg)
             elif arg in ['pull', 'push', 'ckan']:
                 push_to_CKAN = True
+                args.remove(arg)
+            elif arg in ['mute', 'mute_alerts']:
+                mute_alerts = True
                 args.remove(arg)
             elif arg in list_of_servers:
                 kwparams['server'] = arg
@@ -109,6 +114,7 @@ if __name__ == '__main__':
             else:
                 print("I have no idea what do with args[{}] = {}.".format(k,arg))
 
+        kwparams['mute_alerts'] = mute_alerts
         kwparams['output_to_csv'] = output_to_csv
         kwparams['push_to_CKAN'] = push_to_CKAN
         pprint(kwparams)
