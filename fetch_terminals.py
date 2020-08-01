@@ -404,8 +404,9 @@ def pull_terminals(*args, **kwargs):
             parent_zones[sz] = []
         for t in terminals:
             if sz in all_groups(t):
-                parent, _, _ = numbered_zone(t['@Id']) # Now that group_lookup_addendum has been determined, should it be used here? It seems like it should.
-                if parent not in parent_zones[sz]:
+                parent, _, _ = numbered_zone(t['@Id'], t, {}, mute_alerts) # This was previously called with just one argument, but that seems wrong.
+                # Now that group_lookup_addendum has been determined, should it be used here? It seems like it should.
+                if parent not in parent_zones[sz] and parent is not None: # Checking for parent = None to deal with weird Flowbird-App-zone-related issues.
                     parent_zones[sz].append(parent)
 
     pprint(parent_zones)
