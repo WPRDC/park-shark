@@ -18,6 +18,7 @@ if __name__ == '__main__':
             args = sys.argv[1:]
             output_to_csv = False
             push_to_CKAN = True
+            mute_alerts = False
 
             copy_of_args = list(args)
 
@@ -41,12 +42,16 @@ if __name__ == '__main__':
                 elif arg in ['pull', 'push', 'ckan']:
                     push_to_CKAN = True
                     args.remove(arg)
+                elif arg in ['mute', 'mute_alerts']:
+                    mute_alerts = True
+                    args.remove(arg)
                 elif arg in list_of_servers:
                     kwparams['server'] = arg
                     args.remove(arg)
                 else:
                     print("I have no idea what do with args[{}] = {}.".format(k,arg))
 
+            kwparams['mute_alerts'] = mute_alerts
             kwparams['output_to_csv'] = output_to_csv
             kwparams['push_to_CKAN'] = push_to_CKAN
             pprint(kwparams)
@@ -57,7 +62,7 @@ if __name__ == '__main__':
             exc_type, exc_value, exc_traceback = sys.exc_info()
             lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
             msg = ''.join('!! ' + line for line in lines)
-            msg = 'push_day_old_data.py: ' + msg
+            msg = 'push_day_old_data_cacheless.py: ' + msg
             print(msg) # Log it or whatever here
             send_to_slack(msg,username='park-shark (tools)',channel='@david',icon=':mantelpiece_clock:')
     else:
