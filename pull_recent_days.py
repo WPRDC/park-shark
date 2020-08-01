@@ -14,6 +14,7 @@ import sys, pytz
 from datetime import datetime, timedelta
 import process_data
 from read_entire_history import list_of_servers
+from pprint import pprint
 
 def main(*args,**kwargs):
     raw_only = kwargs.get('raw_only',False)
