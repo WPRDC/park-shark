@@ -53,6 +53,7 @@ if __name__ == '__main__':
         copy_of_args = list(args)
 
         kwparams = {}
+        server = 'debug'
         # This is a new way of parsing command-line arguments that cares less about position
         # and just does its best to identify the user's intent.
         for k,arg in enumerate(copy_of_args):
