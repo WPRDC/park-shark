@@ -9,10 +9,13 @@ import requests
 import xmltodict
 import time
 from datetime import datetime
+from icecream import ic
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path
 from notify import send_to_slack
+
+FLOWBIRD_REGEX = 'f[l]?owbird '
 
 lot_list = ['18-CARSO-L', '18-SIDNE-L', '19-CARSO-L', '20-SIDNE-L', '42-BUTLE-L', '5224BUTL-L', 'ANSL-BEA-L', 'ASTE-WAR-L', 'BEAC-BAR-L', 'BEECHVIE-L', 'BROOKLIN-L', 'BROW-SAN-L', 'CENT-CRA-L', 'DOUG-PHI-L', 'EASTCARS-L', 'EASTOHIO-L', 'EVA-BEAT-L', 'FORB-MUR-L', 'FORB-SHA-L', 'FRIE-CED-L', 'HOME-ZEN-L', 'IVY-BELL-L', 'JCC-L', 'MAIN-ALE-L', 'OBSERHIL-L', 'PENNC.NW-L', 'SHER-HAR-L', 'SHER-KIR-L', 'SHILOH-L', 'TAME-BEA-L', 'TAYLOR-L', 'WALT-WAR-L'] # Harvard-Beatty-Inferred-L is missing from this list.
 
@@ -370,10 +373,14 @@ def is_a_flowbird_zone(t_id, t):
     """Try to identify the new Flowbird App zones."""
     if t is not None:
         if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
-            if '@Name' in t['ParentTerminalStructure'] and 'flowbird' in t['ParentTerminalStructure']['@Name'].lower():
-                return True
-            elif '@Description' in t['ParentTerminalStructure'] and 'flowbird' in t['ParentTerminalStructure']['@Description'].lower():
-                return True
+            if '@Name' in t['ParentTerminalStructure']:
+                name = t['ParentTerminalStructure']['@Name'].lower()
+                if re.search(FLOWBIRD_REGEX, name) is not None:
+                    return True
+            elif '@Description' in t['ParentTerminalStructure']:
+                description = t['ParentTerminalStructure']['@Description'].lower()
+                if re.search(FLOWBIRD_REGEX, description) is not None:
+                    return True
     return False
 
 def is_a_lot(t, zone):
@@ -679,8 +686,8 @@ def infer_flowbird_zone(t_id, t):
     new_old_zone = None
     if t is not None:
         if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
-            if '@Name' in t['ParentTerminalStructure'] and 'flowbird' in t['ParentTerminalStructure']['@Name'].lower():
-                flowbird_zone = re.sub('flowbird ', '', t['ParentTerminalStructure']['@Name'], flags=re.IGNORECASE)
+            if '@Name' in t['ParentTerminalStructure'] and re.search(FLOWBIRD_REGEX, t['ParentTerminalStructure']['@Name'].lower()) is not None:
+                flowbird_zone = re.sub(FLOWBIRD_REGEX, '', t['ParentTerminalStructure']['@Name'], flags=re.IGNORECASE)
                 # This enforcement zone will look something like 'Bloomfield' or 'Downtown 1'.
                 assert flowbird_zone != ''
                 if flowbird_zone in flowbird_zone_lookup:
