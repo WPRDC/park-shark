@@ -1284,15 +1284,14 @@ def get_utc_ps_for_utc_day_from_json(slot_start,reference_time='purchase_time_ut
 
 
                 else:
-                    mute_alerts = False
                     example = ps_by_day[day][0]
                     dc = example['@DateCreatedUtc']
                     utc_reference_field, local_reference_field = time_to_field(reference_time)
                     example_ref = example[utc_reference_field]
                     example_difference = parser.parse(example_ref) - parser.parse(dc)
-                    if not mute_alerts:
+                    if True or not mute_alerts: # Shouldn't time-travelling transactions always result in Slack notifications?
                         msg = "Time-travelling transactions transgression: A batch of {} transactions with day == {} when slot_start.date() == {}. Example: @DateCreatedUtc = {}, @PurchaseDateUtc = {}, difference = {}. Full example transaction: {}".format(len(ps_by_day[day]), day, slot_start.date(), dc, example_ref, example_difference,example)
-                        send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+                        global_warnings[msg] += 1
                         print(msg)
                     dt_fields = ['@PurchaseDateLocal', '@EndDateLocal', '@EndDateUtc', '@PayIntervalEndLocal',
                             '@PayIntervalEndUtc', '@PayIntervalStartLocal', '@PayIntervalStartUtc',
@@ -1566,9 +1565,9 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                     utc_reference_field, local_reference_field = time_to_field(reference_time)
                     example_ref = example[utc_reference_field]
                     example_difference = parser.parse(example_ref) - parser.parse(dc)
-                    if not mute_alerts:
+                    if True or not mute_alerts: # Always send these alerts, but packge them into global warnings.
                         msg = "Time-travelling transactions transgression: A batch of {} transactions with day == {} when slot_start.date() == {}. Example: @DateCreatedUtc = {}, @PurchaseDateUtc = {}, difference = {}. Full example transaction: {}".format(len(ps_by_day[day]), day, slot_start.date(), dc, example_ref, example_difference,example)
-                        send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
+                        global_warnings[mgs] += 1
                         print(msg)
                     dt_fields = ['@PurchaseDateLocal', '@EndDateLocal', '@EndDateUtc', '@PayIntervalEndLocal',
                             '@PayIntervalEndUtc', '@PayIntervalStartLocal', '@PayIntervalStartUtc',
