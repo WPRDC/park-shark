@@ -250,7 +250,7 @@ if __name__ == '__main__':
         if 'mute' in sys.argv[1:] or 'mute_alerts' in sys.argv[1:]:
             mute_alerts = True
     try:
-        main(keep_archive=keep_archive)
+        main(keep_archive=keep_archive, mute_alerts=mute_alerts)
     except:
         e = sys.exc_info()[0]
         print("Error: {} : ".format(e))
@@ -259,8 +259,6 @@ if __name__ == '__main__':
         traceback_msg = ''.join('!! ' + line for line in lines)
         print(traceback_msg)  # Log it or whatever here
         msg = "pipelines.py ran into an error: {}.\nHere's the traceback:\n{}".format(e,traceback_msg)
-        #mute_alerts = kwargs.get('mute_alerts',False)
-        mute_alerts = False
         if not mute_alerts:
             send_to_slack(msg,username='Leaky Pipe',channel='@david',icon=':droplet:')
 
