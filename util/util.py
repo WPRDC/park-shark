@@ -198,7 +198,7 @@ flowbird_zone_lookup = OrderedDict([
     #(u'404 - Strip Disctrict', u'STRIPDIST'),
     ('Lawrenceville', '405 - Lawrenceville'),
     ('Bloomfield', '406 - Bloomfield (On-street)'),
-    #(u'407 - Oakland 1', u'OAKLAND1'),
+    ('Oakland 1', '407 - Oakland 1'),
     #(u'408 - Oakland 2', u'OAKLAND2'),
     #(u'409 - Oakland 3', u'OAKLAND3'),
     #(u'410 - Oakland 4', u'OAKLAND4'),
