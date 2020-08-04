@@ -16,9 +16,11 @@ import process_data
 from read_entire_history import list_of_servers
 from pprint import pprint
 
+# This script seems to be malfunctioning.
 def main(*args,**kwargs):
     raw_only = kwargs.get('raw_only',False)
     test_mode = kwargs.get('test_mode',False)
+    mute_alerts = kwargs.get('mute_alerts',False)
     if test_mode:
         output_to_csv = True
         push_to_CKAN = False
@@ -37,7 +39,7 @@ def main(*args,**kwargs):
     # process_data.py.
     script_start = datetime.now()
     print("Started processing at {}.".format(script_start))
-    success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000)
+    success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 1000, mute_alerts = mute_alerts)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
 
 if __name__ == '__main__':
