@@ -42,7 +42,7 @@ if __name__ == '__main__':
                     push_to_CKAN = True
                     args.remove(arg)
                 elif arg in ['mute', 'mute_alerts']:
-                    mute_alerst = True
+                    mute_alerts = True
                     args.remove(arg)
                 elif arg in list_of_servers:
                     kwparams['server'] = arg
