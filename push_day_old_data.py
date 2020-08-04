@@ -18,6 +18,7 @@ if __name__ == '__main__':
             args = sys.argv[1:]
             output_to_csv = False
             push_to_CKAN = True
+            mute_alerts = False
 
             copy_of_args = list(args)
 
@@ -40,12 +41,16 @@ if __name__ == '__main__':
                 elif arg in ['pull', 'push', 'ckan']:
                     push_to_CKAN = True
                     args.remove(arg)
+                elif arg in ['mute', 'mute_alerts']:
+                    mute_alerst = True
+                    args.remove(arg)
                 elif arg in list_of_servers:
                     kwparams['server'] = arg
                     args.remove(arg)
                 else:
                     print("I have no idea what do with args[{}] = {}.".format(k,arg))
 
+            kwparams['mute_alerts'] = mute_alerts
             kwparams['output_to_csv'] = output_to_csv
             kwparams['push_to_CKAN'] = push_to_CKAN
             pprint(kwparams)
