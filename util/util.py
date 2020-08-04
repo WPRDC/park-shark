@@ -697,6 +697,29 @@ def infer_flowbird_zone(t_id, t):
                     new_old_zone = flowbird_zone
     return zone, flowbird_zone, matched, new_numbered_zone, new_old_zone
 
+def infer_lot_zone(t):
+    """This function takes a terminal and figures out which of the
+    traditional numbered zones it belongs to.
+
+    Of course, the terminal's location field provides useful description."""
+
+    LOT_REGEX = '-L$'
+    zone = None
+    lot_zone = None
+    matched = False
+    new_old_zone = None
+    if t is not None:
+        if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
+            if '@Name' in t['ParentTerminalStructure'] and re.search(LOT_REGEX, t['ParentTerminalStructure']['@Name']) is not None:
+                lot_zone = t['ParentTerminalStructure']['@Name']
+                assert lot_zone != ''
+                if lot_zone in flowbird_zone_lookup:
+                    zone = flowbird_zone_lookup[lot_zone] # Find the numbered zone based on the lot designation.
+                    matched = True
+                else:
+                    new_old_zone = lot_zone
+    return zone, lot_zone, matched, None, new_old_zone
+
 def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
     # This is the new slimmed-down approach to determining the numbered
     # reporting zone for the meter purely from the meter ID.
@@ -710,6 +733,21 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
         # any longer, with the advent of Flowbird App terminals.
         if is_a_flowbird_zone(t_id, t):
             zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone = infer_flowbird_zone(t_id, t)
+            if zone_in_ID is None:
+                #ic(t)
+                ic(zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone)
+                ic(t['ParentTerminalStructure'])
+                # assert zone_in_ID is not None
+        elif t is not None and re.match('^\d+$', t['@Id']):
+            # It's one of the other terminals (currently lots)
+
+            zone_in_ID, lot_zone, matched, new_num_zone, new_old_zone = infer_lot_zone(t)
+            ic(zone_in_ID, lot_zone, matched)
+            if zone_in_ID is None:
+                ic(t['ParentTerminalStructure'])
+        #elif is_a_flowbird_generation_lot(t):
+        # Ultimately, it may be too early to write this code until
+        # the full details of the zones and terminal groups have been filled in.
         else:
             try:
                 zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3], t, group_lookup_addendum, mute_alerts)
