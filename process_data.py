@@ -930,7 +930,7 @@ def get_payment_type(p):
         terminal_id = p['@TerminalID']
         if terminal_id[:3] == 'PBP':
             return 'mobile'
-        elif terminal_id[0] in ['3','4']:
+        elif terminal_id[0] in ['2', '3', '4']:
             return 'meter'
         else:
             raise ValueError("Unknown terminal type for terminal ID {} from payment {}.".format(terminal_id,p))
