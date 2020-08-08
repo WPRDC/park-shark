@@ -439,6 +439,6 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         if 'use_cache' in sys.argv[1:]:
             use_cache = True
-        if 'mute_alerts' in sys.argv[1:]:
-            mute_alerts= True
+        if 'mute_alerts' in sys.argv[1:] or 'mute' in sys.argv[1:]:
+            mute_alerts = True
     pull_terminals(output_to_csv=False, use_cache=use_cache, mute_alerts=mute_alerts)
