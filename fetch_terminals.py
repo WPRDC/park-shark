@@ -197,6 +197,13 @@ def pull_terminals(*args, **kwargs):
     ids_to_ignore += flowbird_ids_to_ignore_for_now
     for k,t in enumerate(terminals):
 
+        if 'Location' not in t:
+            msg = "No 'Location' field found for terminal with ID {}, so this terminal is being skipped entirely.".format(t['@Id'])
+            print(msg)
+            warnings.append(msg)
+            pprint(t)
+            continue
+
         new_entry = {}
         new_entry['GUID'] = t['@Guid']
         new_entry['ID'] = t['@Id']
