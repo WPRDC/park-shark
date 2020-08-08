@@ -16,6 +16,8 @@ from parameters.credentials_file import CALE_API_user, CALE_API_password
 
 from parameters.local_parameters import path
 
+warnings = [] # Accumulate warnings which will be sent to Slack at the end of pull_terminals.
+
 calculate_zone_centroids = False
 if calculate_zone_centroids:
     import numpy as np
@@ -64,6 +66,7 @@ def pull_terminals(*args, **kwargs):
     # zones are returned rather than the table of terminals),
     # and push_to_CKAN and output_to_csv (to control those output
     # channels).
+    global warnings
 
     use_cache = kwargs.get('use_cache',False)
     mute_alerts = kwargs.get('mute_alerts', False)
@@ -387,7 +390,8 @@ def pull_terminals(*args, **kwargs):
         msg = "Some uncategorized sampling zones were found: {}".format(uncategorized_sampling_zones)
         print(msg)
         if not mute_alerts:
-            msg = "fetch_terminals.py: " + msg
+            warnings.append(msg)
+            msg = "fetch_terminals.py: " + ' & '.join(warnings)
             try:
                 send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')
             except requests.exceptions.ConnectionError:
