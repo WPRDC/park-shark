@@ -280,7 +280,14 @@ def pull_terminals(*args, **kwargs):
 
         if value_or_blank('Latitude',t) != '' and new_entry['ParentStructure'] != 'Z - Inactive/Removed Terminals':
             lat = float(value_or_blank('Latitude',t))
-            lon = float(value_or_blank('Longitude',t))
+            try:
+                lon = float(value_or_blank('Longitude',t))
+            except ValueError:
+                lon_string = value_or_blank('Longitude',t)
+                if lon_string[:2] == '--':
+                    lon = float(lon_string[1:])
+                else:
+                    raise
             points_in_zone[new_entry['Zone']].append([lat,lon])
 
         if t['@Guid'] in rates:
