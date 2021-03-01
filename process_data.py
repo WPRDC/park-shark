@@ -500,10 +500,14 @@ def distill_stats(rps,terminals,t_guids,t_ids,group_lookup_addendum,start_time,e
         aggregation_keys = []
 
         if space_aggregate_by == 'zone':
-            if zone_kind == 'new':
-                zone, _, _ = numbered_zone(t_id,None,group_lookup_addendum)
-            elif t_guid in t_guids:
+            if t_guid in t_guids:
                 t = terminals[t_guids.index(t_guid)]
+            else:
+                t = None
+
+            if zone_kind == 'new':
+                zone, _, _ = numbered_zone(t_id, t, group_lookup_addendum)
+            elif t is not None:
                 if zone_kind == 'old':
                     zone = corrected_zone_name(t) # Changed
                     # from zone_name(t) to avoid getting
