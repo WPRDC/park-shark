@@ -47,7 +47,7 @@ if __name__ == '__main__':
         raw_only = False
     if len(sys.argv) > 2 and sys.argv[2] in ['test','test_mode']:
         test_mode = True
-    if len(sys.argv) > 1 and 'mute' in sys.argv[1:] or 'mute_alerts' in sys.argv[1:]:
+    if len(sys.argv) > 1 and ('mute' in sys.argv[1:] or 'mute_alerts' in sys.argv[1:]):
         mute_alerts = True
 
     if len(sys.argv) > 1:
