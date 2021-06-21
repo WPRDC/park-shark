@@ -670,6 +670,7 @@ def infer_group(t=None, t_id=None, group_lookup_addendum={}, mute_alerts=False):
         return None
     code = t_id[3:] # Split off the part after 'PBP' (Pay By Phone?).
     # The above code could be factored out into part of an infer_code() function.
+    code = code.strip() # This is necessary to handle the new "PBP 412036" format.
     group, matched, new_numbered_zone, new_old_zone = group_by_code(code, t, group_lookup_addendum, mute_alerts)
     return group, new_numbered_zone, new_old_zone
 
