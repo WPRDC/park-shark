@@ -195,12 +195,14 @@ def pull_terminals(*args, **kwargs):
     flowbird_ids_to_ignore_for_now = [t['@Id'] for t in terminals if len(t['@Id']) <= 5]
     print("Currently ignoring these terminal IDs: {}".format(sorted(flowbird_ids_to_ignore_for_now)))
     ids_to_ignore += flowbird_ids_to_ignore_for_now
+    locationless_terminal_ids = []
     for k,t in enumerate(terminals):
 
         if 'Location' not in t:
             msg = "No 'Location' field found for terminal with ID {}, so this terminal is being skipped entirely.".format(t['@Id'])
             print(msg)
-            warnings.append(msg)
+            locationless_terminal_ids.append(t['@Id'])
+            #warnings.append(msg)
             pprint(t)
             continue
 
@@ -405,6 +407,9 @@ def pull_terminals(*args, **kwargs):
         print(msg)
         if not mute_alerts:
             warnings.append(msg)
+            if len(locationless_terminal_ids) > 0:
+                msg = "No 'Location' field found for terminals with IDs {}, so these terminal are being skipped entirely.".format(', '.join(locationless_terminal_ids))
+                warnings.append(msg)
             msg = "fetch_terminals.py: " + ' & '.join(warnings)
             try:
                 send_to_slack(msg,username='park-shark',channel='@david',icon=':mantelpiece_clock:')

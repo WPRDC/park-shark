@@ -736,16 +736,17 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
             zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone = infer_flowbird_zone(t_id, t)
             if zone_in_ID is None:
                 #ic(t)
-                ic(zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone)
+                ic(t_id, zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone)
                 ic(t['ParentTerminalStructure'])
+                pass
                 # assert zone_in_ID is not None
         elif t is not None and re.match('^\d+$', t['@Id']):
             # It's one of the other terminals (currently lots)
 
             zone_in_ID, lot_zone, matched, new_num_zone, new_old_zone = infer_lot_zone(t)
-            ic(zone_in_ID, lot_zone, matched)
-            if zone_in_ID is None:
-                ic(t['ParentTerminalStructure'])
+            #ic(t_id, zone_in_ID, lot_zone, matched)
+            #if zone_in_ID is None:
+                #ic(t['ParentTerminalStructure'])
         #elif is_a_flowbird_generation_lot(t):
         # Ultimately, it may be too early to write this code until
         # the full details of the zones and terminal groups have been filled in.
