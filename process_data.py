@@ -1041,10 +1041,44 @@ def hybrid_parking_segment_start_of(p):
             #    print("Amount = '0!'")
             #    pprint(p)
         else:
-            print("Start = {}, End = {}, Units = {}, Amount = {}. This looks weird.".format(sdl,edl,units,amount))
+            #print("Start = {}, End = {}, Units = {}, Amount = {}. This looks weird.".format(sdl,edl,units,amount))
             #It's not clear if this needs to be coereced.
-            pprint(p)
-            raise ValueError("Evaluate this purchase to decide how to handle it.") # None of these have been found to date.
+            #pprint(p)
+            #raise ValueError("Evaluate this purchase to decide how to handle it.") # None of these have been found to date.
+
+            # New exception that triggers this branch:
+            # Start = 2021-08-11T21:10:00, End = 2021-08-12T08:00:00, Units = 650, Amount = 0.83. This looks weird.
+            #    OrderedDict([('@PurchaseGuid', '**********************'),
+            #     ('@TerminalGuid', 'DAF2E9A3-AF9B-491B-92F1-A0C4244AD904'),
+            #     ('@TerminalID', 'PBP 412043'),
+            #     ('@PurchaseDateLocal', '2021-08-11T21:09:58'),
+            #     ('@PurchaseDateUtc', '2021-08-12T01:09:58'),
+            #     ('@StartDateLocal', '2021-08-11T21:10:00'),
+            #     ('@StartDateUtc', '2021-08-12T01:10:00'),
+            #     ('@PayIntervalStartLocal', '2021-08-11T21:10:00'),
+            #     ('@PayIntervalStartUtc', '2021-08-12T01:10:00'),
+            #     ('@PayIntervalEndLocal', '2021-08-12T08:00:00'),
+            #     ('@PayIntervalEndUtc', '2021-08-12T12:00:00'),
+            #     ('@EndDateLocal', '2021-08-12T08:00:00'),
+            #     ('@EndDateUtc', '2021-08-12T12:00:00'),
+            #     ('@TicketNumber', '0'),
+            #     ('@Units', '650'),
+            #     ('@Amount', '0.83'),
+            #     ('@TariffPackageID', '315'),
+            #     ('@ExternalID', '*******************'),
+            #     ('@DateCreatedUtc', '2021-08-12T01:10:32.180'),
+            #     ('@PurchaseStateName', 'Completed'),
+            #     ('@PaymentServiceType', 'None'),
+            #     ('@PurchaseTypeName', 'Normal'),
+            #     ('PurchasePayUnit',
+            #      OrderedDict([('@PayUnitName', 'Mobile Payment'),
+            #                   ('@Amount', '0.83'),
+            #                   ('@TransactionReference', '********')])),
+
+            # .83 * 60 = 50 minutes, so the charge is for parking between 21:10 and 22:00. The coercion would have to
+            # be to coerce the end time (not the start time).
+            return time_field['mobile'] # If end-time coercion were happening/necessary, this is a case
+            # where it should be done, but as far as I can tell, nothing like that is happening.
 
     else:
         return time_field['mobile']
