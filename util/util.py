@@ -814,6 +814,14 @@ def zone_name(t):
     # The new way:
     enforcement_zones = groups_of_type('Enforcement',t)
     if len(enforcement_zones) == 0:
+        if t['ParentTerminalStructure'] is None:
+            pprint(t)
+            print("Terminal found with no ParentTerminalStructure.")
+            return None # Just returning None should result in the transaction
+            # not having a bin to be published in.
+            # This does result in terminals being published with no zone.
+            # Probably these are all new terminals where not all of the metadata
+            # has been filled in yet.
         return t['ParentTerminalStructure']['@Name'] # Fall back to this value for consistency
         # since it seems like a really, really good way of recovering the enforcement zone
         # when the meter has been removed (except in the new case of the Hill District and
