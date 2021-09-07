@@ -26,7 +26,7 @@ if __name__ == '__main__':
             current_hour = process_data.round_time(datetime.now(),60*60,"down") # Round current time down to the beginning of the hour.
 
             kwparams = {}
-            slot_start = pgh.localize(current_hour - timedelta(days=2))
+            slot_start = pgh.localize(current_hour - timedelta(days=3))
             kwparams['slot_start'] = slot_start
             halting_time = pgh.localize(current_hour - timedelta(days=1))
             kwparams['halting_time'] = halting_time
