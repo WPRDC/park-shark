@@ -1607,7 +1607,7 @@ def get_utc_ps_for_day_from_json(slot_start,local_tz=pytz.timezone('US/Eastern')
                     example_difference = parser.parse(example_ref) - parser.parse(dc)
                     if True or not mute_alerts: # Always send these alerts, but packge them into global warnings.
                         msg = "Time-travelling transactions transgression: A batch of {} transactions with day == {} when slot_start.date() == {}. Example: @DateCreatedUtc = {}, @PurchaseDateUtc = {}, difference = {}. Full example transaction: {}".format(len(ps_by_day[day]), day, slot_start.date(), dc, example_ref, example_difference,example)
-                        global_warnings[mgs] += 1
+                        global_warnings[msg] += 1
                         print(msg)
                     dt_fields = ['@PurchaseDateLocal', '@EndDateLocal', '@EndDateUtc', '@PayIntervalEndLocal',
                             '@PayIntervalEndUtc', '@PayIntervalStartLocal', '@PayIntervalStartUtc',
