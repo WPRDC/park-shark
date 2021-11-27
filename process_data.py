@@ -22,6 +22,8 @@ from dateutil import parser
 from util.sqlite_util import get_events_from_sqlite, bulk_upsert_to_sqlite, bulk_upsert_to_sqlite_local, time_to_field, mark_date_as_cached, is_date_cached, mark_utc_date_as_cached, is_utc_date_cached
 from notify import send_to_slack
 
+import config # To define a file-crossing global like global_terminal_ids_without_groups.
+
 #from util.carto_util import update_map
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path, SETTINGS_FILE
@@ -2571,6 +2573,16 @@ def main(*args, **kwargs):
                 print("Unable to transmit this message to Slack")
                 print(msg)
 
+    if len(config.global_terminal_ids_without_groups) > 0:
+        msg = 'process_data.py warnings: \n'
+        msg += "No groups found for the following codes: {}".format(', '.join(config.global_terminal_ids_without_groups))
+        print(msg)
+        if not mute_alerts:
+            try:
+                send_to_slack(msg, username='park-shark', channel='@david', icon=':mantelpiece_clock:')
+            except requests.exceptions.ConnectionError:
+                print("Unable to transmit this message to Slack")
+                print(msg)
     return success_transactions
 
 # Overview:

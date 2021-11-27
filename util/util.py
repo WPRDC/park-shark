@@ -11,6 +11,8 @@ import time
 from datetime import datetime
 from icecream import ic
 
+import config # To import cross-file global variables (like global_terminal_ids_without_groups).
+
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path
 from notify import send_to_slack
@@ -507,7 +509,6 @@ def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
     # If those numbers could be integrated with this in an ETL process, one
     # table could be used to get all the information needed for the reports.
     # (Maybe a human-readable name would be in there as well.)
-
     group_lookup_base = {'301': '301 - Sheridan Harvard Lot',
                         '302': '302 - Sheridan Kirkwood Lot',
                         '304': '304 - Tamello Beatty Lot',
@@ -603,6 +604,7 @@ def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
     if len(candidate_groups) == 0:
         if t is None:
             msg = 'No group found for code {} and full terminal description {}'.format(code,to_dict(t))
+            config.global_terminal_ids_without_groups.append(code + ' (t is None)')
             code = None
         else:
             # An option at this point would be to use other information
@@ -615,15 +617,18 @@ def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
             print(nrgs)
             if len(nrgs) == 0:
                 msg = 'No group found for code {} and full terminal description {}'.format(code,to_dict(t))
+                config.global_terminal_ids_without_groups.append(t['@Id'] if t is not None and '@Id' in t else code)
                 code = None
             else:
                 # Winnow by the code
                 matches = [nrg for nrg in nrgs if nrg[:3] == code[:3]]
                 if len(matches) > 1:
                     msg = "Too many numbered zones to discern the true/best one. No group found for code {} and full terminal description {}".format(code,to_dict(t))
+                    config.global_terminal_ids_without_groups.append(t['@Id'] if t is not None and '@Id' in t else code)
                     code = None
                 elif len(matches) == 0:
                     msg = "Unable to identify a valid numbered zone. No group found for code {} and full terminal description {}".format(code,to_dict(t))
+                    config.global_terminal_ids_without_groups.append(t['@Id'] if t is not None and '@Id' in t else code)
                     code = None
                 else:
                     new_numbered_zone = matches[0]
@@ -655,8 +660,8 @@ def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
         code = None
 
     print(msg)
-    if not mute_alerts:
-        send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
+    #if not mute_alerts:
+    #    send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:') # Switched to instead aggregating in global_terminal_ids_without_groups.
     return None, False, None, None # There's no group matching the code in the list, the match boolean is False, there's no new numbered zone, and no new enforcement zone (because there's no groups to pull this stuff from).
 
     #return code, False, None, None
