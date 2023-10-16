@@ -16,7 +16,7 @@ from marshmallow import fields, post_load, pre_load
 from collections import OrderedDict, defaultdict
 from pprint import pprint
 
-sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
+sys.path.insert(0, '/home/david/wprdc-etl') # A path that we need to import code from
 import pipeline as pl
 
 

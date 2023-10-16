@@ -11,7 +11,7 @@ from marshmallow import fields, pre_dump, pre_load
 
 from parameters.local_parameters import SETTINGS_FILE, base_monthly_meters_archive
 
-sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
+sys.path.insert(0, '/home/david/wprdc-etl') # A path that we need to import code from
 import pipeline as pl # This comes from the wprdc-etl repository.
 
 server = "meters-etl"
