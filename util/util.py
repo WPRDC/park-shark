@@ -15,6 +15,7 @@ import config # To import cross-file global variables (like global_terminal_ids_
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path
+from parameters.remote_parameters import BASE_URL
 from notify import send_to_slack
 
 FLOWBIRD_REGEX = 'f[l]?owbird '
@@ -950,7 +951,7 @@ def is_timezoneless(d):
 
 def get_terminals(use_cache=False,attempts=0):
     if not use_cache:
-        url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
+        url = f'{BASE_URL}LiveDataExport/2/LiveDataExportService.svc/terminals'
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
 
         # Convert Cale's XML into a Python dictionary

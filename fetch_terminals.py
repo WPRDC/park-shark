@@ -15,6 +15,7 @@ from notify import send_to_slack
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 
 from parameters.local_parameters import path
+from parameters.remote_parameters import BASE_URL
 
 warnings = [] # Accumulate warnings which will be sent to Slack at the end of pull_terminals.
 
@@ -82,7 +83,7 @@ def pull_terminals(*args, **kwargs):
     f_attributes = path + "cached_attributes.xml"
     fall_back_to_cache = False
     if not use_cache:
-        url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/2/LiveDataExportService.svc/terminals'
+        url = f'{BASE_URL}LiveDataExport/2/LiveDataExportService.svc/terminals'
         r = requests.get(url, auth=(CALE_API_user, CALE_API_password))
 
         # Convert Cale's XML into a Python dictionary
@@ -94,7 +95,7 @@ def pull_terminals(*args, **kwargs):
             print("The version of the terminals data pulled from the API is not valid. Falling back to the cache")
             fall_back_to_cache = True
 
-        attributes_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/1/LiveDataExportService.svc/customattributes'
+        attributes_url = f'{BASE_URL}LiveDataExport/1/LiveDataExportService.svc/customattributes'
         r = requests.get(attributes_url, auth=(CALE_API_user, CALE_API_password))
 
         a_doc = xmltodict.parse(r.text,encoding = r.encoding)

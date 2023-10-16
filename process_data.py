@@ -27,6 +27,7 @@ import config # To define a file-crossing global like global_terminal_ids_withou
 #from util.carto_util import update_map
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path, SETTINGS_FILE
+from parameters.remote_parameters import BASE_URL
 from pipe.pipe_to_CKAN_resource import send_data_to_pipeline, get_connection_parameters, TransactionsSchema, SplitTransactionsSchema, SamplingTransactionsSchema, SplitSamplingTransactionsSchema, OccupancySchema
 from pipe.gadgets import get_resource_data
 
@@ -812,9 +813,9 @@ def get_day_from_json_or_api(slot_start,tz,cache=True,mute=False,utc_json_folder
         slot_end = slot_start + timedelta(days = 1)
 
         if recent:
-            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
+            base_url = f'{BASE_URL}LiveDataExport/4/LiveDataExportService.svc/purchases/'
         else:
-            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            base_url = f'{BASE_URL}BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
 
         url = build_url(base_url,slot_start,slot_end)
 

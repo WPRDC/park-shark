@@ -15,6 +15,7 @@ from util.db_util import create_or_connect_to_db, get_tables_from_db, get_ps_for
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path
+from parameters.remote_parameters import BASE_URL
 
 from nonchalance import add_hashes
 
@@ -230,9 +231,9 @@ def get_week_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
         slot_end = week_end
         
         if recent:
-            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
+            base_url = f'{BASE_URL}LiveDataExport/4/LiveDataExportService.svc/purchases/'
         else:
-            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            base_url = f'{BASE_URL}BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             
         url = build_url(base_url,slot_start,slot_end)
 
@@ -316,9 +317,9 @@ def get_month_from_json_or_api(slot_start,tz=pytz.utc,cache=True,mute=False):
         slot_end = month_end
         
         if recent:
-            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/LiveDataExport/4/LiveDataExportService.svc/purchases/'
+            base_url = f'{BASE_URL}LiveDataExport/4/LiveDataExportService.svc/purchases/'
         else:
-            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            base_url = f'{BASE_URL}BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             
         url = build_url(base_url,slot_start,slot_end)
 

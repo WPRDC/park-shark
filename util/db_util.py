@@ -27,7 +27,7 @@ import dataset, sqlalchemy
 
 from parameters.credentials_file import CALE_API_user, CALE_API_password
 from parameters.local_parameters import path
-
+from parameters.remote_parameters import BASE_URL
 
 DEFAULT_TIMECHUNK = timedelta(minutes=10)
 
@@ -186,7 +186,7 @@ def get_ps_for_day(db,slot_start,cache=True,mute=False):
             #query_date_string = query_start.astimezone(tz).strftime(date_format) # This is the date
             # in the local time zone. # This seems to not be used at all.
 
-            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            base_url = f'{BASE_URL}BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             url = build_url(base_url,query_start,query_end)
 
             t_start_dl = time.time()
@@ -388,7 +388,7 @@ def get_ps_from_somewhere(db,slot_start,slot_end,cache=True,mute=False):
             #query_date_string = query_start.astimezone(tz).strftime(date_format) # This is the date
             # in the local time zone. # This seems to not be used at all.
 
-            base_url = 'https://webservice.mdc.dmz.caleaccess.com/cwo2exportservice/BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
+            base_url = f'{BASE_URL}BatchDataExport/4/BatchDataExport.svc/purchase/ticket/'
             url = build_url(base_url,query_start,query_end)
 
             if not mute:
