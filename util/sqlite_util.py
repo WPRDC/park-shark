@@ -48,7 +48,7 @@ def get_cached_dates_table(date_filepath,date_table_name):
         table = db[date_table_name]
     except sqlalchemy.exc.NoSuchTableError as e:
         print("Unable to load database {} and table {}.".format(date_filepath,date_table_name))
-        table = db.create_table(date_table_name, primary_id = 'date', primary_type = 'String')
+        table = db.create_table(date_table_name, primary_id = 'date', primary_type = db.types.text) # 'String')
     return table
 
 def mark_date_as_cached(path,reference_time,date_i,offset):
@@ -105,9 +105,9 @@ def get_purchases_filepath(path,reference_time,date_i):
 def create_sqlite(db_filename):
     db = dataset.connect('sqlite:///'+db_filename)
     table_name = get_table_name()
-    db.create_table(table_name, primary_id='@PurchaseGuid', primary_type='String')
+    db.create_table(table_name, primary_id='@PurchaseGuid', primary_type=db.types.text) #'String')
     cached_ps = db[table_name]
-    cached_ps.create_index(['hour', 'minute']) # Creating these indices should massively speed up queries.
+    #cached_ps.create_index(['hour', 'minute']) # Creating these indices should massively speed up queries. # Commented this line out to make the push_recent_days.py script work.
     #cached_ps.create_index(['unix_time']) # Creating this index should massively speed up queries.
     return db
 
