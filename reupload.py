@@ -16,9 +16,9 @@ from marshmallow import fields, post_load, pre_load
 from collections import OrderedDict, defaultdict
 from pprint import pprint
 
-sys.path.insert(0, '/home/david/wprdc-etl') # A path that we need to import code from
-import pipeline as pl
-
+from parameters.local_parameters import PATH_TO_PIPELINE
+sys.path.insert(0, PATH_TO_PIPELINE)
+import pipeline as pl # This comes from the wprdc-etl repository.
 
 class SplitTransactionsSchemaUp(BaseTransactionsSchema):
     """The split transactions schema handles the case where transactions are to be split between

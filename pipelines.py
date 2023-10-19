@@ -14,7 +14,8 @@ import os, json, traceback
 import datetime
 from marshmallow import fields, pre_dump, pre_load
 
-sys.path.insert(0, '/home/david/wprdc-etl') # A path that we need to import code from
+from parameters.local_parameters import PATH_TO_PIPELINE
+sys.path.insert(0, PATH_TO_PIPELINE)
 import pipeline as pl # This comes from the wprdc-etl repository.
 
 from fetch_terminals import pull_terminals, csv_file_path
