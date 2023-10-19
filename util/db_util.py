@@ -49,8 +49,8 @@ def epoch_time(dt):
 # database functions #
 def create_db(db_filename):
     db = dataset.connect('sqlite:///'+db_filename)
-    db.create_table('cached_utc_dates', primary_id='date', primary_type='String')
-    db.create_table('cached_purchases', primary_id='@PurchaseGuid', primary_type='String')
+    db.create_table('cached_utc_dates', primary_id='date', primary_type=db.types.text)
+    db.create_table('cached_purchases', primary_id='@PurchaseGuid', primary_type=db.types.text)
     cached_ps = db['cached_purchases']
     cached_ps.create_index(['unix_time']) # Creating this index should massively speed up queries.
     return db
