@@ -752,7 +752,6 @@ def infer_group(t=None, t_id=None, group_lookup_addendum={}, mute_alerts=False):
             #               ('@Guid', '8EEE24E2-BC28-4AB4-B64A-59267DC2A150')])),
             od = t.get('ParentTerminalStructure', {})
             num_zone = f"{od['@Name']} - {od['@Description']}"
-            ic(num_zone, t_id)
             return num_zone, None, None
 
     return None, None, None
