@@ -29,7 +29,7 @@ def main(*args,**kwargs):
         push_to_CKAN = True
     pgh = pytz.timezone('US/Eastern')
     slot_width = process_data.DEFAULT_TIMECHUNK.seconds
-    slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=6))
+    slot_start = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=4))
     halting_time = process_data.beginning_of_day(datetime.now(pgh) - timedelta(days=2))
     # Note that these days are chosen to be within the last 7 days so that 
     # the data can be pulled from the API without using the bulk API 
