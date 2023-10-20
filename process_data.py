@@ -963,23 +963,6 @@ def get_payment_type(p):
 
 def is_mobile_payment(p):
     return get_payment_type(p) == 'mobile'
-#    # If the 'PurchasePayUnit' field cannot be found, use the terminal ID
-#    # to detect whether it's a virtual payment.
-#    if 'PurchasePayUnit' not in p:
-#        terminal_id = p['@TerminalID']
-#        if terminal_id[:3] == 'PBP':
-#            return True
-#        elif terminal_id[0] in ['3','4']:
-#            return False
-#        else:
-#            raise ValueError("Unknown terminal type for terminal ID {} from payment {}.".format(terminal_id,p))
-#
-#    if type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.
-#        return False
-#    elif p['PurchasePayUnit']['@PayUnitName'] == 'Mobile Payment':
-#        return True
-#    else: # In addition to "Mobile Payment" and "Coin" and "Card", there's also now "Manual", which is ignorable.
-#        return False
 
 def hybrid_parking_segment_start_of(p):
     # In the CALE API, @Units == @EndDateUtc - @StartDateUtc.
