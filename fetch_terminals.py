@@ -188,7 +188,8 @@ def pull_terminals(*args, **kwargs):
      'Northshore Pgm 67', 'Uptown Pgm 81', 'Uptown Pgm 82',
      'East Liberty (On-street only)',
      'Purchase Receipt',
-     'GARAGE', # Not yet sure what to do with this one.
+     'FB-TEST'
+     #'GARAGE', # Not yet sure what to do with this one.
        ]
     print("Figure out what to do with the GARAGE zone and associated terminals.")
 

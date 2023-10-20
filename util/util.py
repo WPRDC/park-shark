@@ -582,8 +582,8 @@ def group_by_code(code, t=None, group_lookup_addendum={}, mute_alerts=True):
                         '427': '427 - Knoxville'
     }
     group_lookup_base['Fri'] = None # Workaround for oddball 'Friendship Ave RPP' ID.
-    group_lookup_base['209'] = None # '209 - Mon Wharf' # A garage - leave this and related records out for now
-    group_lookup_base['213'] = None # '213 - Second Avenue Plaza' # Another garage - leave this and related records out for now
+    group_lookup_base['209'] = '209 - Mon Wharf' # A garage
+    group_lookup_base['213'] = '213 - Second Avenue Plaza' # Another garage
 
     group_lookup = {**group_lookup_addendum, **group_lookup_base} # This works in Python 3.5 and higher.
     # Is the group already hard-coded in? If so, return it.
