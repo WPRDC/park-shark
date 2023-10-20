@@ -194,9 +194,9 @@ def pull_terminals(*args, **kwargs):
     print("Figure out what to do with the GARAGE zone and associated terminals.")
 
     ids_to_ignore = ['Friendship Ave RPP', '209001-MONWHARF', '213001-2NDAVEPZA'] # These are terminal IDs which should not be saved to CSV files or pushed to CKAN repositories.
-    flowbird_ids_to_ignore_for_now = [t['@Id'] for t in terminals if len(t['@Id']) <= 5]
-    print("Currently ignoring these terminal IDs: {}".format(sorted(flowbird_ids_to_ignore_for_now)))
-    ids_to_ignore += flowbird_ids_to_ignore_for_now
+#    flowbird_ids_to_ignore_for_now = [t['@Id'] for t in terminals if len(t['@Id']) <= 5]
+    print("Currently ignoring these terminal IDs: {}".format(sorted(ids_to_ignore)))
+#    ids_to_ignore += flowbird_ids_to_ignore_for_now
     locationless_terminal_ids = []
     for k,t in enumerate(terminals):
 
