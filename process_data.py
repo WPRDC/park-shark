@@ -939,6 +939,12 @@ def get_payment_type(p):
             return 'mobile'
         elif terminal_id[0] in ['2', '3', '4']:
             return 'meter'
+        elif terminal_id[:4] == 'MTFD':
+            # Observations: Where there are coordinates for MTFD terminals, they appear
+            # to be the locations of those blue boxes.
+            # All MTFD transactions appear to be mobile transactions, so let's assume
+            # that the payment type is mobile.
+            return 'mobile'
         else:
             raise ValueError("Unknown terminal type for terminal ID {} from payment {}.".format(terminal_id,p))
 
