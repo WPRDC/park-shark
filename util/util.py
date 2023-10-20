@@ -737,13 +737,25 @@ def infer_group(t=None, t_id=None, group_lookup_addendum={}, mute_alerts=False):
     # called on Flowbird zones.
     if t_id is None:
         t_id = t['@Id']
-    if t_id[:3] != 'PBP':
-        return None
-    code = t_id[3:] # Split off the part after 'PBP' (Pay By Phone?).
-    # The above code could be factored out into part of an infer_code() function.
-    code = code.strip() # This is necessary to handle the new "PBP 412036" format.
-    group, matched, new_numbered_zone, new_old_zone = group_by_code(code, t, group_lookup_addendum, mute_alerts)
-    return group, new_numbered_zone, new_old_zone
+    if t_id[:3] == 'PBP':
+        code = t_id[3:] # Split off the part after 'PBP' (Pay By Phone?).
+        # The above code could be factored out into part of an infer_code() function.
+        #code = code.strip() # This is necessary to handle the new "PBP 412036" format.
+        if code[0] != ' ':
+            group, matched, new_numbered_zone, new_old_zone = group_by_code(code, t, group_lookup_addendum, mute_alerts)
+            return group, new_numbered_zone, new_old_zone
+        else: # It's like PBP 412036, and needs a totally different lookup method.
+            # In particular, it might have a ParentTerminalStructure like this:
+            # ('ParentTerminalStructure',
+            #  OrderedDict([('@Name', 'GARAGE'),
+            #               ('@Description', '2nd Ave and Mon Wharf'),
+            #               ('@Guid', '8EEE24E2-BC28-4AB4-B64A-59267DC2A150')])),
+            od = t.get('ParentTerminalStructure', {})
+            num_zone = f"{od['@Name']} - {od['@Description']}"
+            ic(num_zone, t_id)
+            return num_zone, None, None
+
+    return None, None, None
 
 def infer_flowbird_zone(t_id, t):
     """This function takes a Flowbird App terminal and figures out which of the
