@@ -937,6 +937,10 @@ def get_payment_type(p):
         terminal_id = p['@TerminalID']
         if terminal_id[:3] == 'PBP':
             return 'mobile'
+        elif re.match("^\d\d\d\d$", terminal_id) is not None or re.match("^\d\d\d\d\d$", terminal_id) is not None:
+            # Terminals with IDs like 5593.
+            # These usually have PurchasePayUnit fields and everyone I've checked has been mobile.
+            return 'mobile'
         elif terminal_id[0] in ['2', '3', '4']:
             return 'meter'
         elif terminal_id[:4] == 'MTFD':

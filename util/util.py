@@ -228,6 +228,71 @@ flowbird_zone_lookup = OrderedDict([
     ('Knoxville', '427 - Knoxville'),
 ])
 
+zone_by_parent_structure = {'18-CARSO-L': '344 - 18th & Carson Lot', # This is valid as of 2023-10-20.
+'18-SIDNE-L': '341 - 18th & Sidney Lot', # (There may have been exceptions in the past.)
+'19-CARSO-L': '343 - 19th & Carson Lot',
+'20-SIDNE-L': '345 - 20th & Sidney Lot',
+'42-BUTLE-L': '338 - 42nd & Butler Lot',
+'5224BUTL-L': '337 - 52nd & Butler Lot',
+'ALLENTOWN': '417 - Allentown',
+'ANSL-BEA-L': '311 - Ansley Beatty Lot',
+'ASTE-WAR-L': '355 - Asteroid Warrington Lot',
+'BAKERY-SQ': '425 - Bakery Sq',
+'BEAC-BAR-L': '321 - Beacon Bartlett Lot',
+'BEECHVIE-L': '363 - Beechview Lot',
+'BEECHVIEW': '418 - Beechview',
+'BLOOMFIELD': '406 - Bloomfield (On-street)',
+'BROOKLIN-L': '361 - Brookline Lot',
+'BROOKLINE': '419 - Brookline',
+'BROW-SAN-L': '351 - Brownsville & Sandkey Lot',
+'CARRICK': '416 - Carrick',
+'DOUG-PHI-L': '323 - Douglas Phillips Lot',
+'DOWNTOWN1': '401 - Downtown 1',
+'DOWNTOWN2': '402 - Downtown 2',
+'EASTCARS-L': '342 - East Carson Lot',
+'EASTLIB': '412 - East Liberty',
+'EASTOHIO-L': '371 - East Ohio Street Lot',
+'EVA-BEAT-L': '307 - Eva Beatty Lot',
+'FORB-MUR-L': '324 - Forbes Murray Lot',
+'FORB-SHA-L': '322 - Forbes Shady Lot',
+'FRIE-CED-L': '335 - Friendship Cedarville Lot',
+'HILL-DIST': '426 - Hill District',
+'HILL-DIST-2': '403 - Uptown',
+'HOME-ZEN-L': '331 - Homewood Zenith Lot',
+'IVY-BELL-L': '328 - Ivy Bellefonte Lot',
+'JCC-L': '325 - JCC/Forbes Lot',
+'KNOXVILLE': '427 - Knoxville',
+'LAWRENCEV': '405 - Lawrenceville',
+'MAIN-ALE-L': '369 - Main/Alexander Lot',
+'MELONPARK': '414 - Mellon Park',
+'MT.WASH': '420 - Mt. Washington',
+'NORTHSHORE': '422 - Northshore',
+'NORTHSIDE': '421 - NorthSide',
+'OAKLAND1': '407 - Oakland 1',
+'OAKLAND2': '408 - Oakland 2',
+'OAKLAND3': '409 - Oakland 3',
+'OAKLAND4': '410 - Oakland 4',
+'OBSERHIL-L': '375 - Oberservatory Hill Lot',
+'PENNC.NW-L': '314 - Penn Circle NW Lot',
+'SHADYSIDE1': '411 - Shadyside',
+'SHADYSIDE2': '411 - Shadyside',
+'SHER-HAR-L': '301 - Sheridan Harvard Lot',
+'SHER-KIR-L': '302 - Sheridan Kirkwood Lot',
+'SHILOH-L': '357 - Shiloh Street Lot',
+'SOUTHSIDE': '415 - SS & SSW',
+'SQ.HILL1': '413 - Squirrel Hill',
+'SQ.HILL2': '413 - Squirrel Hill',
+'STRIPDIST': '404 - Strip Disctrict',
+'TAME-BEA-L': '304 - Tamello Beatty Lot',
+'TAYLOR-L': '334 - Taylor Street Lot',
+'TECHNOLOGY': '424 - Technology Drive',
+'UPTOWN1': '403 - Uptown',
+'UPTOWN2': '403 - Uptown',
+'W CIRC DR': '410 - Oakland 4',
+'WALT-WAR-L': '354 - Walter/Warrington Lot',
+'WEST END': '423 - West End',
+'Z - Inactive/Removed Terminals': None}
+
 def to_dict(input_ordered_dict):
     return loads(dumps(input_ordered_dict))
 
@@ -732,44 +797,53 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
     # reporting zone for the meter purely from the meter ID.
     # For meters where the numbered zone cannot be determined, the
     # returned value of num_zone is None.
-    num_zone = None
-    if t_id[:3] == 'PBP': #is_virtual(t)
-        num_zone, new_num_zone, new_old_zone = infer_group(t, t_id, group_lookup_addendum, mute_alerts)
-    else:
-        # We can't just use the first three characters of the @Id field to infer the group
-        # any longer, with the advent of Flowbird App terminals.
-        if is_a_flowbird_zone(t_id, t):
-            zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone = infer_flowbird_zone(t_id, t)
-            if zone_in_ID is None:
-                #ic(t)
-                ic(t_id, zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone)
-                ic(t['ParentTerminalStructure'])
-                pass
-                # assert zone_in_ID is not None
-        elif t is not None and re.match('^\d+$', t['@Id']):
-            # It's one of the other terminals (currently lots)
+    if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
+        if '@Name' in t['ParentTerminalStructure']:
+            parent_terminal = t['ParentTerminalStructure']['@Name']
+            if parent_terminal in zone_by_parent_structure:
+                num_zone = zone_by_parent_structure[parent_terminal]
+                if num_zone is not None:
+                    return num_zone, None, None # Returning the last two as None
+                # because I don't think they are that important to anything in this situation.
 
-            zone_in_ID, lot_zone, matched, new_num_zone, new_old_zone = infer_lot_zone(t)
-            #ic(t_id, zone_in_ID, lot_zone, matched)
-            #if zone_in_ID is None:
-                #ic(t['ParentTerminalStructure'])
-        #elif is_a_flowbird_generation_lot(t):
-        # Ultimately, it may be too early to write this code until
-        # the full details of the zones and terminal groups have been filled in.
-        else:
-            try:
-                zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3], t, group_lookup_addendum, mute_alerts)
-            except:
-                if t_id == "B0010X00786401372-STANWX0601":
-                    # Workaround for weird terminal ID spotted in
-                    # November 8th, 2012 data.
-                    zone_in_ID, matched, new_num_zone, new_old_zone = '401 - Downtown 1', True, None, None
-                else:
-                    if not mute_alerts:
-                        msg = "Unable to find a numbered zone for terminal ID {} where terminal = {}".format(t_id,t)
-                        send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
-        if matched:
-            num_zone = zone_in_ID
+    num_zone = None
+    if t_id[:3] == 'PBP': #is_virtual(t) # infer_group just handle IDS like PBP123 and also "PBP 12345".
+        num_zone, new_num_zone, new_old_zone = infer_group(t, t_id, group_lookup_addendum, mute_alerts)
+        if num_zone is not None:
+            return num_zone, new_num_zone, new_old_zone
+
+    # We can't just use the first three characters of the @Id field to infer the group
+    # any longer, with the advent of Flowbird App terminals.
+    if is_a_flowbird_zone(t_id, t): # This seems unneeded and now obsolete.
+        print(f"Flowbird zone terminal: {t_id}")
+        zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone = infer_flowbird_zone(t_id, t)
+        if zone_in_ID is None:
+            #ic(t)
+            ic(t_id, zone_in_ID, flowbird_zone, matched, new_num_zone, new_old_zone)
+            ic(t['ParentTerminalStructure'])
+            pass
+            # assert zone_in_ID is not None
+    elif t is not None and re.match('^\d+$', t['@Id']): # This seems unneeded and now obsolete (new code above is catching these, AND they're not all lots).
+        # It's one of the other terminals (currently lots)
+
+        zone_in_ID, lot_zone, matched, new_num_zone, new_old_zone = infer_lot_zone(t)
+        #ic(t_id, zone_in_ID, lot_zone, matched)
+        #if zone_in_ID is None:
+            #ic(t['ParentTerminalStructure'])
+    else:
+        try:
+            zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id, t, group_lookup_addendum, mute_alerts)
+        except:
+            if t_id == "B0010X00786401372-STANWX0601":
+                # Workaround for weird terminal ID spotted in
+                # November 8th, 2012 data.
+                zone_in_ID, matched, new_num_zone, new_old_zone = '401 - Downtown 1', True, None, None
+            else:
+                if not mute_alerts:
+                    msg = "Unable to find a numbered zone for terminal ID {} where terminal = {}".format(t_id,t)
+                    send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
+    if matched:
+        num_zone = zone_in_ID
     return num_zone, new_num_zone, new_old_zone
 
 def sort_dict(d):
