@@ -950,6 +950,7 @@ def get_payment_type(p):
             # that the payment type is mobile.
             return 'mobile'
         else:
+            pprint(p)
             raise ValueError("Unknown terminal type for terminal ID {} from payment {}.".format(terminal_id,p))
 
     if type(p['PurchasePayUnit']) == list: # It's a list of Coin and Card payments.

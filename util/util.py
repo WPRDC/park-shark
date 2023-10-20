@@ -914,6 +914,14 @@ def zone_name(t):
     return code
 
 def corrected_zone_name(t, mute_alerts=False, t_ids=[], t_id=None, group_lookup_addendum={}):
+    # This uses the "old zone name" which is in most cases, the ParentStructure name.
+    # There are four exceptions with a one-to-one mapping: HILL-DIST-2, TECHNOLOGY,
+    # HILL-DIST, and W CIRC DR.
+
+    # We're not using the old zone name for production datasets (see also the comments on
+    # zone_name() above), so we don't need to worry about maintaining this function.
+    # - me, as of 2023-10-20.
+
     lost_zone_names = {'401354-OLIVER0301': 'DOWNTOWN1',# 401354-OLIVER0301
     # has no TerminalGroups, but clearly it should be in DOWNTOWN1
     '402384-1STAVE0404': 'DOWNTOWN2',

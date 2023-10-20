@@ -32,6 +32,7 @@ def main(*args,**kwargs):
     slot_start = process_data.round_time(datetime.now(pgh) - timedelta(hours=1), slot_width) 
     halting_time = datetime.now(pgh) #process_data.round_time(datetime.now(pgh), slot_width)
     script_start = datetime.now()
+    print(f"push_to_CKAN == {push_to_CKAN}")
     print("Started processing at {}.".format(script_start))
     success = process_data.main(raw_only = raw_only, output_to_csv = output_to_csv, push_to_CKAN = push_to_CKAN, slot_start = slot_start, halting_time = halting_time, threshold_for_uploading = 100, mute_alerts = mute_alerts)
     print("Started processing at {} and finished at {}.".format(script_start,datetime.now()))
