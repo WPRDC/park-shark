@@ -158,6 +158,76 @@ zone_lookup = OrderedDict([
     (u'427 - Knoxville', u'KNOXVILLE')
 ])
 
+# While zone_lookup is not a complete lookup because of ambiguity,
+# as of 2024-11-10, the ParentStructure-to-zone lookup can be built
+# with no ambiguity (except for "Z - Inactive/Removed Terminals").
+zone_by_parentstructure = OrderedDict([
+    ('SHER-HAR-L', '301 - Sheridan Harvard Lot'),
+    ('SHER-KIR-L', '302 - Sheridan Kirkwood Lot'),
+    ('TAME-BEA-L', '304 - Tamello Beatty Lot'),
+    ('EVA-BEAT-L', '307 - Eva Beatty Lot'),
+    ('ANSL-BEA-L', '311 - Ansley Beatty Lot'),
+    ('PENNC.NW-L', '314 - Penn Circle NW Lot'),
+    ('BEAC-BAR-L', '321 - Beacon Bartlett Lot'),
+    ('FORB-SHA-L', '322 - Forbes Shady Lot'),
+    ('DOUG-PHI-L', '323 - Douglas Phillips Lot'),
+    ('FORB-MUR-L', '324 - Forbes Murray Lot'),
+    ('JCC-L', '325 - JCC/Forbes Lot'),
+    ('IVY-BELL-L', '328 - Ivy Bellefonte Lot'),
+    ('HOME-ZEN-L', '331 - Homewood Zenith Lot'),
+    ('TAYLOR-L', '334 - Taylor Street Lot'),
+    ('FRIE-CED-L', '335 - Friendship Cedarville Lot'),
+    ('5224BUTL-L', '337 - 52nd & Butler Lot'),
+    ('42-BUTLE-L', '338 - 42nd & Butler Lot'),
+    ('18-SIDNE-L', '341 - 18th & Sidney Lot'),
+    ('EASTCARS-L', '342 - East Carson Lot'),
+    ('19-CARSO-L', '343 - 19th & Carson Lot'),
+    ('18-CARSO-L', '344 - 18th & Carson Lot'),
+    ('20-SIDNE-L', '345 - 20th & Sidney Lot'),
+    ('BROW-SAN-L', '351 - Brownsville & Sandkey Lot'),
+    ('WALT-WAR-L', '354 - Walter/Warrington Lot'),
+    ('ASTE-WAR-L', '355 - Asteroid Warrington Lot'),
+    ('SHILOH-L', '357 - Shiloh Street Lot'),
+    ('BROOKLIN-L', '361 - Brookline Lot'),
+    ('BEECHVIE-L', '363 - Beechview Lot'),
+    ('MAIN-ALE-L', '369 - Main/Alexander Lot'),
+    ('EASTOHIO-L', '371 - East Ohio Street Lot'),
+    ('OBSERHIL-L', '375 - Oberservatory Hill Lot'),
+    ('DOWNTOWN1', '401 - Downtown 1'),
+    ('DOWNTOWN2', '402 - Downtown 2'),
+    ('UPTOWN2', '403 - Uptown'),
+    ('UPTOWN1', '403 - Uptown'),
+    ('HILL-DIST-2', '403 - Uptown'),
+    ('STRIPDIST', '404 - Strip Disctrict'),
+    ('LAWRENCEV', '405 - Lawrenceville'),
+    ('BLOOMFIELD', '406 - Bloomfield (On-street)'),
+    ('OAKLAND1', '407 - Oakland 1'),
+    ('OAKLAND2', '408 - Oakland 2'),
+    ('OAKLAND3', '409 - Oakland 3'),
+    ('OAKLAND4', '410 - Oakland 4'),
+    ('W CIRC DR', '410 - Oakland 4'),
+    ('SHADYSIDE2', '411 - Shadyside'),
+    ('SHADYSIDE1', '411 - Shadyside'),
+    ('EASTLIB', '412 - East Liberty'),
+    ('SQ.HILL1', '413 - Squirrel Hill'),
+    ('SQ.HILL2', '413 - Squirrel Hill'),
+    ('MELONPARK', '414 - Mellon Park'),
+    ('SOUTHSIDE', '415 - SS & SSW'),
+    ('CARRICK', '416 - Carrick'),
+    ('ALLENTOWN', '417 - Allentown'),
+    ('BEECHVIEW', '418 - Beechview'),
+    ('BROOKLINE', '419 - Brookline'),
+    ('MT.WASH', '420 - Mt. Washington'),
+    ('NORTHSIDE', '421 - NorthSide'),
+    ('NORTHSHORE', '422 - Northshore'),
+    ('WEST END', '423 - West End'),
+    ('TECHNOLOGY', '424 - Technology Drive'),
+    ('BAKERY-SQ', '425 - Bakery Sq'),
+    ('HILL-DIST', '426 - Hill District'),
+    ('KNOXVILLE', '427 - Knoxville'),
+    ('GARAGE', 'GARAGE - 2nd Ave and Mon Wharf'),
+])
+
 correction_lookup = {'427-Knoxville': '427 - Knoxville'}
 
 flowbird_zone_lookup = OrderedDict([
@@ -725,6 +795,28 @@ def infer_lot_zone(t):
                 else:
                     new_old_zone = lot_zone
     return zone, lot_zone, matched, None, new_old_zone
+
+def get_zone_from_parent(t):
+    """This function really has not been rigorously tested yet. It's also not clear
+    why it suddenly became necessary in November of 2024, since the exception being
+    thrown do not clearly stem from a change to the part of cached_terminals.xml
+    that is triggering the error."""
+    matched = False
+    new_old_zone = None
+    new_num_zone = None
+    if t is not None:
+        if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
+            if '@Name' in t['ParentTerminalStructure']:
+                parent = t['ParentTerminalStructure']['@Name']
+                assert parent != ''
+                if parent in zone_by_parentstructure:
+                    new_num_zone = zone_by_parentstructure[zone]
+                    matched = True
+                else:
+                    new_old_zone = parent # I THINK the old_zone is just for backward
+                    # compatibility with very old data, but this would need to be verified.
+
+    return matched, new_num_zone, new_old_zone
 
 def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
     # This is the new slimmed-down approach to determining the numbered
