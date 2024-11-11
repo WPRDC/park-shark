@@ -823,7 +823,8 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
     # reporting zone for the meter purely from the meter ID.
     # For meters where the numbered zone cannot be determined, the
     # returned value of num_zone is None.
-    num_zone = None
+    num_zone = new_num_zone = old_num_zone = None
+    matched = False
     if t_id[:3] == 'PBP': #is_virtual(t)
         num_zone, new_num_zone, new_old_zone = infer_group(t, t_id, group_lookup_addendum, mute_alerts)
     else:
@@ -838,12 +839,24 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
                 pass
                 # assert zone_in_ID is not None
         elif t is not None and re.match('^\d+$', t['@Id']):
-            # It's one of the other terminals (currently lots)
+            # It's one of the other terminals (maybe used to just be lots, but now
+            # ParkMobile terminals are showing up here).
 
             zone_in_ID, lot_zone, matched, new_num_zone, new_old_zone = infer_lot_zone(t)
             #ic(t_id, zone_in_ID, lot_zone, matched)
-            #if zone_in_ID is None:
-                #ic(t['ParentTerminalStructure'])
+
+            # If it's not identified as a lot...
+            if zone_in_ID is None: # We're dealing with a situation now where the Id field does not contain
+                # the 3-digit code, and it might not be in the terminal groups either (though the code
+                # above has not looked yet).
+                # @Id = 4956 has one TerminalGroupName: "CWT Meters &amp; ParkMobile"
+                # Other than using older records from the meters_etl directory (essentially caching
+                # zones), the only thing I can see to use is that ParentTerminalStructure['Name'] == 'EASTLIB'.
+
+                # So we want to get whatever num_zone, new_num_zone and old_num_zone are from some kind of lookup
+                # based on ParentTerminalStructure.
+                matched, new_num_zone, new_old_zone = get_zone_from_parent(t)
+
         #elif is_a_flowbird_generation_lot(t):
         # Ultimately, it may be too early to write this code until
         # the full details of the zones and terminal groups have been filled in.
