@@ -863,7 +863,7 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
         else:
             try:
                 zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3], t, group_lookup_addendum, mute_alerts)
-            except:
+            except Exception as e:
                 if t_id == "B0010X00786401372-STANWX0601":
                     # Workaround for weird terminal ID spotted in
                     # November 8th, 2012 data.
@@ -872,8 +872,13 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
                     matched, new_num_zone, new_old_zone = get_zone_from_parent(t)
                 else:
                     if not mute_alerts:
-                        msg = "Unable to find a numbered zone for terminal ID {} where terminal = {}".format(t_id,t)
-                        send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
+                        import sys
+                        msg = f"Due to exception {e}, unable to find a numbered zone for terminal ID {t_id} where terminal = {t}"
+                        print(msg)
+                        send_to_slack(msg, username='park-shark', channel='@david', icon=':shark:')
+                        #raise type(e)(f'{e} [for job_code == "{job.job_code}"]').with_traceback(sys.exc_info()[2]) from None # The "from None"
+                        # part suppresses the earlier stack trace, so it doesn't get repeated (since this is just an extended version).
+
         if matched:
             num_zone = zone_in_ID
     return num_zone, new_num_zone, new_old_zone
