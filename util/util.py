@@ -868,6 +868,8 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
                     # Workaround for weird terminal ID spotted in
                     # November 8th, 2012 data.
                     zone_in_ID, matched, new_num_zone, new_old_zone = '401 - Downtown 1', True, None, None
+                elif get_zone_from_parent(t)[0]:
+                    matched, new_num_zone, new_old_zone = get_zone_from_parent(t)
                 else:
                     if not mute_alerts:
                         msg = "Unable to find a numbered zone for terminal ID {} where terminal = {}".format(t_id,t)
