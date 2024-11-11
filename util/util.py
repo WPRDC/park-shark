@@ -911,7 +911,7 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
                     return num_zone, None, None # Returning the last two as None
                 # because I don't think they are that important to anything in this situation.
 
-    num_zone = new_num_zone = old_num_zone = None
+    num_zone = new_num_zone = new_old_zone = None
     matched = False
     if t_id[:3] == 'PBP': #is_virtual(t) # infer_group just handle IDS like PBP123 and also "PBP 12345".
         num_zone, new_num_zone, new_old_zone = infer_group(t, t_id, group_lookup_addendum, mute_alerts)
