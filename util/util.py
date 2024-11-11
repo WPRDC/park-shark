@@ -159,6 +159,76 @@ zone_lookup = OrderedDict([
     (u'427 - Knoxville', u'KNOXVILLE')
 ])
 
+# While zone_lookup is not a complete lookup because of ambiguity,
+# as of 2024-11-10, the ParentStructure-to-zone lookup can be built
+# with no ambiguity (except for "Z - Inactive/Removed Terminals").
+zone_by_parentstructure = OrderedDict([
+    ('SHER-HAR-L', '301 - Sheridan Harvard Lot'),
+    ('SHER-KIR-L', '302 - Sheridan Kirkwood Lot'),
+    ('TAME-BEA-L', '304 - Tamello Beatty Lot'),
+    ('EVA-BEAT-L', '307 - Eva Beatty Lot'),
+    ('ANSL-BEA-L', '311 - Ansley Beatty Lot'),
+    ('PENNC.NW-L', '314 - Penn Circle NW Lot'),
+    ('BEAC-BAR-L', '321 - Beacon Bartlett Lot'),
+    ('FORB-SHA-L', '322 - Forbes Shady Lot'),
+    ('DOUG-PHI-L', '323 - Douglas Phillips Lot'),
+    ('FORB-MUR-L', '324 - Forbes Murray Lot'),
+    ('JCC-L', '325 - JCC/Forbes Lot'),
+    ('IVY-BELL-L', '328 - Ivy Bellefonte Lot'),
+    ('HOME-ZEN-L', '331 - Homewood Zenith Lot'),
+    ('TAYLOR-L', '334 - Taylor Street Lot'),
+    ('FRIE-CED-L', '335 - Friendship Cedarville Lot'),
+    ('5224BUTL-L', '337 - 52nd & Butler Lot'),
+    ('42-BUTLE-L', '338 - 42nd & Butler Lot'),
+    ('18-SIDNE-L', '341 - 18th & Sidney Lot'),
+    ('EASTCARS-L', '342 - East Carson Lot'),
+    ('19-CARSO-L', '343 - 19th & Carson Lot'),
+    ('18-CARSO-L', '344 - 18th & Carson Lot'),
+    ('20-SIDNE-L', '345 - 20th & Sidney Lot'),
+    ('BROW-SAN-L', '351 - Brownsville & Sandkey Lot'),
+    ('WALT-WAR-L', '354 - Walter/Warrington Lot'),
+    ('ASTE-WAR-L', '355 - Asteroid Warrington Lot'),
+    ('SHILOH-L', '357 - Shiloh Street Lot'),
+    ('BROOKLIN-L', '361 - Brookline Lot'),
+    ('BEECHVIE-L', '363 - Beechview Lot'),
+    ('MAIN-ALE-L', '369 - Main/Alexander Lot'),
+    ('EASTOHIO-L', '371 - East Ohio Street Lot'),
+    ('OBSERHIL-L', '375 - Oberservatory Hill Lot'),
+    ('DOWNTOWN1', '401 - Downtown 1'),
+    ('DOWNTOWN2', '402 - Downtown 2'),
+    ('UPTOWN2', '403 - Uptown'),
+    ('UPTOWN1', '403 - Uptown'),
+    ('HILL-DIST-2', '403 - Uptown'),
+    ('STRIPDIST', '404 - Strip Disctrict'),
+    ('LAWRENCEV', '405 - Lawrenceville'),
+    ('BLOOMFIELD', '406 - Bloomfield (On-street)'),
+    ('OAKLAND1', '407 - Oakland 1'),
+    ('OAKLAND2', '408 - Oakland 2'),
+    ('OAKLAND3', '409 - Oakland 3'),
+    ('OAKLAND4', '410 - Oakland 4'),
+    ('W CIRC DR', '410 - Oakland 4'),
+    ('SHADYSIDE2', '411 - Shadyside'),
+    ('SHADYSIDE1', '411 - Shadyside'),
+    ('EASTLIB', '412 - East Liberty'),
+    ('SQ.HILL1', '413 - Squirrel Hill'),
+    ('SQ.HILL2', '413 - Squirrel Hill'),
+    ('MELONPARK', '414 - Mellon Park'),
+    ('SOUTHSIDE', '415 - SS & SSW'),
+    ('CARRICK', '416 - Carrick'),
+    ('ALLENTOWN', '417 - Allentown'),
+    ('BEECHVIEW', '418 - Beechview'),
+    ('BROOKLINE', '419 - Brookline'),
+    ('MT.WASH', '420 - Mt. Washington'),
+    ('NORTHSIDE', '421 - NorthSide'),
+    ('NORTHSHORE', '422 - Northshore'),
+    ('WEST END', '423 - West End'),
+    ('TECHNOLOGY', '424 - Technology Drive'),
+    ('BAKERY-SQ', '425 - Bakery Sq'),
+    ('HILL-DIST', '426 - Hill District'),
+    ('KNOXVILLE', '427 - Knoxville'),
+    ('GARAGE', 'GARAGE - 2nd Ave and Mon Wharf'),
+])
+
 correction_lookup = {'427-Knoxville': '427 - Knoxville'}
 
 flowbird_zone_lookup = OrderedDict([
@@ -803,21 +873,46 @@ def infer_lot_zone(t):
                     new_old_zone = lot_zone
     return zone, lot_zone, matched, None, new_old_zone
 
+def get_zone_from_parent(t):
+    """This function really has not been rigorously tested yet. It's also not clear
+    why it suddenly became necessary in November of 2024, since the exception being
+    thrown do not clearly stem from a change to the part of cached_terminals.xml
+    that is triggering the error."""
+    matched = False
+    new_old_zone = None
+    new_num_zone = None
+    if t is not None:
+        if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
+            if '@Name' in t['ParentTerminalStructure']:
+                parent = t['ParentTerminalStructure']['@Name']
+                assert parent != ''
+                if parent in zone_by_parentstructure:
+                    new_num_zone = zone_by_parentstructure[zone]
+                    matched = True
+                else:
+                    new_old_zone = parent # I THINK the old_zone is just for backward
+                    # compatibility with very old data, but this would need to be verified.
+
+    return matched, new_num_zone, new_old_zone
+
 def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
     # This is the new slimmed-down approach to determining the numbered
     # reporting zone for the meter purely from the meter ID.
     # For meters where the numbered zone cannot be determined, the
     # returned value of num_zone is None.
+
+    # This next bit should be factored out into the above get_zone_from_parent().
     if 'ParentTerminalStructure' in t and t['ParentTerminalStructure'] is not None:
         if '@Name' in t['ParentTerminalStructure']:
             parent_terminal = t['ParentTerminalStructure']['@Name']
-            if parent_terminal in zone_by_parent_structure:
-                num_zone = zone_by_parent_structure[parent_terminal]
+            if parent_terminal in zone_by_parentstructure:
+                num_zone = zone_by_parentstructure[parent_terminal]
                 if num_zone is not None:
                     return num_zone, None, None # Returning the last two as None
                 # because I don't think they are that important to anything in this situation.
 
-    num_zone = None
+    num_zone = new_num_zone = old_num_zone = None
+    matched = False
     if t_id[:3] == 'PBP': #is_virtual(t) # infer_group just handle IDS like PBP123 and also "PBP 12345".
         num_zone, new_num_zone, new_old_zone = infer_group(t, t_id, group_lookup_addendum, mute_alerts)
         if num_zone is not None:
@@ -841,20 +936,43 @@ def numbered_zone(t_id, t=None, group_lookup_addendum={}, mute_alerts=False):
         #ic(t_id, zone_in_ID, lot_zone, matched)
         #if zone_in_ID is None:
             #ic(t['ParentTerminalStructure'])
+
+        # If it's not identified as a lot...
+        if zone_in_ID is None: # We're dealing with a situation now where the Id field does not contain
+            # the 3-digit code, and it might not be in the terminal groups either (though the code
+            # above has not looked yet).
+            # @Id = 4956 has one TerminalGroupName: "CWT Meters &amp; ParkMobile"
+            # Other than using older records from the meters_etl directory (essentially caching
+            # zones), the only thing I can see to use is that ParentTerminalStructure['Name'] == 'EASTLIB'.
+
+            # So we want to get whatever num_zone, new_num_zone and old_num_zone are from some kind of lookup
+            # based on ParentTerminalStructure.
+            matched, new_num_zone, new_old_zone = get_zone_from_parent(t)
+
+    #elif is_a_flowbird_generation_lot(t):
+    # Ultimately, it may be too early to write this code until
+    # the full details of the zones and terminal groups have been filled in.
     else:
         try:
-            zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id, t, group_lookup_addendum, mute_alerts)
-        except:
+            zone_in_ID, matched, new_num_zone, new_old_zone = group_by_code(t_id[:3], t, group_lookup_addendum, mute_alerts)
+        except Exception as e:
             if t_id == "B0010X00786401372-STANWX0601":
                 # Workaround for weird terminal ID spotted in
                 # November 8th, 2012 data.
                 zone_in_ID, matched, new_num_zone, new_old_zone = '401 - Downtown 1', True, None, None
+            elif get_zone_from_parent(t)[0]:
+                matched, new_num_zone, new_old_zone = get_zone_from_parent(t)
             else:
                 if not mute_alerts:
-                    msg = "Unable to find a numbered zone for terminal ID {} where terminal = {}".format(t_id,t)
-                    send_to_slack(msg,username='park-shark',channel='@david',icon=':shark:')
-    if matched:
-        num_zone = zone_in_ID
+                    import sys
+                    msg = f"Due to exception {e}, unable to find a numbered zone for terminal ID {t_id} where terminal = {t}"
+                    print(msg)
+                    send_to_slack(msg, username='park-shark', channel='@david', icon=':shark:')
+                    #raise type(e)(f'{e} [for job_code == "{job.job_code}"]').with_traceback(sys.exc_info()[2]) from None # The "from None"
+                    # part suppresses the earlier stack trace, so it doesn't get repeated (since this is just an extended version).
+
+        if matched:
+            num_zone = zone_in_ID
     return num_zone, new_num_zone, new_old_zone
 
 def sort_dict(d):
